@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,24 +15,47 @@ import { Calendar, MapPin, Clock, Image, Sparkles } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     date: "",
     time: "",
     location: "",
-    address: "",
     category: "",
     capacity: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!loading && !user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to create an event",
+      });
+      navigate("/auth");
+    }
+  }, [user, loading, navigate, toast]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to create an event",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
     // Validate form
     if (!formData.title || !formData.date || !formData.location) {
       toast({
@@ -43,12 +66,43 @@ const CreateEvent = () => {
       return;
     }
 
-    toast({
-      title: "Event created!",
-      description: "Your event has been created successfully.",
-    });
-    
-    navigate("/events");
+    setSubmitting(true);
+
+    // Combine date and time
+    const eventDateTime = formData.time 
+      ? `${formData.date}T${formData.time}:00`
+      : `${formData.date}T00:00:00`;
+
+    const { data, error } = await supabase
+      .from("events")
+      .insert({
+        host_id: user.id,
+        title: formData.title,
+        description: formData.description || null,
+        location: formData.location,
+        event_date: eventDateTime,
+        category: formData.category || "party",
+        max_guests: formData.capacity ? parseInt(formData.capacity) : null,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create event. Please try again.",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Event created!",
+        description: "Your event has been created successfully.",
+      });
+      navigate(`/events/${data.id}`);
+    }
+
+    setSubmitting(false);
   };
 
   const handleChange = (
@@ -56,6 +110,14 @@ const CreateEvent = () => {
   ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,19 +205,8 @@ const CreateEvent = () => {
                 <Input
                   id="location"
                   name="location"
-                  placeholder="e.g., Brooklyn, NY"
+                  placeholder="e.g., 123 Main St, Brooklyn, NY"
                   value={formData.location}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Full Address</Label>
-                <Input
-                  id="address"
-                  name="address"
-                  placeholder="e.g., 123 Main St, Brooklyn, NY 11201"
-                  value={formData.address}
                   onChange={handleChange}
                 />
               </div>
@@ -174,11 +225,11 @@ const CreateEvent = () => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Birthday">🎂 Birthday</SelectItem>
-                      <SelectItem value="Dinner">🍽️ Dinner</SelectItem>
-                      <SelectItem value="Wedding">💒 Wedding</SelectItem>
-                      <SelectItem value="New Year's">🎉 New Year's</SelectItem>
-                      <SelectItem value="Social">🍸 Social</SelectItem>
+                      <SelectItem value="birthday">🎂 Birthday</SelectItem>
+                      <SelectItem value="dinner">🍽️ Dinner</SelectItem>
+                      <SelectItem value="wedding">💒 Wedding</SelectItem>
+                      <SelectItem value="party">🎉 Party</SelectItem>
+                      <SelectItem value="social">🍸 Social</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -211,8 +262,13 @@ const CreateEvent = () => {
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full text-lg">
-              Create Event
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full text-lg"
+              disabled={submitting}
+            >
+              {submitting ? "Creating..." : "Create Event"}
             </Button>
           </form>
         </div>
