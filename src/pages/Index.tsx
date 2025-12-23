@@ -12,7 +12,7 @@ import {
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImg from "@/assets/logo.png";
+import logoImg from "@/assets/logo-full.png";
 
 // Mock feed data for social posts
 const feedPosts = [
