@@ -143,13 +143,4 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
-
-  /* Force dark mode for nightlife aesthetic */
-  :root {
-    color-scheme: dark;
-  }
-
-  html {
-    @apply dark;
-  }
 }
