@@ -28,9 +28,7 @@ const Auth = () => {
   }
 
   const formatPhoneNumber = (value: string) => {
-    // Remove all non-digits
     const digits = value.replace(/\D/g, "");
-    // Add + prefix if not present and has digits
     if (digits.length > 0 && !value.startsWith("+")) {
       return "+" + digits;
     }
@@ -104,52 +102,54 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-6">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">Eventful</span>
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Mobile App-like Auth Screen */}
+      <div className="flex-1 flex flex-col justify-center px-6 py-12">
+        <div className="w-full max-w-sm mx-auto">
+          {/* Logo */}
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 mb-8">
+              <Sparkles className="h-10 w-10 text-primary" />
+              <span className="text-3xl font-bold text-foreground">Eventful</span>
+            </div>
+            
+            {!otpSent ? (
+              <>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Welcome
+                </h1>
+                <p className="text-muted-foreground">
+                  Enter your phone number to get started
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="h-8 w-8 text-primary" />
+                </div>
+                <h1 className="text-2xl font-bold text-foreground mb-2">
+                  Enter code
+                </h1>
+                <p className="text-muted-foreground">
+                  We sent a code to <span className="font-medium text-foreground">{phone}</span>
+                </p>
+              </>
+            )}
           </div>
-          
-          {!otpSent ? (
-            <>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Welcome
-              </h1>
-              <p className="text-muted-foreground">
-                Enter your phone number to get started
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="h-8 w-8 text-primary" />
-              </div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Enter verification code
-              </h1>
-              <p className="text-muted-foreground">
-                We sent a code to <span className="font-medium text-foreground">{phone}</span>
-              </p>
-            </>
-          )}
-        </div>
 
-        {!otpSent ? (
-          <form onSubmit={handleSendOtp} className="space-y-4">
-            <div className="bg-card rounded-xl p-6 shadow-lg space-y-4">
+          {!otpSent ? (
+            <form onSubmit={handleSendOtp} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone number</Label>
+                <Label htmlFor="phone" className="text-foreground">Phone number</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="phone"
                     type="tel"
                     placeholder="+1 234 567 8900"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="pl-10"
+                    className="pl-12 h-14 text-lg bg-card border-border"
                     disabled={loading}
                   />
                 </div>
@@ -160,34 +160,31 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full gap-2"
-                size="lg"
+                className="w-full h-14 text-lg gap-2"
                 disabled={loading}
               >
                 {loading ? (
                   "Sending..."
                 ) : (
                   <>
-                    Send Code
-                    <ArrowRight className="h-4 w-4" />
+                    Continue
+                    <ArrowRight className="h-5 w-5" />
                   </>
                 )}
               </Button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleVerifyOtp} className="space-y-4">
-            <div className="bg-card rounded-xl p-6 shadow-lg space-y-4">
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="otp">Verification code</Label>
+                <Label htmlFor="otp" className="text-foreground">Verification code</Label>
                 <Input
                   id="otp"
                   type="text"
                   inputMode="numeric"
-                  placeholder="123456"
+                  placeholder="000000"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="text-center text-2xl tracking-widest"
+                  className="text-center text-3xl tracking-[0.5em] h-16 bg-card border-border font-mono"
                   disabled={loading}
                   maxLength={6}
                 />
@@ -198,16 +195,15 @@ const Auth = () => {
 
               <Button
                 type="submit"
-                className="w-full gap-2"
-                size="lg"
+                className="w-full h-14 text-lg gap-2"
                 disabled={loading || otp.length !== 6}
               >
                 {loading ? (
                   "Verifying..."
                 ) : (
                   <>
-                    Verify & Sign In
-                    <ArrowRight className="h-4 w-4" />
+                    Verify
+                    <ArrowRight className="h-5 w-5" />
                   </>
                 )}
               </Button>
@@ -224,27 +220,27 @@ const Auth = () => {
               >
                 Use a different number
               </Button>
-            </div>
-          </form>
-        )}
+            </form>
+          )}
 
-        <p className="text-center text-sm text-muted-foreground mt-6">
-          By signing in, you agree to our Terms of Service and Privacy Policy.
-        </p>
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            By signing in, you agree to our Terms of Service and Privacy Policy.
+          </p>
 
-        {/* Dev Login Button */}
-        <div className="mt-6 pt-6 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              mockLogin();
-              navigate("/dashboard");
-            }}
-            className="w-full"
-          >
-            🔧 Dev Login (Skip Auth)
-          </Button>
+          {/* Dev Login Button */}
+          <div className="mt-8 pt-8 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                mockLogin();
+                navigate("/dashboard");
+              }}
+              className="w-full"
+            >
+              🔧 Dev Login (Skip Auth)
+            </Button>
+          </div>
         </div>
       </div>
     </div>
