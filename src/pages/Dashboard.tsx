@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -120,7 +121,7 @@ const Dashboard = () => {
   const goingEvents = rsvps.filter((r) => r.status === "going");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
 
       <main className="pt-24 pb-12">
@@ -355,6 +356,7 @@ const Dashboard = () => {
       </main>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };

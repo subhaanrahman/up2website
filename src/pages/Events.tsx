@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BottomNav from "@/components/BottomNav";
 import CategoryPill from "@/components/CategoryPill";
 import { Badge } from "@/components/ui/badge";
 import { categories } from "@/data/events";
@@ -51,7 +52,7 @@ const Events = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
 
       <main className="pt-24 pb-12">
@@ -130,6 +131,7 @@ const Events = () => {
       </main>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };
