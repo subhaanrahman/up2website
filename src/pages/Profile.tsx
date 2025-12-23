@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import {
   Settings,
   Instagram,
@@ -97,36 +96,35 @@ const Profile = () => {
   const username = displayName || user.phone || user.email?.split("@")[0] || "User";
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="flex items-center justify-between px-4 h-14">
-          <h1 className="text-lg font-semibold text-foreground">Profile</h1>
-          <Link to="/dashboard">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-5 w-5" />
-            </Button>
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background pb-20">
+      {/* Settings Icon - Top Right */}
+      <div className="absolute top-4 right-4 z-10">
+        <Link to="/dashboard">
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-secondary">
+            <Settings className="h-5 w-5 text-foreground" />
+          </Button>
+        </Link>
+      </div>
 
-      <main className="container mx-auto px-4 py-6 max-w-lg">
+      <main className="px-4 pt-8 max-w-lg mx-auto">
         {/* Profile Section */}
-        <div className="text-center mb-8">
+        <div className="text-center">
           {/* Avatar */}
-          <div className="relative inline-block mb-4">
-            <Avatar className="h-24 w-24 border-2 border-border">
+          <div className="flex justify-center mb-4">
+            <Avatar className="h-28 w-28 border-2 border-border">
               <AvatarImage src={avatarUrl || undefined} />
-              <AvatarFallback className="text-2xl bg-muted text-muted-foreground">
+              <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
                 {username[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
           </div>
 
           {/* Username with verified badge */}
-          <div className="flex items-center justify-center gap-1.5 mb-1">
-            <h2 className="text-xl font-bold text-foreground">{username}</h2>
-            <BadgeCheck className="h-5 w-5 text-primary fill-primary/20" />
+          <div className="flex items-center justify-center gap-1.5 mb-0.5">
+            <h2 className="text-xl font-bold tracking-wide text-foreground uppercase">
+              {username}
+            </h2>
+            <BadgeCheck className="h-5 w-5 text-primary fill-primary" />
           </div>
 
           {/* Handle */}
@@ -135,38 +133,38 @@ const Profile = () => {
           </p>
 
           {/* Stats */}
-          <div className="flex items-center justify-center gap-8 mb-6">
+          <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{followersCount}</p>
-              <p className="text-sm text-muted-foreground">Followers</p>
+              <p className="text-lg font-bold text-foreground">{followersCount}</p>
+              <p className="text-xs text-muted-foreground">Followers</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{eventsCount}</p>
-              <p className="text-sm text-muted-foreground">Events</p>
+              <p className="text-lg font-bold text-foreground">{eventsCount}</p>
+              <p className="text-xs text-muted-foreground">Events</p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-center gap-3 mb-6">
+          <div className="flex items-center justify-center gap-2 mb-5">
             <Link to="/dashboard">
-              <Button className="px-6">EDIT</Button>
+              <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
-            <Button variant="outline" size="icon" className="rounded-full">
+            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
               <Instagram className="h-5 w-5" />
             </Button>
-            <Button variant="outline" size="icon" className="rounded-full">
+            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
               <Send className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Bio */}
-          <p className="text-foreground text-sm max-w-xs mx-auto mb-2">
-            Join us for an unforgettable nightlife experience. We host the hottest events in town, with a vibrant atmosphere
+          <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">
+            Join us for an unforgettable nightlife experience. We host the hottest event in town, with a vibrant atmosphere
           </p>
 
           {/* Location */}
-          <div className="flex items-center justify-center gap-1 text-muted-foreground text-sm">
+          <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
             <MapPin className="h-4 w-4" />
             <span>Venue • Sydney</span>
           </div>
@@ -174,14 +172,23 @@ const Profile = () => {
 
         {/* Tabs */}
         <Tabs defaultValue="upcoming" className="w-full">
-          <TabsList className="w-full bg-card border border-border">
-            <TabsTrigger value="upcoming" className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+          <TabsList className="w-full h-auto p-0 bg-transparent border-b border-border rounded-none">
+            <TabsTrigger 
+              value="upcoming" 
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+            >
               UPCOMING
             </TabsTrigger>
-            <TabsTrigger value="feed" className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <TabsTrigger 
+              value="feed" 
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+            >
               FEED
             </TabsTrigger>
-            <TabsTrigger value="past" className="flex-1 data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none">
+            <TabsTrigger 
+              value="past" 
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+            >
               PAST
             </TabsTrigger>
           </TabsList>
@@ -229,15 +236,15 @@ const Profile = () => {
   );
 };
 
-// Event List Item Component matching Figma design
+// Event List Item Component matching the reference design
 const EventListItem = ({ event }: { event: Event }) => {
   return (
     <Link
       to={`/events/${event.id}`}
-      className="flex items-center gap-4 p-3 bg-card rounded-xl border border-border hover:bg-secondary/50 transition-colors"
+      className="flex items-center gap-3 p-2 bg-card rounded-xl hover:bg-secondary/50 transition-colors"
     >
       {/* Event Image */}
-      <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+      <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden flex-shrink-0">
         {event.cover_image ? (
           <img
             src={event.cover_image}
@@ -245,22 +252,20 @@ const EventListItem = ({ event }: { event: Event }) => {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <Calendar className="h-6 w-6 text-muted-foreground" />
+          <div className="w-full h-full flex items-center justify-center bg-secondary">
+            <Calendar className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
       </div>
 
       {/* Event Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm text-muted-foreground">{event.location || "Venue"}</p>
-        <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-        <p className="text-sm text-muted-foreground">
-          {format(new Date(event.event_date), "EEE, MMM d")} • {format(new Date(event.event_date), "h:mm a")}
+      <div className="flex-1 min-w-0 py-1">
+        <p className="text-sm text-muted-foreground mb-0.5">{event.location || "Venue"}</p>
+        <h3 className="font-semibold text-foreground truncate mb-0.5">{event.title}</h3>
+        <p className="text-sm text-muted-foreground mb-0.5">
+          {format(new Date(event.event_date), "EEE, MMM d")} - {format(new Date(event.event_date), "h:mm a")}
         </p>
-        {event.category && (
-          <p className="text-sm text-primary">From $49.99</p>
-        )}
+        <p className="text-sm text-muted-foreground">From $49.99</p>
       </div>
 
       {/* Chevron */}
