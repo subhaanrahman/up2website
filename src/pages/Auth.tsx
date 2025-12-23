@@ -3,10 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Phone, ArrowRight, CheckCircle } from "lucide-react";
+import { Phone, ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import logoFull from "@/assets/logo-full.png";
 
 const phoneSchema = z.string().min(10, "Please enter a valid phone number");
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
@@ -108,9 +109,8 @@ const Auth = () => {
         <div className="w-full max-w-sm mx-auto">
           {/* Logo */}
           <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-2 mb-8">
-              <Sparkles className="h-10 w-10 text-primary" />
-              <span className="text-3xl font-bold text-foreground">Eventful</span>
+            <div className="mb-8">
+              <img src={logoFull} alt="Up2" className="h-16 w-auto mx-auto" />
             </div>
             
             {!otpSent ? (
