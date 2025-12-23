@@ -93,30 +93,31 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Events Near You - Tiles */}
+        {/* Events Near You - Vertical Tiles */}
         <div className="border-b border-border">
           <div className="px-4 py-3">
             <h2 className="text-base font-semibold text-foreground">Events Near You</h2>
           </div>
           
-          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
+          <div className="px-4 pb-4 flex flex-col gap-3">
             {nearbyEvents.map((event) => (
               <Link
                 key={event.id}
                 to={`/events/${event.id}`}
-                className="block rounded-xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
+                className="flex rounded-2xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
               >
-                <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
+                <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
                   <img
                     src={event.image}
                     alt={event.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="p-3">
-                  <h3 className="font-semibold text-foreground text-sm truncate">{event.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.location?.split(",")[0] || "Venue"}</p>
-                  <p className="text-xs text-muted-foreground">{event.date}</p>
+                <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
+                  <p className="text-sm text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
+                  <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+                  <p className="text-sm text-muted-foreground">{event.date} - {event.time}</p>
+                  <p className="text-sm text-muted-foreground">From $49.99</p>
                 </div>
               </Link>
             ))}
