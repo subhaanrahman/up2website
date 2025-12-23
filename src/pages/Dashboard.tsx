@@ -12,9 +12,9 @@ import {
   Sparkles,
   CalendarCheck,
   Clock,
+  ChevronRight,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,7 +64,6 @@ const Dashboard = () => {
     if (!user) return;
 
     try {
-      // Fetch profile
       const { data: profileData } = await supabase
         .from("profiles")
         .select("display_name, avatar_url")
@@ -73,7 +72,6 @@ const Dashboard = () => {
 
       setProfile(profileData);
 
-      // Fetch my hosted events
       const { data: eventsData } = await supabase
         .from("events")
         .select("id, title, event_date, location, cover_image, category")
@@ -82,7 +80,6 @@ const Dashboard = () => {
 
       setMyEvents(eventsData || []);
 
-      // Fetch my RSVPs
       const { data: rsvpsData } = await supabase
         .from("rsvps")
         .select(`
@@ -120,24 +117,62 @@ const Dashboard = () => {
   );
   const goingEvents = rsvps.filter((r) => r.status === "going");
 
+  const userName = profile?.display_name || user.phone || user.email?.split("@")[0] || "User";
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
 
-      <main className="pt-24 pb-12">
+      {/* Mobile Header */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border md:hidden">
+        <div className="flex items-center justify-between px-4 h-14">
+          <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
+          <Link to="/profile">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-5 w-5" />
+            </Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="pt-4 md:pt-24 pb-12">
         <div className="container mx-auto px-4">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+          {/* Profile Card - Mobile */}
+          <div className="md:hidden mb-6">
+            <div className="bg-card rounded-xl p-4 border border-border">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-14 w-14">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="text-lg">
+                    {userName[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-foreground">Hey, {userName}!</h2>
+                  <p className="text-sm text-muted-foreground">Ready to plan?</p>
+                </div>
+                <Link to="/create">
+                  <Button size="sm" className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    New
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex md:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 <AvatarImage src={profile?.avatar_url || undefined} />
                 <AvatarFallback className="text-xl">
-                  {profile?.display_name?.[0] || user.email?.[0]?.toUpperCase()}
+                  {userName[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Hey, {profile?.display_name || user.email?.split("@")[0]}! 👋
+                  Hey, {userName}! 👋
                 </h1>
                 <p className="text-muted-foreground">
                   Ready to plan your next event?
@@ -161,84 +196,69 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {/* Stats - Mobile */}
+          <div className="grid grid-cols-2 gap-3 mb-6 md:hidden">
             <div className="bg-card rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Calendar className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    {myEvents.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Events Hosted</p>
+                  <p className="text-xl font-bold text-card-foreground">{myEvents.length}</p>
+                  <p className="text-xs text-muted-foreground">Hosted</p>
                 </div>
               </div>
             </div>
-
             <div className="bg-card rounded-xl p-4 border border-border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/50 flex items-center justify-center">
-                  <CalendarCheck className="h-5 w-5 text-accent-foreground" />
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CalendarCheck className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    {goingEvents.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Attending</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
-                  <Clock className="h-5 w-5 text-secondary-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    {upcomingEvents.length}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Upcoming</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-xl p-4 border border-border">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-card-foreground">0</p>
-                  <p className="text-sm text-muted-foreground">Invites Sent</p>
+                  <p className="text-xl font-bold text-card-foreground">{goingEvents.length}</p>
+                  <p className="text-xs text-muted-foreground">Attending</p>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* Stats - Desktop */}
+          <div className="hidden md:grid grid-cols-4 gap-4 mb-8">
+            {[
+              { icon: Calendar, value: myEvents.length, label: "Events Hosted", color: "bg-primary/10" },
+              { icon: CalendarCheck, value: goingEvents.length, label: "Attending", color: "bg-primary/10" },
+              { icon: Clock, value: upcomingEvents.length, label: "Upcoming", color: "bg-secondary" },
+              { icon: Users, value: 0, label: "Invites Sent", color: "bg-muted" },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-card rounded-xl p-4 border border-border">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${stat.color} flex items-center justify-center`}>
+                    <stat.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-card-foreground">{stat.value}</p>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           {/* Tabs */}
-          <Tabs defaultValue="hosting" className="space-y-6">
-            <TabsList className="bg-card">
-              <TabsTrigger value="hosting">My Events</TabsTrigger>
-              <TabsTrigger value="attending">Attending</TabsTrigger>
+          <Tabs defaultValue="hosting" className="space-y-4">
+            <TabsList className="bg-card border border-border w-full md:w-auto">
+              <TabsTrigger value="hosting" className="flex-1 md:flex-none">My Events</TabsTrigger>
+              <TabsTrigger value="attending" className="flex-1 md:flex-none">Attending</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="hosting" className="space-y-4">
+            <TabsContent value="hosting" className="space-y-3">
               {loadingData ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-12 text-muted-foreground">Loading...</div>
               ) : myEvents.length === 0 ? (
-                <div className="bg-card rounded-xl p-12 text-center border border-dashed border-border">
+                <div className="bg-card rounded-xl p-8 text-center border border-dashed border-border">
                   <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                    No events yet
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    Create your first event and start inviting friends!
-                  </p>
+                  <h3 className="text-lg font-semibold text-card-foreground mb-2">No events yet</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">Create your first event!</p>
                   <Link to="/create">
                     <Button className="gap-2">
                       <Plus className="h-4 w-4" />
@@ -247,118 +267,118 @@ const Dashboard = () => {
                   </Link>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {myEvents.map((event) => (
-                    <Link
-                      key={event.id}
-                      to={`/events/${event.id}`}
-                      className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
-                    >
-                      <div className="aspect-video bg-muted relative">
-                        {event.cover_image ? (
-                          <img
-                            src={event.cover_image}
-                            alt={event.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Calendar className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        {event.category && (
-                          <Badge className="absolute top-3 left-3">
-                            {event.category}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-card-foreground mb-1">
-                          {event.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(event.event_date), "MMM d, yyyy")}
-                        </p>
-                        {event.location && (
-                          <p className="text-sm text-muted-foreground">
-                            {event.location}
-                          </p>
-                        )}
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                <>
+                  {/* Mobile List */}
+                  <div className="md:hidden space-y-3">
+                    {myEvents.map((event) => (
+                      <EventListCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                  {/* Desktop Grid */}
+                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {myEvents.map((event) => (
+                      <EventGridCard key={event.id} event={event} />
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
 
-            <TabsContent value="attending" className="space-y-4">
+            <TabsContent value="attending" className="space-y-3">
               {loadingData ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Loading...
-                </div>
+                <div className="text-center py-12 text-muted-foreground">Loading...</div>
               ) : rsvps.length === 0 ? (
-                <div className="bg-card rounded-xl p-12 text-center border border-dashed border-border">
+                <div className="bg-card rounded-xl p-8 text-center border border-dashed border-border">
                   <CalendarCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-card-foreground mb-2">
-                    No events yet
-                  </h3>
-                  <p className="text-muted-foreground mb-4">
-                    Browse events and RSVP to see them here!
-                  </p>
+                  <h3 className="text-lg font-semibold text-card-foreground mb-2">No events yet</h3>
+                  <p className="text-muted-foreground mb-4 text-sm">Browse and RSVP to events!</p>
                   <Link to="/events">
-                    <Button variant="outline" className="gap-2">
-                      Browse Events
-                    </Button>
+                    <Button variant="outline" className="gap-2">Browse Events</Button>
                   </Link>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {rsvps.map((rsvp) => (
-                    <Link
-                      key={rsvp.id}
-                      to={`/events/${rsvp.events.id}`}
-                      className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
-                    >
-                      <div className="aspect-video bg-muted relative">
-                        {rsvp.events.cover_image ? (
-                          <img
-                            src={rsvp.events.cover_image}
-                            alt={rsvp.events.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <Calendar className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        <Badge
-                          className="absolute top-3 right-3"
-                          variant={rsvp.status === "going" ? "default" : "secondary"}
-                        >
-                          {rsvp.status === "going" ? "Going" : "Maybe"}
-                        </Badge>
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-card-foreground mb-1">
-                          {rsvp.events.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(rsvp.events.event_date), "MMM d, yyyy")}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
+                <>
+                  {/* Mobile List */}
+                  <div className="md:hidden space-y-3">
+                    {rsvps.map((rsvp) => (
+                      <EventListCard key={rsvp.id} event={rsvp.events} badge={rsvp.status} />
+                    ))}
+                  </div>
+                  {/* Desktop Grid */}
+                  <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rsvps.map((rsvp) => (
+                      <EventGridCard key={rsvp.id} event={rsvp.events} badge={rsvp.status} />
+                    ))}
+                  </div>
+                </>
               )}
             </TabsContent>
           </Tabs>
         </div>
       </main>
 
-      <Footer />
       <BottomNav />
     </div>
   );
 };
+
+// Mobile Event List Card
+const EventListCard = ({ event, badge }: { event: Event; badge?: string }) => (
+  <Link
+    to={`/events/${event.id}`}
+    className="flex items-center gap-4 p-3 bg-card rounded-xl border border-border"
+  >
+    <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+      {event.cover_image ? (
+        <img src={event.cover_image} alt={event.title} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <Calendar className="h-6 w-6 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
+      <p className="text-sm text-muted-foreground">
+        {format(new Date(event.event_date), "EEE, MMM d • h:mm a")}
+      </p>
+      {badge && (
+        <Badge variant={badge === "going" ? "default" : "secondary"} className="mt-1 text-xs">
+          {badge === "going" ? "Going" : "Maybe"}
+        </Badge>
+      )}
+    </div>
+    <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+  </Link>
+);
+
+// Desktop Event Grid Card
+const EventGridCard = ({ event, badge }: { event: Event; badge?: string }) => (
+  <Link
+    to={`/events/${event.id}`}
+    className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
+  >
+    <div className="aspect-video bg-muted relative">
+      {event.cover_image ? (
+        <img src={event.cover_image} alt={event.title} className="w-full h-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Calendar className="h-12 w-12 text-muted-foreground" />
+        </div>
+      )}
+      {event.category && <Badge className="absolute top-3 left-3">{event.category}</Badge>}
+      {badge && (
+        <Badge className="absolute top-3 right-3" variant={badge === "going" ? "default" : "secondary"}>
+          {badge === "going" ? "Going" : "Maybe"}
+        </Badge>
+      )}
+    </div>
+    <div className="p-4">
+      <h3 className="font-semibold text-card-foreground mb-1">{event.title}</h3>
+      <p className="text-sm text-muted-foreground">{format(new Date(event.event_date), "MMM d, yyyy")}</p>
+      {event.location && <p className="text-sm text-muted-foreground">{event.location}</p>}
+    </div>
+  </Link>
+);
 
 export default Dashboard;
