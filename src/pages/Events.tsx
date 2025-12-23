@@ -1,220 +1,137 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import Navbar from "@/components/Navbar";
-import BottomNav from "@/components/BottomNav";
-import CategoryPill from "@/components/CategoryPill";
-import { Badge } from "@/components/ui/badge";
-import { categories } from "@/data/events";
-import { Search, Calendar, MapPin, Filter } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { Search, X, BadgeCheck } from "lucide-react";
+import BottomNav from "@/components/BottomNav";
+import Navbar from "@/components/Navbar";
 
-interface Event {
-  id: string;
-  title: string;
-  event_date: string;
-  location: string | null;
-  cover_image: string | null;
-  category: string | null;
-}
+// Mock recent searches data
+const recentSearches = [
+  {
+    id: "1",
+    name: "DYLAN",
+    avatar: "",
+    relationship: "Friends",
+    verified: false,
+  },
+  {
+    id: "2",
+    name: "NOIR",
+    avatar: "",
+    relationship: "Following",
+    verified: true,
+  },
+];
 
 const Events = () => {
-  const [activeCategory, setActiveCategory] = useState("All Events");
   const [searchQuery, setSearchQuery] = useState("");
-  const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [recentItems, setRecentItems] = useState(recentSearches);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = async () => {
-    const { data } = await supabase
-      .from("events")
-      .select("id, title, event_date, location, cover_image, category")
-      .eq("is_public", true)
-      .gte("event_date", new Date().toISOString())
-      .order("event_date", { ascending: true });
-
-    setEvents(data || []);
-    setLoading(false);
+  const handleRemoveRecent = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRecentItems((prev) => prev.filter((item) => item.id !== id));
   };
 
-  const filteredEvents = events.filter((event) => {
-    const matchesCategory =
-      activeCategory === "All Events" || event.category === activeCategory.toLowerCase();
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
-    return matchesCategory && matchesSearch;
-  });
+  const filteredItems = recentItems.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
 
-      {/* Mobile Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border md:hidden">
-        <div className="px-4 py-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-foreground">Discover</h1>
-            <Button variant="ghost" size="icon">
-              <Filter className="h-5 w-5" />
-            </Button>
-          </div>
+      {/* Mobile Search Page */}
+      <div className="md:hidden">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-4">
+          <h1 className="text-2xl font-bold text-foreground mb-4">SEARCH</h1>
           
-          {/* Search */}
+          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search events..."
+              placeholder="Search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-card border-border"
+              className="pl-10 bg-secondary border-0 h-10"
             />
           </div>
-        </div>
-        
-        {/* Categories */}
-        <div className="px-4 pb-3 overflow-x-auto scrollbar-hide">
-          <div className="flex gap-2">
-            {categories.map((category) => (
-              <CategoryPill
-                key={category.label}
-                label={category.label}
-                icon={category.icon}
-                active={activeCategory === category.label}
-                onClick={() => setActiveCategory(category.label)}
-              />
+        </header>
+
+        {/* Recent Section */}
+        <main className="px-4">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Recent</h2>
+
+          {/* Recent Searches List */}
+          <div className="space-y-0">
+            {filteredItems.map((item) => (
+              <Link
+                key={item.id}
+                to={`/profile/${item.id}`}
+                className="flex items-center gap-3 py-3 hover:bg-secondary/30 transition-colors -mx-4 px-4"
+              >
+                <Avatar className="h-14 w-14 flex-shrink-0">
+                  <AvatarImage src={item.avatar} />
+                  <AvatarFallback className="bg-card text-foreground font-semibold text-sm">
+                    {item.name.slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1">
+                    <h3 className="font-semibold text-foreground">{item.name}</h3>
+                    {item.verified && (
+                      <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{item.relationship}</p>
+                </div>
+
+                <button
+                  onClick={(e) => handleRemoveRecent(item.id, e)}
+                  className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </Link>
             ))}
           </div>
-        </div>
-      </header>
 
-      {/* Desktop Header */}
-      <main className="pt-4 md:pt-24 pb-12">
+          {/* Loading skeleton placeholders */}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-3 py-3">
+              <div className="h-14 w-14 rounded-full bg-secondary animate-pulse" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-32 bg-secondary rounded animate-pulse" />
+                <div className="h-3 w-24 bg-secondary rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </main>
+      </div>
+
+      {/* Desktop View - Keep existing grid */}
+      <main className="hidden md:block pt-24 pb-12">
         <div className="container mx-auto px-4">
-          {/* Desktop Title */}
-          <div className="hidden md:block mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-2">Browse Events</h1>
-            <p className="text-muted-foreground">Discover amazing events happening near you</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">Search</h1>
+          <p className="text-muted-foreground mb-8">Find people and events</p>
+
+          <div className="relative max-w-md mb-8">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
 
-          {/* Desktop Search & Categories */}
-          <div className="hidden md:block space-y-4 mb-8">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              {categories.map((category) => (
-                <CategoryPill
-                  key={category.label}
-                  label={category.label}
-                  icon={category.icon}
-                  active={activeCategory === category.label}
-                  onClick={() => setActiveCategory(category.label)}
-                />
-              ))}
-            </div>
+          <div className="text-center py-20 text-muted-foreground">
+            <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Start typing to search for people and events</p>
           </div>
-
-          {loading ? (
-            <div className="text-center py-20 text-muted-foreground">Loading...</div>
-          ) : filteredEvents.length > 0 ? (
-            <>
-              {/* Mobile List View */}
-              <div className="md:hidden space-y-3">
-                {filteredEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    to={`/events/${event.id}`}
-                    className="flex gap-4 bg-card rounded-xl p-3 border border-border"
-                  >
-                    <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
-                      {event.cover_image ? (
-                        <img
-                          src={event.cover_image}
-                          alt={event.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Calendar className="h-8 w-8 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(event.event_date), "EEE, MMM d • h:mm a")}
-                      </p>
-                      {event.location && (
-                        <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {event.location}
-                        </p>
-                      )}
-                      {event.category && (
-                        <Badge variant="secondary" className="mt-1 text-xs">
-                          {event.category}
-                        </Badge>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-
-              {/* Desktop Grid View */}
-              <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredEvents.map((event) => (
-                  <Link
-                    key={event.id}
-                    to={`/events/${event.id}`}
-                    className="group bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-all"
-                  >
-                    <div className="aspect-video bg-muted relative overflow-hidden">
-                      {event.cover_image ? (
-                        <img src={event.cover_image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Calendar className="h-12 w-12 text-muted-foreground" />
-                        </div>
-                      )}
-                      {event.category && <Badge className="absolute top-3 left-3">{event.category}</Badge>}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-card-foreground mb-2 group-hover:text-primary transition-colors">{event.title}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                        <Calendar className="h-4 w-4" />
-                        {format(new Date(event.event_date), "MMM d, yyyy • h:mm a")}
-                      </div>
-                      {event.location && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <MapPin className="h-4 w-4" />
-                          {event.location}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </>
-          ) : (
-            <div className="text-center py-20">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground text-lg">No events found</p>
-              <p className="text-sm text-muted-foreground">Try a different search or category</p>
-            </div>
-          )}
         </div>
       </main>
 
