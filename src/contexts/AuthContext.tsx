@@ -9,6 +9,7 @@ interface AuthContextType {
   signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
   verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  mockLogin: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,8 +63,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
   };
 
+  const mockLogin = () => {
+    // Create a mock user for development/testing
+    const mockUser = {
+      id: "mock-user-id-12345",
+      email: "dev@example.com",
+      phone: "+1234567890",
+      created_at: new Date().toISOString(),
+      app_metadata: {},
+      user_metadata: { display_name: "Dev User" },
+      aud: "authenticated",
+    } as User;
+    
+    setUser(mockUser);
+    setSession({ user: mockUser } as Session);
+    setLoading(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithPhone, verifyOtp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signInWithPhone, verifyOtp, signOut, mockLogin }}>
       {children}
     </AuthContext.Provider>
   );

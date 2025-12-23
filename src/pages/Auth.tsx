@@ -13,7 +13,7 @@ const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { signInWithPhone, verifyOtp, user } = useAuth();
+  const { signInWithPhone, verifyOtp, user, mockLogin } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -231,6 +231,21 @@ const Auth = () => {
         <p className="text-center text-sm text-muted-foreground mt-6">
           By signing in, you agree to our Terms of Service and Privacy Policy.
         </p>
+
+        {/* Dev Login Button */}
+        <div className="mt-6 pt-6 border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              mockLogin();
+              navigate("/dashboard");
+            }}
+            className="w-full"
+          >
+            🔧 Dev Login (Skip Auth)
+          </Button>
+        </div>
       </div>
     </div>
   );
