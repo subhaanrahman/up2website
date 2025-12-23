@@ -23,7 +23,7 @@ const Auth = () => {
 
   // Redirect if already logged in
   if (user) {
-    navigate("/dashboard");
+    navigate("/");
     return null;
   }
 
@@ -95,7 +95,7 @@ const Auth = () => {
         title: "Welcome!",
         description: "You've successfully signed in.",
       });
-      navigate("/dashboard");
+      navigate("/");
     }
 
     setLoading(false);
@@ -234,7 +234,7 @@ const Auth = () => {
               variant="outline"
               onClick={() => {
                 mockLogin();
-                navigate("/dashboard");
+                navigate("/");
               }}
               className="w-full"
             >
