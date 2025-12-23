@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Calendar, Users, Palette } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BottomNav from "@/components/BottomNav";
 import EventCard from "@/components/EventCard";
 import { events } from "@/data/events";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -11,7 +12,7 @@ const Index = () => {
   const featuredEvents = events.slice(0, 3);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
       
       {/* Hero Section */}
@@ -151,6 +152,7 @@ const Index = () => {
       </section>
 
       <Footer />
+      <BottomNav />
     </div>
   );
 };
