@@ -7,13 +7,12 @@ import {
   Heart, 
   Repeat2, 
   MoreHorizontal, 
-  Calendar,
-  ChevronRight,
   BadgeCheck
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
+import logoImg from "@/assets/logo.png";
 
 // Mock feed data for social posts
 const feedPosts = [
@@ -57,14 +56,8 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-center px-4 h-14 relative">
-          {/* Logo */}
-          <div className="text-primary">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2C6.5 2 2 6.5 2 12c0 3.5 1.8 6.5 4.5 8.3" />
-              <path d="M12 2c5.5 0 10 4.5 10 10 0 3.5-1.8 6.5-4.5 8.3" />
-              <path d="M12 2v10l4 4" />
-            </svg>
-          </div>
+          {/* Logo - Centered */}
+          <img src={logoImg} alt="Up2" className="h-8 w-auto" />
           
           {/* Notification Bell */}
           <div className="absolute right-4">
@@ -100,35 +93,31 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Events Near You */}
+        {/* Events Near You - Tiles */}
         <div className="border-b border-border">
           <div className="px-4 py-3">
             <h2 className="text-base font-semibold text-foreground">Events Near You</h2>
           </div>
           
-          <div className="space-y-0">
+          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
             {nearbyEvents.map((event) => (
               <Link
                 key={event.id}
                 to={`/events/${event.id}`}
-                className="flex items-center gap-3 px-4 py-3 border-t border-border hover:bg-secondary/30 transition-colors"
+                className="block rounded-xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
               >
-                <div className="w-28 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-muted">
+                <div className="aspect-[4/3] w-full overflow-hidden bg-muted">
                   <img
                     src={event.image}
                     alt={event.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
-                  <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {event.date} - {event.time}
-                  </p>
-                  <p className="text-sm text-muted-foreground">From $49.99</p>
+                <div className="p-3">
+                  <h3 className="font-semibold text-foreground text-sm truncate">{event.title}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.location?.split(",")[0] || "Venue"}</p>
+                  <p className="text-xs text-muted-foreground">{event.date}</p>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               </Link>
             ))}
           </div>
