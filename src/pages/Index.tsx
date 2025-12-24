@@ -1,66 +1,74 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { 
-  Bell, 
-  Plus, 
-  Heart, 
-  Repeat2, 
-  MoreHorizontal, 
-  BadgeCheck
-} from "lucide-react";
+import { Bell, Plus, Heart, Repeat2, MoreHorizontal, BadgeCheck } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
 import logoImg from "@/assets/logo.png";
 
 // Mock feed data for social posts
-const feedPosts = [
-  {
-    id: "1",
-    type: "text",
-    user: {
-      name: "Sarah Chen",
-      handle: "sarahchen123",
-      avatar: "",
-      verified: false,
-    },
-    content: "If you're reading this, you still have time to pull up 🔥 The party everyone's talking about goes down TONIGHT... don't be the one hearing about it tomorrow 👀",
-    time: "36m",
-    likes: 142,
-    reposts: 32,
+const feedPosts = [{
+  id: "1",
+  type: "text",
+  user: {
+    name: "Sarah Chen",
+    handle: "sarahchen123",
+    avatar: "",
+    verified: false
   },
-  {
-    id: "2",
-    type: "event",
-    user: {
-      name: "NOIR",
-      handle: "noirsydney",
-      avatar: "",
-      verified: true,
-    },
-    action: "posted an event",
-    time: "7 hrs",
-    likes: 142,
-    reposts: 32,
-    event: events[0],
+  content: "If you're reading this, you still have time to pull up 🔥 The party everyone's talking about goes down TONIGHT... don't be the one hearing about it tomorrow 👀",
+  time: "36m",
+  likes: 142,
+  reposts: 32
+}, {
+  id: "2",
+  type: "event",
+  user: {
+    name: "NOIR",
+    handle: "noirsydney",
+    avatar: "",
+    verified: true
   },
-];
+  action: "posted an event",
+  time: "7 hrs",
+  likes: 142,
+  reposts: 32,
+  event: events[0]
+}];
 
 // Mock suggested friends data
-const suggestedFriends = [
-  { id: "1", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: true },
-  { id: "2", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
-  { id: "3", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
-  { id: "4", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
-];
-
+const suggestedFriends = [{
+  id: "1",
+  name: "Sarah Chen",
+  handle: "sarahchen123",
+  avatar: "",
+  added: true
+}, {
+  id: "2",
+  name: "Sarah Chen",
+  handle: "sarahchen123",
+  avatar: "",
+  added: false
+}, {
+  id: "3",
+  name: "Sarah Chen",
+  handle: "sarahchen123",
+  avatar: "",
+  added: false
+}, {
+  id: "4",
+  name: "Sarah Chen",
+  handle: "sarahchen123",
+  avatar: "",
+  added: false
+}];
 const Index = () => {
-  const { user } = useAuth();
+  const {
+    user
+  } = useAuth();
   const nearbyEvents = events.slice(0, 2);
-
-  return (
-    <div className="min-h-screen bg-background pb-20">
+  return <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-center px-4 h-14 relative">
@@ -108,18 +116,9 @@ const Index = () => {
           </div>
           
           <div className="px-4 pb-4 flex flex-col gap-2">
-            {nearbyEvents.map((event) => (
-              <Link
-                key={event.id}
-                to={`/events/${event.id}`}
-                className="flex rounded-xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
-              >
+            {nearbyEvents.map(event => <Link key={event.id} to={`/events/${event.id}`} className="flex rounded-xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors">
                 <div className="w-24 h-20 flex-shrink-0 overflow-hidden bg-muted">
-                  <img
-                    src={event.image}
-                    alt={event.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                   <p className="text-xs text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
@@ -127,15 +126,13 @@ const Index = () => {
                   <p className="text-xs text-muted-foreground">{event.date} - {event.time}</p>
                   <p className="text-xs text-muted-foreground">From $49.99</p>
                 </div>
-              </Link>
-            ))}
+              </Link>)}
           </div>
         </div>
 
         {/* Social Feed - First Post */}
         <div>
-          {feedPosts.slice(0, 1).map((post) => (
-            <div key={post.id} className="px-4 py-4 border-b border-border">
+          {feedPosts.slice(0, 1).map(post => <div key={post.id} className="px-4 py-4 border-b border-border">
               <div className="flex gap-3">
                 {/* Avatar */}
                 <Avatar className="h-10 w-10 flex-shrink-0">
@@ -150,12 +147,8 @@ const Index = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-foreground">{post.user.name}</span>
-                      {post.user.verified && (
-                        <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
-                      )}
-                      {post.type === "event" && (
-                        <span className="text-muted-foreground text-sm">{post.action}</span>
-                      )}
+                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary" />}
+                      {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">
                         {post.type === "text" && `@${post.user.handle}`} • {post.time}
                       </span>
@@ -166,9 +159,7 @@ const Index = () => {
                   </div>
 
                   {/* Content */}
-                  {post.type === "text" && (
-                    <p className="text-foreground mt-1 leading-relaxed">{post.content}</p>
-                  )}
+                  {post.type === "text" && <p className="text-foreground mt-1 leading-relaxed">{post.content}</p>}
 
                   {/* Engagement */}
                   <div className="flex items-center gap-6 mt-3">
@@ -183,14 +174,12 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
 
         {/* Event Post with Suggested Friends after */}
         <div>
-          {feedPosts.slice(1, 2).map((post) => (
-            <div key={post.id} className="px-4 py-4 border-b border-border">
+          {feedPosts.slice(1, 2).map(post => <div key={post.id} className="px-4 py-4 border-b border-border">
               <div className="flex gap-3">
                 {/* Avatar */}
                 <Avatar className="h-10 w-10 flex-shrink-0">
@@ -205,12 +194,8 @@ const Index = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-foreground">{post.user.name}</span>
-                      {post.user.verified && (
-                        <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
-                      )}
-                      {post.type === "event" && (
-                        <span className="text-muted-foreground text-sm">{post.action}</span>
-                      )}
+                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary" />}
+                      {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">• {post.time}</span>
                     </div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
@@ -219,17 +204,11 @@ const Index = () => {
                   </div>
 
                   {/* Event Card */}
-                  {post.type === "event" && post.event && (
-                    <Link
-                      to={`/events/${post.event.id}`}
-                      className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border"
-                    >
-                      <div className="w-24 h-20 flex-shrink-0 overflow-hidden bg-muted">
-                        <img
-                          src={post.event.image}
-                          alt={post.event.title}
-                          className="w-full h-full object-cover"
-                        />
+                  {post.type === "event" && post.event && <Link to={`/events/${post.event.id}`} className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border">
+                      <div className="w-32 flex-shrink-0 overflow-hidden bg-muted" style={{
+                  aspectRatio: '3/4'
+                }}>
+                        <img src={post.event.image} alt={post.event.title} className="w-full h-full object-fill" />
                       </div>
                       <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                         <p className="text-xs text-muted-foreground">{post.event.location?.split(",")[0] || "Venue"}</p>
@@ -239,8 +218,7 @@ const Index = () => {
                         </p>
                         <p className="text-xs text-muted-foreground">From $49.99</p>
                       </div>
-                    </Link>
-                  )}
+                    </Link>}
 
                   {/* Engagement */}
                   <div className="flex items-center gap-6 mt-3">
@@ -255,8 +233,7 @@ const Index = () => {
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
 
         {/* Suggested Friends */}
@@ -266,11 +243,7 @@ const Index = () => {
           </div>
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex gap-3 px-4 pb-2">
-              {suggestedFriends.map((friend) => (
-                <div
-                  key={friend.id}
-                  className="flex-shrink-0 w-32 rounded-2xl bg-card border border-border p-4 flex flex-col items-center"
-                >
+              {suggestedFriends.map(friend => <div key={friend.id} className="flex-shrink-0 w-32 rounded-2xl bg-card border border-border p-4 flex flex-col items-center">
                   <Avatar className="h-16 w-16 mb-3">
                     <AvatarImage src={friend.avatar} />
                     <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
@@ -279,15 +252,10 @@ const Index = () => {
                   </Avatar>
                   <span className="font-semibold text-foreground text-sm text-center truncate w-full">{friend.name}</span>
                   <span className="text-xs text-muted-foreground truncate w-full text-center">@{friend.handle}</span>
-                  <Button
-                    variant={friend.added ? "default" : "secondary"}
-                    size="sm"
-                    className={`mt-3 w-full rounded-full text-xs ${friend.added ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-                  >
+                  <Button variant={friend.added ? "default" : "secondary"} size="sm" className={`mt-3 w-full rounded-full text-xs ${friend.added ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                     {friend.added ? "Added" : "Add"}
                   </Button>
-                </div>
-              ))}
+                </div>)}
             </div>
           </div>
         </div>
@@ -295,16 +263,11 @@ const Index = () => {
       </main>
 
       {/* Floating Action Button */}
-      <Link
-        to="/create"
-        className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
-      >
+      <Link to="/create" className="fixed bottom-24 right-4 z-40 h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
         <Plus className="h-7 w-7 text-primary-foreground" />
       </Link>
 
       <BottomNav />
-    </div>
-  );
+    </div>;
 };
-
 export default Index;
