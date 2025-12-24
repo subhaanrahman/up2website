@@ -1,54 +1,20 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import BottomNav from "@/components/BottomNav";
-import { useToast } from "@/hooks/use-toast";
+import { usePrivacySettings } from "@/hooks/usePrivacySettings";
 
-interface PrivacySetting {
-  id: string;
-  label: string;
-  description: string;
-  enabled: boolean;
-}
+const settingsConfig = [
+  { id: "go_public", label: "Go Public", description: "Make your profile visible to everyone" },
+  { id: "share_saved_events", label: "Share Saved Events", description: "Let others see events you've saved" },
+  { id: "share_going_events", label: "Share Going Events", description: "Let others see events you're attending" },
+] as const;
 
 const PrivacySettings = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const [settings, setSettings] = useState<PrivacySetting[]>([
-    { 
-      id: "go_public", 
-      label: "Go Public", 
-      description: "Make your profile visible to everyone", 
-      enabled: true 
-    },
-    { 
-      id: "share_saved", 
-      label: "Share Saved Events", 
-      description: "Let others see events you've saved", 
-      enabled: false 
-    },
-    { 
-      id: "share_going", 
-      label: "Share Going Events", 
-      description: "Let others see events you're attending", 
-      enabled: true 
-    },
-  ]);
-
-  const toggleSetting = (id: string) => {
-    setSettings(prev => 
-      prev.map(setting => 
-        setting.id === id ? { ...setting, enabled: !setting.enabled } : setting
-      )
-    );
-    toast({
-      title: "Privacy updated",
-      description: "Your privacy preferences have been saved",
-    });
-  };
+  const { settings, loading, updateSetting } = usePrivacySettings();
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -68,26 +34,38 @@ const PrivacySettings = () => {
         </p>
 
         <div className="space-y-4">
-          {settings.map((setting) => (
-            <div
-              key={setting.id}
-              className="flex items-center justify-between p-4 bg-card rounded-xl"
-            >
-              <div className="flex-1 mr-4">
-                <Label htmlFor={setting.id} className="text-foreground font-medium cursor-pointer">
-                  {setting.label}
-                </Label>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {setting.description}
-                </p>
+          {loading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-card rounded-xl">
+                <div className="flex-1 mr-4">
+                  <Skeleton className="h-5 w-32 mb-2" />
+                  <Skeleton className="h-4 w-48" />
+                </div>
+                <Skeleton className="h-6 w-11 rounded-full" />
               </div>
-              <Switch
-                id={setting.id}
-                checked={setting.enabled}
-                onCheckedChange={() => toggleSetting(setting.id)}
-              />
-            </div>
-          ))}
+            ))
+          ) : (
+            settingsConfig.map((setting) => (
+              <div
+                key={setting.id}
+                className="flex items-center justify-between p-4 bg-card rounded-xl"
+              >
+                <div className="flex-1 mr-4">
+                  <Label htmlFor={setting.id} className="text-foreground font-medium cursor-pointer">
+                    {setting.label}
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {setting.description}
+                  </p>
+                </div>
+                <Switch
+                  id={setting.id}
+                  checked={settings[setting.id]}
+                  onCheckedChange={(checked) => updateSetting(setting.id, checked)}
+                />
+              </div>
+            ))
+          )}
         </div>
       </main>
 
