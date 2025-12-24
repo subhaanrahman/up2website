@@ -13,6 +13,13 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
+import Settings from "./pages/Settings";
+import NotificationsSettings from "./pages/NotificationsSettings";
+import PrivacySettings from "./pages/PrivacySettings";
+import HelpCenter from "./pages/HelpCenter";
+import About from "./pages/About";
+import Notifications from "./pages/Notifications";
+import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +41,13 @@ const App = () => (
             <Route path="/search/:id" element={<EventDetail />} />
             <Route path="/create" element={<CreateEvent />} />
             <Route path="/events" element={<Tickets />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/notifications" element={<NotificationsSettings />} />
+            <Route path="/settings/privacy" element={<PrivacySettings />} />
+            <Route path="/settings/help" element={<HelpCenter />} />
+            <Route path="/settings/about" element={<About />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/checkout" element={<Checkout />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

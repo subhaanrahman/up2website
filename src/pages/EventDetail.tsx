@@ -1,8 +1,21 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, MapPin, CheckCircle2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  X, 
+  Share2, 
+  Heart, 
+  MapPin, 
+  CheckCircle2, 
+  Users, 
+  Tag,
+  Calendar,
+  HelpCircle,
+  CalendarPlus
+} from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import PurchaseModal from "@/components/PurchaseModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +41,13 @@ interface Profile {
   avatar_url: string | null;
 }
 
+// Mock ticket tiers
+const mockTicketTiers = [
+  { id: "ga", name: "General Admission", price: 49.99, description: "Standard entry" },
+  { id: "vip", name: "VIP Access", price: 99.99, description: "Priority entry + VIP area" },
+  { id: "premium", name: "Premium Package", price: 149.99, description: "All VIP perks + drink tickets" },
+];
+
 const EventDetail = () => {
   const { id } = useParams();
   const { toast } = useToast();
@@ -38,6 +58,8 @@ const EventDetail = () => {
   const [mockEvent, setMockEvent] = useState<MockEvent | null>(null);
   const [host, setHost] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInterested, setIsInterested] = useState(false);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -103,6 +125,50 @@ const EventDetail = () => {
     }
   };
 
+  const handleInterested = () => {
+    setIsInterested(!isInterested);
+    toast({
+      title: isInterested ? "Removed from saved" : "Saved!",
+      description: isInterested ? "Event removed from your saved list" : "Event added to your saved list",
+    });
+  };
+
+  const handleCheckout = (tierId: string, quantity: number, discountCode?: string) => {
+    const event = mockEvent || dbEvent;
+    if (!event) return;
+
+    const tier = mockTicketTiers.find(t => t.id === tierId);
+    if (!tier) return;
+
+    setShowPurchaseModal(false);
+    
+    navigate("/checkout", {
+      state: {
+        eventTitle: event.title,
+        eventDate: mockEvent 
+          ? mockEvent.date 
+          : format(new Date(dbEvent!.event_date), "EEEE, MMM d • h:mm a"),
+        eventLocation: mockEvent?.location || dbEvent?.location || "TBD",
+        tierName: tier.name,
+        tierPrice: tier.price,
+        quantity,
+        discountCode,
+      },
+    });
+  };
+
+  const handleRSVP = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    
+    toast({
+      title: "RSVP Submitted!",
+      description: "Waiting for host approval...",
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background pb-20">
@@ -114,239 +180,263 @@ const EventDetail = () => {
     );
   }
 
-  // Handle mock event display
-  if (mockEvent) {
+  const event = mockEvent || dbEvent;
+  const isFreeEvent = !mockEvent; // For demo, mock events are paid, db events are free
+
+  if (!event) {
     return (
-      <div className="min-h-screen bg-background pb-24">
-        {/* Header */}
-        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2">
-              <ArrowLeft className="h-6 w-6 text-foreground" />
-            </button>
-            <Button variant="ghost" size="sm" onClick={handleShare}>
-              Share
-            </Button>
-          </div>
+      <div className="min-h-screen bg-background pb-20">
+        <div className="pt-12 container mx-auto px-4 text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">Event not found</h1>
+          <Link to="/">
+            <Button variant="outline">Back to Home</Button>
+          </Link>
         </div>
+        <BottomNav />
+      </div>
+    );
+  }
 
-        {/* Event Title */}
-        <div className="px-4 pt-4 pb-2">
-          <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight leading-tight">
-            {mockEvent.title}
-          </h1>
-        </div>
+  const eventTitle = mockEvent?.title || dbEvent?.title || "";
+  const eventImage = mockEvent?.image || dbEvent?.cover_image;
+  const eventDate = mockEvent 
+    ? mockEvent.date 
+    : format(new Date(dbEvent!.event_date), "EEEE, MMM d");
+  const eventTime = mockEvent 
+    ? "9:00 PM" 
+    : format(new Date(dbEvent!.event_date), "h:mm a");
+  const eventLocation = mockEvent?.location || dbEvent?.category || "";
+  const eventAddress = mockEvent?.address || dbEvent?.location || "";
+  const eventDescription = mockEvent?.description || dbEvent?.description || "";
+  const attendees = mockEvent?.attendees || 0;
+  const guests = mockEvent?.guests || [];
 
+  return (
+    <div className="min-h-screen bg-background pb-28">
+      {/* Top Banner */}
+      <div className="relative">
         {/* Event Image */}
-        <div className="px-4 py-4">
-          <div className="rounded-2xl overflow-hidden">
+        <div className="aspect-[4/5] w-full">
+          {eventImage ? (
             <img
-              src={mockEvent.image}
-              alt={mockEvent.title}
-              className="w-full aspect-[4/5] object-cover"
+              src={eventImage}
+              alt={eventTitle}
+              className="w-full h-full object-cover"
             />
-          </div>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
+              <span className="text-6xl">🎉</span>
+            </div>
+          )}
         </div>
 
-        {/* Event Info */}
-        <div className="px-4 space-y-3">
-          {/* Date and Venue Row */}
-          <div className="flex items-start justify-between">
-            <p className="text-lg font-semibold text-foreground">
-              {mockEvent.date}
-            </p>
-            <div className="flex items-center gap-1 text-foreground">
-              <span className="font-semibold">{mockEvent.location.split(',')[0]}</span>
+        {/* Close Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
+        >
+          <X className="h-5 w-5 text-foreground" />
+        </button>
+
+        {/* Share Button */}
+        <button
+          onClick={handleShare}
+          className="absolute top-16 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
+        >
+          <Share2 className="h-5 w-5 text-foreground" />
+        </button>
+
+        {/* Interested Button */}
+        <button
+          onClick={handleInterested}
+          className="absolute bottom-4 right-4 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center"
+        >
+          <Heart 
+            className={`h-6 w-6 ${isInterested ? "fill-primary text-primary" : "text-foreground"}`} 
+          />
+        </button>
+      </div>
+
+      {/* Event Details */}
+      <div className="px-4 pt-4 space-y-4">
+        {/* Title */}
+        <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight">
+          {eventTitle}
+        </h1>
+
+        {/* Date & Time */}
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-foreground">{eventDate}</span>
+          <span className="text-muted-foreground">•</span>
+          <span className="text-foreground">{eventTime}</span>
+        </div>
+
+        {/* Venue */}
+        <div className="flex items-start gap-2">
+          <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-foreground">
+                {eventAddress.split(',')[0] || eventLocation}
+              </span>
               <CheckCircle2 className="h-4 w-4 text-primary fill-primary" />
             </div>
+            <p className="text-sm text-muted-foreground">
+              {eventAddress.split(',').slice(1).join(',').trim() || "Venue address"}
+            </p>
           </div>
+        </div>
 
-          {/* Address */}
-          <div className="flex items-start gap-2">
-            <div className="flex-1">
-              <p className="text-foreground font-medium">{mockEvent.address.split(',')[0]}</p>
-              <p className="text-muted-foreground text-sm">
-                {mockEvent.address.split(',').slice(1).join(',').trim()}
-              </p>
-            </div>
-            <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+        {/* Tags */}
+        {(mockEvent?.category || dbEvent?.category) && (
+          <div className="flex flex-wrap gap-2">
+            <span className="px-3 py-1 bg-secondary rounded-full text-sm text-foreground">
+              {mockEvent?.category || dbEvent?.category}
+            </span>
+            <span className="px-3 py-1 bg-secondary rounded-full text-sm text-foreground">
+              21+
+            </span>
           </div>
+        )}
 
-          {/* Description */}
-          <p className="text-muted-foreground text-sm leading-relaxed pt-2">
-            {mockEvent.description}
-          </p>
+        {/* Hosts & Collaborators */}
+        <div>
+          <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
+          <div className="flex items-center gap-2">
+            {host ? (
+              <>
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={host.avatar_url || undefined} />
+                  <AvatarFallback>{host.display_name?.[0] || "H"}</AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">{host.display_name || "Host"}</span>
+              </>
+            ) : (
+              <>
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback>H</AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">Event Host</span>
+              </>
+            )}
+          </div>
+        </div>
 
-          {/* Attendees Info */}
-          <div className="pt-4 flex items-center gap-3">
+        {/* Friends Attending */}
+        {guests.length > 0 && (
+          <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
-              {mockEvent.guests.slice(0, 4).map((guest, index) => (
-                <img
-                  key={index}
-                  src={guest.avatar}
-                  alt={guest.name}
-                  className="h-8 w-8 rounded-full border-2 border-background"
-                />
+              {guests.slice(0, 4).map((guest, index) => (
+                <Avatar key={index} className="h-8 w-8 border-2 border-background">
+                  <AvatarImage src={guest.avatar} />
+                  <AvatarFallback>{guest.name[0]}</AvatarFallback>
+                </Avatar>
               ))}
             </div>
             <span className="text-sm text-muted-foreground">
-              {mockEvent.attendees} attending
+              <Users className="h-4 w-4 inline mr-1" />
+              {attendees} attending
             </span>
           </div>
+        )}
 
-          {/* RSVP Button */}
-          <div className="pt-4">
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={() => {
-                if (!user) {
-                  navigate("/auth");
-                } else {
-                  toast({
-                    title: "RSVP Submitted!",
-                    description: `You're going to ${mockEvent.title}`,
-                  });
-                }
-              }}
-            >
-              RSVP
-            </Button>
-          </div>
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={handleShare}>
+            <Share2 className="h-4 w-4 mr-2" />
+            Share / Invite
+          </Button>
+          <Button variant="secondary" className="flex-1">
+            <Tag className="h-4 w-4 mr-2" />
+            Add Code
+          </Button>
         </div>
 
-        <BottomNav />
-      </div>
-    );
-  }
-
-  // Handle database event display
-  if (dbEvent) {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        {/* Header */}
-        <div className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-          <div className="flex items-center justify-between px-4 py-3">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2">
-              <ArrowLeft className="h-6 w-6 text-foreground" />
-            </button>
-            <Button variant="ghost" size="sm" onClick={handleShare}>
-              Share
-            </Button>
-          </div>
-        </div>
-
-        {/* Event Title */}
-        <div className="px-4 pt-4 pb-2">
-          <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight leading-tight">
-            {dbEvent.title}
-          </h1>
-        </div>
-
-        {/* Event Image */}
-        <div className="px-4 py-4">
-          <div className="rounded-2xl overflow-hidden bg-muted">
-            {dbEvent.cover_image ? (
-              <img
-                src={dbEvent.cover_image}
-                alt={dbEvent.title}
-                className="w-full aspect-[4/5] object-cover"
-              />
-            ) : (
-              <div className="w-full aspect-[4/5] flex items-center justify-center">
-                <span className="text-4xl">🎉</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Event Info */}
-        <div className="px-4 space-y-3">
-          {/* Date and Category Row */}
-          <div className="flex items-start justify-between">
-            <p className="text-lg font-semibold text-foreground">
-              {format(new Date(dbEvent.event_date), "EEEE, MMM d")}
-            </p>
-            {dbEvent.category && (
-              <div className="flex items-center gap-1 text-foreground">
-                <span className="font-semibold">{dbEvent.category}</span>
-                <CheckCircle2 className="h-4 w-4 text-primary fill-primary" />
-              </div>
-            )}
-          </div>
-
-          {/* Location */}
-          {dbEvent.location && (
-            <div className="flex items-start gap-2">
-              <div className="flex-1">
-                <p className="text-foreground font-medium">{dbEvent.location}</p>
-              </div>
-              <MapPin className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-            </div>
-          )}
-
-          {/* Time */}
-          <p className="text-muted-foreground">
-            {format(new Date(dbEvent.event_date), "h:mm a")}
+        {/* Description */}
+        <div>
+          <h3 className="font-semibold text-foreground mb-2">About this event</h3>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            {eventDescription}
           </p>
-
-          {/* Description */}
-          {dbEvent.description && (
-            <p className="text-muted-foreground text-sm leading-relaxed pt-2">
-              {dbEvent.description}
-            </p>
-          )}
-
-          {/* Host Info */}
-          {host && (
-            <div className="pt-4 flex items-center gap-3">
-              <img
-                src={host.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${host.display_name}`}
-                alt={host.display_name || "Host"}
-                className="h-10 w-10 rounded-full border-2 border-background"
-              />
-              <div>
-                <p className="text-xs text-muted-foreground">Hosted by</p>
-                <p className="text-sm font-medium text-foreground">{host.display_name || "Host"}</p>
-              </div>
-            </div>
-          )}
-
-          {/* RSVP Button */}
-          <div className="pt-4">
-            <Button 
-              className="w-full" 
-              size="lg"
-              onClick={() => {
-                if (!user) {
-                  navigate("/auth");
-                } else {
-                  toast({
-                    title: "RSVP Submitted!",
-                    description: `You're going to ${dbEvent.title}`,
-                  });
-                }
-              }}
-            >
-              RSVP
-            </Button>
-          </div>
         </div>
 
-        <BottomNav />
-      </div>
-    );
-  }
+        {/* Venue Info with Map Preview */}
+        <div className="bg-card rounded-xl p-4">
+          <h3 className="font-semibold text-foreground mb-3">Venue</h3>
+          <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
+            <MapPin className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground ml-2">Map Preview</span>
+          </div>
+          <p className="text-foreground font-medium">
+            {eventAddress.split(',')[0] || eventLocation}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {eventAddress || "Full address"}
+          </p>
+        </div>
 
-  // Event not found
-  return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="pt-12 container mx-auto px-4 text-center">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Event not found</h1>
-        <Link to="/">
-          <Button variant="outline">Back to Home</Button>
-        </Link>
+        {/* Bottom Utilities */}
+        <div className="flex gap-3">
+          <Button variant="ghost" className="flex-1 text-muted-foreground">
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Need Help?
+          </Button>
+          <Button variant="ghost" className="flex-1 text-muted-foreground" disabled>
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            Add to Calendar
+            <span className="text-xs ml-1">(Soon)</span>
+          </Button>
+        </div>
       </div>
+
+      {/* Sticky Purchase Banner */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-40">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          {isFreeEvent ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">Free Event</p>
+                <p className="text-sm text-muted-foreground">RSVP required</p>
+              </div>
+              <Button size="lg" onClick={handleRSVP}>
+                RSVP
+              </Button>
+            </>
+          ) : (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">From $49.99</p>
+                <p className="text-sm text-muted-foreground">+ fees</p>
+              </div>
+              <Button 
+                size="lg" 
+                onClick={() => {
+                  if (!user) {
+                    navigate("/auth");
+                  } else {
+                    setShowPurchaseModal(true);
+                  }
+                }}
+              >
+                Buy Tickets
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Purchase Modal */}
+      <PurchaseModal
+        open={showPurchaseModal}
+        onOpenChange={setShowPurchaseModal}
+        eventTitle={eventTitle}
+        eventDate={`${eventDate} • ${eventTime}`}
+        eventLocation={eventAddress || eventLocation}
+        ticketTiers={mockTicketTiers}
+        onCheckout={handleCheckout}
+      />
+
       <BottomNav />
     </div>
   );
