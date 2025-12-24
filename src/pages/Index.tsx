@@ -224,7 +224,7 @@ const Index = () => {
                       to={`/events/${post.event.id}`}
                       className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border"
                     >
-                      <div className="w-32 flex-shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: '3/4' }}>
+                      <div className="w-24 h-20 flex-shrink-0 overflow-hidden bg-muted">
                         <img
                           src={post.event.image}
                           alt={post.event.title}
