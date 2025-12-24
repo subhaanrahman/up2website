@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import AvatarWithProgress from "@/components/AvatarWithProgress";
 import {
   Settings,
   Instagram,
@@ -34,6 +34,8 @@ const Profile = () => {
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [followersCount] = useState(321);
   const [eventsCount, setEventsCount] = useState(0);
+  const [points] = useState(750); // Example: 750 out of 1000 points for next level
+  const maxPoints = 1000;
 
   useEffect(() => {
     if (!loading && !user) {
@@ -109,14 +111,14 @@ const Profile = () => {
       <main className="px-4 pt-8 max-w-lg mx-auto">
         {/* Profile Section */}
         <div className="text-center">
-          {/* Avatar */}
+          {/* Avatar with Progress Ring */}
           <div className="flex justify-center mb-4">
-            <Avatar className="h-28 w-28 border-2 border-border">
-              <AvatarImage src={avatarUrl || undefined} />
-              <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
-                {username[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <AvatarWithProgress
+              src={avatarUrl || undefined}
+              fallback={username[0]?.toUpperCase() || "U"}
+              progress={(points / maxPoints) * 100}
+              size={120}
+            />
           </div>
 
           {/* Username with verified badge */}
