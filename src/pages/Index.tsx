@@ -54,7 +54,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-center px-4 h-14 relative">
           {/* Logo - Centered */}
           <img src={logoImg} alt="Up2" className="h-8 w-auto" />
@@ -166,18 +166,18 @@ const Index = () => {
                   {post.type === "event" && post.event && (
                     <Link
                       to={`/events/${post.event.id}`}
-                      className="mt-3 flex bg-card rounded-xl overflow-hidden border border-border"
+                      className="mt-3 flex rounded-2xl overflow-hidden bg-card border border-border"
                     >
-                      <div className="w-32 h-28 flex-shrink-0 bg-muted">
+                      <div className="w-36 flex-shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: '3/4' }}>
                         <img
                           src={post.event.image}
                           alt={post.event.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="flex-1 p-3 min-w-0">
+                      <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
                         <p className="text-sm text-muted-foreground">{post.event.location?.split(",")[0] || "Venue"}</p>
-                        <h3 className="font-semibold text-foreground truncate">{post.event.title}</h3>
+                        <h3 className="font-semibold text-foreground">{post.event.title}</h3>
                         <p className="text-sm text-muted-foreground">
                           {post.event.date} - {post.event.time}
                         </p>
