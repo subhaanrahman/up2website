@@ -161,6 +161,81 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          created_at: string
+          email_notifications: boolean | null
+          event_reminders: boolean | null
+          friend_activity: boolean | null
+          id: string
+          mentions: boolean | null
+          messages: boolean | null
+          new_events: boolean | null
+          promotions: boolean | null
+          push_notifications: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_notifications?: boolean | null
+          event_reminders?: boolean | null
+          friend_activity?: boolean | null
+          id?: string
+          mentions?: boolean | null
+          messages?: boolean | null
+          new_events?: boolean | null
+          promotions?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_notifications?: boolean | null
+          event_reminders?: boolean | null
+          friend_activity?: boolean | null
+          id?: string
+          mentions?: boolean | null
+          messages?: boolean | null
+          new_events?: boolean | null
+          promotions?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      privacy_settings: {
+        Row: {
+          created_at: string
+          go_public: boolean | null
+          id: string
+          share_going_events: boolean | null
+          share_saved_events: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          go_public?: boolean | null
+          id?: string
+          share_going_events?: boolean | null
+          share_saved_events?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          go_public?: boolean | null
+          id?: string
+          share_going_events?: boolean | null
+          share_saved_events?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
