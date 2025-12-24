@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -11,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Camera } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -30,6 +31,9 @@ const EditProfile = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     display_name: "",
     username: "",
@@ -55,7 +59,7 @@ const EditProfile = () => {
 
     const { data } = await supabase
       .from("profiles")
-      .select("display_name, username, bio, page_classification, city")
+      .select("display_name, username, bio, page_classification, city, avatar_url")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -67,6 +71,76 @@ const EditProfile = () => {
         page_classification: data.page_classification || "",
         city: data.city || "",
       });
+      setAvatarUrl(data.avatar_url || "");
+    }
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload the file
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      // Add timestamp to bust cache
+      const urlWithTimestamp = `${publicUrl}?t=${Date.now()}`;
+
+      // Update the profile with the new avatar URL
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: urlWithTimestamp })
+        .eq("user_id", user.id);
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(urlWithTimestamp);
+      toast({
+        title: "Avatar updated",
+        description: "Your profile picture has been updated.",
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload avatar. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -105,6 +179,7 @@ const EditProfile = () => {
       });
       navigate("/profile");
     } catch (error) {
+      console.error("Error updating profile:", error);
       toast({
         title: "Error",
         description: "Failed to update profile. Please try again.",
@@ -122,6 +197,8 @@ const EditProfile = () => {
       </div>
     );
   }
+
+  const displayInitial = formData.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,6 +224,35 @@ const EditProfile = () => {
       </header>
 
       <main className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Avatar Upload */}
+        <div className="flex flex-col items-center space-y-3">
+          <div className="relative">
+            <Avatar className="h-24 w-24 border-2 border-border">
+              <AvatarImage src={avatarUrl || undefined} />
+              <AvatarFallback className="text-2xl bg-card text-foreground font-bold">
+                {displayInitial}
+              </AvatarFallback>
+            </Avatar>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="absolute bottom-0 right-0 bg-primary text-primary-foreground rounded-full p-2 shadow-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              <Camera className="h-4 w-4" />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {uploading ? "Uploading..." : "Tap to change photo"}
+          </p>
+        </div>
+
         {/* Display Name */}
         <div className="space-y-2">
           <Label htmlFor="display_name">Display Name</Label>
