@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AvatarWithProgress from "@/components/AvatarWithProgress";
+import RewardsModal from "@/components/RewardsModal";
 import {
   Settings,
   Instagram,
@@ -34,8 +35,9 @@ const Profile = () => {
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [followersCount] = useState(321);
   const [eventsCount, setEventsCount] = useState(0);
-  const [points] = useState(750); // Example: 750 out of 1000 points for next level
-  const maxPoints = 1000;
+  const [points] = useState(3100); // Example points
+  const maxPoints = 5000;
+  const [rewardsOpen, setRewardsOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -113,12 +115,17 @@ const Profile = () => {
         <div className="text-center">
           {/* Avatar with Progress Ring */}
           <div className="flex justify-center mb-4">
-            <AvatarWithProgress
-              src={avatarUrl || undefined}
-              fallback={username[0]?.toUpperCase() || "U"}
-              progress={(points / maxPoints) * 100}
-              size={120}
-            />
+            <button
+              onClick={() => setRewardsOpen(true)}
+              className="cursor-pointer transition-transform hover:scale-105"
+            >
+              <AvatarWithProgress
+                src={avatarUrl || undefined}
+                fallback={username[0]?.toUpperCase() || "U"}
+                progress={(points / maxPoints) * 100}
+                size={120}
+              />
+            </button>
           </div>
 
           {/* Username with verified badge */}
@@ -232,6 +239,13 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <RewardsModal
+        open={rewardsOpen}
+        onOpenChange={setRewardsOpen}
+        points={points}
+        maxPoints={maxPoints}
+      />
 
       <BottomNav />
     </div>
