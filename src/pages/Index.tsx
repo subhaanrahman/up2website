@@ -47,6 +47,14 @@ const feedPosts = [
   },
 ];
 
+// Mock suggested friends data
+const suggestedFriends = [
+  { id: "1", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: true },
+  { id: "2", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
+  { id: "3", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
+  { id: "4", name: "Sarah Chen", handle: "sarahchen123", avatar: "", added: false },
+];
+
 const Index = () => {
   const { user } = useAuth();
   const nearbyEvents = events.slice(0, 2);
@@ -99,38 +107,38 @@ const Index = () => {
             <h2 className="text-base font-semibold text-foreground">Events Near You</h2>
           </div>
           
-          <div className="px-4 pb-4 flex flex-col gap-3">
+          <div className="px-4 pb-4 flex flex-col gap-2">
             {nearbyEvents.map((event) => (
               <Link
                 key={event.id}
                 to={`/events/${event.id}`}
-                className="flex rounded-2xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
+                className="flex rounded-xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
               >
-                <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
+                <div className="w-24 h-20 flex-shrink-0 overflow-hidden bg-muted">
                   <img
                     src={event.image}
                     alt={event.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                  <p className="text-sm text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
-                  <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-                  <p className="text-sm text-muted-foreground">{event.date} - {event.time}</p>
-                  <p className="text-sm text-muted-foreground">From $49.99</p>
+                <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
+                  <p className="text-xs text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
+                  <h3 className="font-semibold text-foreground text-sm truncate">{event.title}</h3>
+                  <p className="text-xs text-muted-foreground">{event.date} - {event.time}</p>
+                  <p className="text-xs text-muted-foreground">From $49.99</p>
                 </div>
               </Link>
             ))}
           </div>
         </div>
 
-        {/* Social Feed */}
+        {/* Social Feed - First Post */}
         <div>
-          {feedPosts.map((post) => (
+          {feedPosts.slice(0, 1).map((post) => (
             <div key={post.id} className="px-4 py-4 border-b border-border">
               <div className="flex gap-3">
                 {/* Avatar */}
-                <Avatar className="h-12 w-12 flex-shrink-0">
+                <Avatar className="h-10 w-10 flex-shrink-0">
                   <AvatarImage src={post.user.avatar} />
                   <AvatarFallback className="bg-card text-foreground font-bold">
                     {post.user.name[0]}
@@ -162,26 +170,74 @@ const Index = () => {
                     <p className="text-foreground mt-1 leading-relaxed">{post.content}</p>
                   )}
 
+                  {/* Engagement */}
+                  <div className="flex items-center gap-6 mt-3">
+                    <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                      <Heart className="h-4 w-4" />
+                      <span className="text-sm">{post.likes}</span>
+                    </button>
+                    <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
+                      <Repeat2 className="h-4 w-4" />
+                      <span className="text-sm">{post.reposts}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Event Post with Suggested Friends after */}
+        <div>
+          {feedPosts.slice(1, 2).map((post) => (
+            <div key={post.id} className="px-4 py-4 border-b border-border">
+              <div className="flex gap-3">
+                {/* Avatar */}
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage src={post.user.avatar} />
+                  <AvatarFallback className="bg-card text-foreground font-bold">
+                    {post.user.name[0]}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1 min-w-0">
+                  {/* User Info */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-foreground">{post.user.name}</span>
+                      {post.user.verified && (
+                        <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
+                      )}
+                      {post.type === "event" && (
+                        <span className="text-muted-foreground text-sm">{post.action}</span>
+                      )}
+                      <span className="text-muted-foreground text-sm">• {post.time}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </div>
+
                   {/* Event Card */}
                   {post.type === "event" && post.event && (
                     <Link
                       to={`/events/${post.event.id}`}
-                      className="mt-3 flex rounded-2xl overflow-hidden bg-card border border-border"
+                      className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border"
                     >
-                      <div className="w-36 flex-shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: '3/4' }}>
+                      <div className="w-32 flex-shrink-0 overflow-hidden bg-muted" style={{ aspectRatio: '3/4' }}>
                         <img
                           src={post.event.image}
                           alt={post.event.title}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
-                        <p className="text-sm text-muted-foreground">{post.event.location?.split(",")[0] || "Venue"}</p>
-                        <h3 className="font-semibold text-foreground">{post.event.title}</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
+                        <p className="text-xs text-muted-foreground">{post.event.location?.split(",")[0] || "Venue"}</p>
+                        <h3 className="font-semibold text-foreground text-sm">{post.event.title}</h3>
+                        <p className="text-xs text-muted-foreground">
                           {post.event.date} - {post.event.time}
                         </p>
-                        <p className="text-sm text-muted-foreground">From $49.99</p>
+                        <p className="text-xs text-muted-foreground">From $49.99</p>
                       </div>
                     </Link>
                   )}
@@ -202,6 +258,40 @@ const Index = () => {
             </div>
           ))}
         </div>
+
+        {/* Suggested Friends */}
+        <div className="py-4 border-b border-border">
+          <div className="px-4 pb-3">
+            <h2 className="text-base font-semibold text-foreground">Suggested Friends</h2>
+          </div>
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex gap-3 px-4 pb-2">
+              {suggestedFriends.map((friend) => (
+                <div
+                  key={friend.id}
+                  className="flex-shrink-0 w-32 rounded-2xl bg-card border border-border p-4 flex flex-col items-center"
+                >
+                  <Avatar className="h-16 w-16 mb-3">
+                    <AvatarImage src={friend.avatar} />
+                    <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
+                      {friend.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="font-semibold text-foreground text-sm text-center truncate w-full">{friend.name}</span>
+                  <span className="text-xs text-muted-foreground truncate w-full text-center">@{friend.handle}</span>
+                  <Button
+                    variant={friend.added ? "default" : "secondary"}
+                    size="sm"
+                    className={`mt-3 w-full rounded-full text-xs ${friend.added ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                  >
+                    {friend.added ? "Added" : "Add"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
       </main>
 
       {/* Floating Action Button */}
