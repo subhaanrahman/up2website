@@ -6,7 +6,7 @@ const navItems = [
   { icon: Home, label: "Home", path: "/" },
   { icon: Search, label: "Search", path: "/events" },
   { icon: Ticket, label: "Events", path: "/tickets" },
-  { icon: MessageSquare, label: "Messages", path: "/dashboard" },
+  { icon: MessageSquare, label: "Messages", path: "/messages" },
   { icon: User, label: "Profile", path: "/profile" },
 ];
 
