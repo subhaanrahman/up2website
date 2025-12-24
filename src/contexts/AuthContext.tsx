@@ -64,9 +64,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const mockLogin = () => {
-    // Create a mock user for development/testing
+    // Create a mock user for development/testing with a valid UUID
     const mockUser = {
-      id: "mock-user-id-12345",
+      id: "00000000-0000-0000-0000-000000000001",
       email: "dev@example.com",
       phone: "+1234567890",
       created_at: new Date().toISOString(),
