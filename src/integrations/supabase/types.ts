@@ -206,6 +206,33 @@ export type Database = {
         }
         Relationships: []
       }
+      point_transactions: {
+        Row: {
+          action_type: string
+          created_at: string
+          description: string | null
+          id: string
+          points: number
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points: number
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          points?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       privacy_settings: {
         Row: {
           created_at: string
@@ -317,6 +344,90 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          badge_type: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          badge_type: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          badge_type?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_points: {
+        Row: {
+          created_at: string
+          current_rank: Database["public"]["Enums"]["user_rank"]
+          id: string
+          total_points: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_rank?: Database["public"]["Enums"]["user_rank"]
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_rank?: Database["public"]["Enums"]["user_rank"]
+          id?: string
+          total_points?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_vouchers: {
+        Row: {
+          code: string
+          created_at: string
+          earned_at_rank: Database["public"]["Enums"]["user_rank"]
+          expires_at: string | null
+          id: string
+          status: string
+          used_at: string | null
+          user_id: string
+          value_cents: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          earned_at_rank: Database["public"]["Enums"]["user_rank"]
+          expires_at?: string | null
+          id?: string
+          status?: string
+          used_at?: string | null
+          user_id: string
+          value_cents?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          earned_at_rank?: Database["public"]["Enums"]["user_rank"]
+          expires_at?: string | null
+          id?: string
+          status?: string
+          used_at?: string | null
+          user_id?: string
+          value_cents?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -325,7 +436,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      user_rank: "bronze" | "silver" | "gold" | "platinum" | "diamond"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -452,6 +563,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      user_rank: ["bronze", "silver", "gold", "platinum", "diamond"],
+    },
   },
 } as const

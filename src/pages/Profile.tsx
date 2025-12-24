@@ -15,8 +15,10 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { useGamification } from "@/hooks/useGamification";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
+import { getProgressToNextRank } from "@/lib/gamification";
 
 interface Event {
   id: string;
@@ -28,16 +30,17 @@ interface Event {
 }
 
 const Profile = () => {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
+  const { points, rank } = useGamification();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [followersCount] = useState(321);
   const [eventsCount, setEventsCount] = useState(0);
-  const [points] = useState(3100); // Example points
-  const maxPoints = 5000;
   const [rewardsOpen, setRewardsOpen] = useState(false);
+  
+  const progress = getProgressToNextRank(points, rank);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -122,7 +125,7 @@ const Profile = () => {
               <AvatarWithProgress
                 src={avatarUrl || undefined}
                 fallback={username[0]?.toUpperCase() || "U"}
-                progress={(points / maxPoints) * 100}
+                progress={progress}
                 size={120}
               />
             </button>
@@ -243,8 +246,6 @@ const Profile = () => {
       <RewardsModal
         open={rewardsOpen}
         onOpenChange={setRewardsOpen}
-        points={points}
-        maxPoints={maxPoints}
       />
 
       <BottomNav />
