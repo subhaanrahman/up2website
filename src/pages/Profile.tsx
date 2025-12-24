@@ -147,7 +147,7 @@ const Profile = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center justify-center gap-2 mb-5">
-            <Link to="/dashboard">
+            <Link to="/profile/edit">
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
             <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
