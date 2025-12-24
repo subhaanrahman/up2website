@@ -204,11 +204,9 @@ const Index = () => {
                   </div>
 
                   {/* Event Card */}
-                  {post.type === "event" && post.event && <Link to={`/events/${post.event.id}`} className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border">
-                      <div className="w-32 flex-shrink-0 overflow-hidden bg-muted" style={{
-                  aspectRatio: '3/4'
-                }}>
-                        <img src={post.event.image} alt={post.event.title} className="w-full h-full object-fill" />
+                    {post.type === "event" && post.event && <Link to={`/events/${post.event.id}`} className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border">
+                      <div className="w-24 flex-shrink-0 overflow-hidden bg-muted">
+                        <img src={post.event.image} alt={post.event.title} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                         <p className="text-xs text-muted-foreground">{post.event.location?.split(",")[0] || "Venue"}</p>
