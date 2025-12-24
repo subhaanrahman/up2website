@@ -39,6 +39,7 @@ const App = () => (
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/search" element={<Events />} />
             <Route path="/search/:id" element={<EventDetail />} />
+            <Route path="/events/:id" element={<EventDetail />} />
             <Route path="/create" element={<CreateEvent />} />
             <Route path="/events" element={<Tickets />} />
             <Route path="/settings" element={<Settings />} />
