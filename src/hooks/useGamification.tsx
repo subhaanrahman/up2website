@@ -4,10 +4,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   UserRank,
   PointAction,
-  POINT_VALUES,
-  calculateRank,
-  generateVoucherCode,
-  VOUCHER_VALUE_CENTS,
 } from "@/lib/gamification";
 
 interface UserPointsData {
@@ -148,45 +144,26 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
     async (action: PointAction, description?: string) => {
       if (!user) return { awarded: 0, leveledUp: false };
 
-      const pointsToAward = POINT_VALUES[action];
-      const newTotal = points + pointsToAward;
-      const oldRank = rank;
-      const newRank = calculateRank(newTotal);
-      const leveledUp = newRank !== oldRank;
-
       try {
-        // Update points
-        await supabase
-          .from("user_points")
-          .update({ total_points: newTotal, current_rank: newRank })
-          .eq("user_id", user.id);
-
-        // Record transaction
-        await supabase.from("point_transactions").insert({
-          user_id: user.id,
-          points: pointsToAward,
-          action_type: action,
-          description: description || null,
+        // Use server-side RPC — all validation, calculation, and writes happen server-side
+        const { data, error } = await supabase.rpc('award_points', {
+          p_action_type: action,
+          p_description: description || null,
         });
 
-        // Award voucher if leveled up
-        if (leveledUp) {
-          await supabase.from("user_vouchers").insert({
-            user_id: user.id,
-            code: generateVoucherCode(),
-            value_cents: VOUCHER_VALUE_CENTS,
-            status: "available",
-            earned_at_rank: newRank,
-            expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
-          });
+        if (error) {
+          console.error("Error awarding points:", error);
+          return { awarded: 0, leveledUp: false };
         }
 
-        // Update local state
-        setPoints(newTotal);
-        setRank(newRank);
+        const result = data as { awarded: number; leveled_up: boolean; new_rank: string; new_total: number };
+
+        // Update local state from server response
+        setPoints(result.new_total);
+        setRank(result.new_rank as UserRank);
 
         // Refresh vouchers if leveled up
-        if (leveledUp) {
+        if (result.leveled_up) {
           const { data: vouchersData } = await supabase
             .from("user_vouchers")
             .select("*")
@@ -195,13 +172,13 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
           if (vouchersData) setVouchers(vouchersData as Voucher[]);
         }
 
-        return { awarded: pointsToAward, leveledUp };
+        return { awarded: result.awarded, leveledUp: result.leveled_up };
       } catch (error) {
         console.error("Error awarding points:", error);
         return { awarded: 0, leveledUp: false };
       }
     },
-    [user, points, rank]
+    [user]
   );
 
   return (
