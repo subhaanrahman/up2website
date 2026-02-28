@@ -433,6 +433,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      award_points: {
+        Args: { p_action_type: string; p_description?: string }
+        Returns: Json
+      }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
