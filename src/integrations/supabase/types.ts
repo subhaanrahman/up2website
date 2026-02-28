@@ -433,7 +433,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
     }
     Enums: {
       user_rank: "bronze" | "silver" | "gold" | "platinum" | "diamond"
