@@ -438,6 +438,11 @@ export type Database = {
         Returns: Json
       }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
+      rsvp_join: {
+        Args: { p_event_id: string; p_status?: string }
+        Returns: Json
+      }
+      rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
     }
     Enums: {
       user_rank: "bronze" | "silver" | "gold" | "platinum" | "diamond"
