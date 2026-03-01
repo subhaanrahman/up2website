@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, ArrowRight, CheckCircle } from "lucide-react";
+import { ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import logoFull from "@/assets/logo-full.png";
+import PhoneInput from "@/components/PhoneInput";
 
-const phoneSchema = z.string().min(10, "Please enter a valid phone number");
+const phoneSchema = z.string().min(8, "Please enter a valid phone number");
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 const Auth = () => {
@@ -28,20 +29,11 @@ const Auth = () => {
     return null;
   }
 
-  const formatPhoneNumber = (value: string) => {
-    const digits = value.replace(/\D/g, "");
-    if (digits.length > 0 && !value.startsWith("+")) {
-      return "+" + digits;
-    }
-    return value.startsWith("+") ? "+" + digits : digits;
-  };
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    const formattedPhone = formatPhoneNumber(phone);
-    const result = phoneSchema.safeParse(formattedPhone);
+    const result = phoneSchema.safeParse(phone);
     if (!result.success) {
       setError(result.error.errors[0].message);
       return;
@@ -49,7 +41,7 @@ const Auth = () => {
 
     setLoading(true);
 
-    const { error } = await signInWithPhone(formattedPhone);
+    const { error } = await signInWithPhone(phone);
 
     if (error) {
       setError(error.message);
@@ -60,7 +52,6 @@ const Auth = () => {
       });
     } else {
       setOtpSent(true);
-      setPhone(formattedPhone);
       toast({
         title: "Code sent!",
         description: "Check your phone for the verification code.",
@@ -141,18 +132,11 @@ const Auth = () => {
             <form onSubmit={handleSendOtp} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-foreground">Phone number</Label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1 234 567 8900"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="pl-12 h-14 text-lg bg-card border-border"
-                    disabled={loading}
-                  />
-                </div>
+                <PhoneInput
+                  value={phone}
+                  onChange={(val) => setPhone(val)}
+                  disabled={loading}
+                />
                 {error && (
                   <p className="text-sm text-destructive">{error}</p>
                 )}
