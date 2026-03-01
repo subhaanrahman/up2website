@@ -185,11 +185,11 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
                         <div>
                           <p className="font-mono text-sm font-bold text-foreground">{v.code}</p>
                           <p className="text-xs text-muted-foreground">
-                            Earned at {RANK_LABELS[v.earned_at_rank]}
+                            Earned at {RANK_LABELS[v.earnedAtRank]}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-primary">${(v.value_cents / 100).toFixed(2)}</p>
+                          <p className="font-bold text-primary">${(v.valueCents / 100).toFixed(2)}</p>
                           <p className="text-xs text-green-500">Available</p>
                         </div>
                       </div>
@@ -204,7 +204,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
                           <p className="text-xs text-muted-foreground">Used</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-muted-foreground">${(v.value_cents / 100).toFixed(2)}</p>
+                          <p className="text-muted-foreground">${(v.valueCents / 100).toFixed(2)}</p>
                           <p className="text-xs text-muted-foreground">Redeemed</p>
                         </div>
                       </div>

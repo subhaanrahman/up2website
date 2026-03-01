@@ -16,83 +16,39 @@ import {
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGamification } from "@/hooks/useGamification";
-import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/hooks/useProfileQuery";
+import { useHostEvents } from "@/hooks/useEventsQuery";
+import { getProgressToNextRank } from "@/features/loyalty";
 import { format } from "date-fns";
-import { getProgressToNextRank } from "@/lib/gamification";
 
-interface Event {
+interface EventItem {
   id: string;
   title: string;
-  event_date: string;
+  eventDate: string;
   location: string | null;
-  cover_image: string | null;
+  coverImage: string | null;
   category: string | null;
 }
 
 const Profile = () => {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { points, rank } = useGamification();
   const navigate = useNavigate();
-  const [displayName, setDisplayName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [myEvents, setMyEvents] = useState<Event[]>([]);
   const [followersCount] = useState(321);
-  const [eventsCount, setEventsCount] = useState(0);
   const [rewardsOpen, setRewardsOpen] = useState(false);
-  
+
+  const { data: profile } = useProfile(user?.id);
+  const { data: hostEvents } = useHostEvents(user?.id);
+
   const progress = getProgressToNextRank(points, rank);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       navigate("/auth");
     }
-  }, [user, loading, navigate]);
+  }, [user, authLoading, navigate]);
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchEvents();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("display_name, avatar_url")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (data) {
-      setDisplayName(data.display_name || "");
-      setAvatarUrl(data.avatar_url || "");
-    }
-  };
-
-  const fetchEvents = async () => {
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("events")
-      .select("id, title, event_date, location, cover_image, category")
-      .eq("host_id", user.id)
-      .order("event_date", { ascending: true });
-
-    if (data) {
-      setMyEvents(data);
-      setEventsCount(data.length);
-    }
-  };
-
-  const upcomingEvents = myEvents.filter(
-    (e) => new Date(e.event_date) >= new Date()
-  );
-  const pastEvents = myEvents.filter(
-    (e) => new Date(e.event_date) < new Date()
-  );
-
-  if (loading || !user) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -100,7 +56,17 @@ const Profile = () => {
     );
   }
 
+  const displayName = profile?.displayName || "";
+  const avatarUrl = profile?.avatarUrl || "";
   const username = displayName || user.phone || user.email?.split("@")[0] || "User";
+  const eventsCount = hostEvents?.length || 0;
+
+  const upcomingEvents = (hostEvents || []).filter(
+    (e) => new Date(e.eventDate) >= new Date()
+  );
+  const pastEvents = (hostEvents || []).filter(
+    (e) => new Date(e.eventDate) < new Date()
+  );
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -116,7 +82,6 @@ const Profile = () => {
       <main className="px-4 pt-8 max-w-lg mx-auto">
         {/* Profile Section */}
         <div className="text-center">
-          {/* Avatar with Progress Ring */}
           <div className="flex justify-center mb-4">
             <button
               onClick={() => setRewardsOpen(true)}
@@ -131,7 +96,6 @@ const Profile = () => {
             </button>
           </div>
 
-          {/* Username with verified badge */}
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
             <h2 className="text-xl font-bold tracking-wide text-foreground uppercase">
               {username}
@@ -139,12 +103,10 @@ const Profile = () => {
             <BadgeCheck className="h-5 w-5 text-primary fill-primary" />
           </div>
 
-          {/* Handle */}
           <p className="text-muted-foreground text-sm mb-4">
             @{username.toLowerCase().replace(/\s+/g, "")}
           </p>
 
-          {/* Stats */}
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
               <p className="text-lg font-bold text-foreground">{followersCount}</p>
@@ -157,7 +119,6 @@ const Profile = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center justify-center gap-2 mb-5">
             <Link to="/profile/edit">
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
@@ -170,15 +131,13 @@ const Profile = () => {
             </Button>
           </div>
 
-          {/* Bio */}
           <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">
-            Join us for an unforgettable nightlife experience. We host the hottest event in town, with a vibrant atmosphere
+            {profile?.bio || "Join us for an unforgettable nightlife experience."}
           </p>
 
-          {/* Location */}
           <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
             <MapPin className="h-4 w-4" />
-            <span>Venue • Sydney</span>
+            <span>{profile?.pageClassification || "Venue"} • {profile?.city || "Sydney"}</span>
           </div>
         </div>
 
@@ -243,49 +202,35 @@ const Profile = () => {
         </Tabs>
       </main>
 
-      <RewardsModal
-        open={rewardsOpen}
-        onOpenChange={setRewardsOpen}
-      />
-
+      <RewardsModal open={rewardsOpen} onOpenChange={setRewardsOpen} />
       <BottomNav />
     </div>
   );
 };
 
-// Event List Item Component matching the reference design
-const EventListItem = ({ event }: { event: Event }) => {
+const EventListItem = ({ event }: { event: EventItem }) => {
   return (
     <Link
       to={`/events/${event.id}`}
       className="flex items-center gap-3 p-2 bg-card rounded-xl hover:bg-secondary/50 transition-colors"
     >
-      {/* Event Image */}
       <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-        {event.cover_image ? (
-          <img
-            src={event.cover_image}
-            alt={event.title}
-            className="w-full h-full object-cover"
-          />
+        {event.coverImage ? (
+          <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-secondary">
             <Calendar className="h-8 w-8 text-muted-foreground" />
           </div>
         )}
       </div>
-
-      {/* Event Info */}
       <div className="flex-1 min-w-0 py-1">
         <p className="text-sm text-muted-foreground mb-0.5">{event.location || "Venue"}</p>
         <h3 className="font-semibold text-foreground truncate mb-0.5">{event.title}</h3>
         <p className="text-sm text-muted-foreground mb-0.5">
-          {format(new Date(event.event_date), "EEE, MMM d")} - {format(new Date(event.event_date), "h:mm a")}
+          {format(new Date(event.eventDate), "EEE, MMM d")} - {format(new Date(event.eventDate), "h:mm a")}
         </p>
         <p className="text-sm text-muted-foreground">From $49.99</p>
       </div>
-
-      {/* Chevron */}
       <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
     </Link>
   );

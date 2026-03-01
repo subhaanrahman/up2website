@@ -1,0 +1,69 @@
+// React Query hooks for events
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { eventsService } from '@/features/events';
+import { eventsApi, rsvpApi } from '@/api';
+import type { CreateEventInput } from '@/features/events';
+import { useAuth } from '@/contexts/AuthContext';
+
+export const eventKeys = {
+  all: ['events'] as const,
+  list: (filters?: { category?: string }) => [...eventKeys.all, 'list', filters] as const,
+  detail: (id: string) => [...eventKeys.all, 'detail', id] as const,
+  hostEvents: (hostId: string) => [...eventKeys.all, 'host', hostId] as const,
+  rsvps: (eventId: string) => [...eventKeys.all, 'rsvps', eventId] as const,
+};
+
+export function useEvents(options?: { category?: string; limit?: number }) {
+  return useQuery({
+    queryKey: eventKeys.list(options),
+    queryFn: () => eventsService.listEvents(options),
+  });
+}
+
+export function useEvent(id: string | undefined) {
+  return useQuery({
+    queryKey: eventKeys.detail(id!),
+    queryFn: () => eventsService.getEvent(id!),
+    enabled: !!id,
+  });
+}
+
+export function useHostEvents(hostId: string | undefined) {
+  return useQuery({
+    queryKey: eventKeys.hostEvents(hostId!),
+    queryFn: () => eventsService.getHostEvents(hostId!),
+    enabled: !!hostId,
+  });
+}
+
+export function useCreateEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateEventInput) => eventsApi.create(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: eventKeys.all });
+    },
+  });
+}
+
+export function useRsvpJoin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventId, status }: { eventId: string; status?: string }) =>
+      rsvpApi.join(eventId, status),
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: eventKeys.rsvps(eventId) });
+    },
+  });
+}
+
+export function useRsvpLeave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (eventId: string) => rsvpApi.leave(eventId),
+    onSuccess: (_, eventId) => {
+      qc.invalidateQueries({ queryKey: eventKeys.rsvps(eventId) });
+    },
+  });
+}

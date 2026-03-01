@@ -1,33 +1,8 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  UserRank,
-  PointAction,
-} from "@/lib/gamification";
-
-interface UserPointsData {
-  total_points: number;
-  current_rank: UserRank;
-}
-
-interface Voucher {
-  id: string;
-  code: string;
-  value_cents: number;
-  status: string;
-  earned_at_rank: UserRank;
-  expires_at: string | null;
-  used_at: string | null;
-}
-
-interface PointTransaction {
-  id: string;
-  points: number;
-  action_type: string;
-  description: string | null;
-  created_at: string;
-}
+import { loyaltyService } from "@/features/loyalty";
+import { loyaltyApi } from "@/api";
+import type { UserRank, PointAction, Voucher, PointTransaction } from "@/features/loyalty";
 
 interface GamificationContextType {
   points: number;
@@ -56,50 +31,16 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
     }
 
     try {
-      // Fetch or create user points
-      let { data: pointsData } = await supabase
-        .from("user_points")
-        .select("total_points, current_rank")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const [pts, vchs, txns] = await Promise.all([
+        loyaltyService.getUserPoints(user.id),
+        loyaltyService.getVouchers(user.id),
+        loyaltyService.getTransactions(user.id),
+      ]);
 
-      if (!pointsData) {
-        // Create initial record
-        const { data: newData } = await supabase
-          .from("user_points")
-          .insert({ user_id: user.id, total_points: 0, current_rank: 'bronze' })
-          .select("total_points, current_rank")
-          .single();
-        pointsData = newData;
-      }
-
-      if (pointsData) {
-        setPoints(pointsData.total_points);
-        setRank(pointsData.current_rank as UserRank);
-      }
-
-      // Fetch vouchers
-      const { data: vouchersData } = await supabase
-        .from("user_vouchers")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (vouchersData) {
-        setVouchers(vouchersData as Voucher[]);
-      }
-
-      // Fetch recent transactions
-      const { data: transactionsData } = await supabase
-        .from("point_transactions")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-
-      if (transactionsData) {
-        setTransactions(transactionsData as PointTransaction[]);
-      }
+      setPoints(pts.totalPoints);
+      setRank(pts.currentRank);
+      setVouchers(vchs);
+      setTransactions(txns);
     } catch (error) {
       console.error("Error fetching gamification data:", error);
     } finally {
@@ -111,33 +52,13 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
     fetchData();
   }, [fetchData]);
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates via repository
   useEffect(() => {
     if (!user) return;
-
-    const channel = supabase
-      .channel("gamification_updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "user_points",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          if (payload.new && typeof payload.new === "object") {
-            const data = payload.new as UserPointsData;
-            setPoints(data.total_points);
-            setRank(data.current_rank);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return loyaltyService.subscribeToPoints(user.id, (data) => {
+      setPoints(data.totalPoints);
+      setRank(data.currentRank);
+    });
   }, [user]);
 
   const awardPoints = useCallback(
@@ -145,34 +66,16 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
       if (!user) return { awarded: 0, leveledUp: false };
 
       try {
-        // Use server-side RPC — all validation, calculation, and writes happen server-side
-        const { data, error } = await supabase.rpc('award_points', {
-          p_action_type: action,
-          p_description: description || null,
-        });
+        const result = await loyaltyApi.awardPoints(action, description);
+        setPoints(result.newTotal);
+        setRank(result.newRank as UserRank);
 
-        if (error) {
-          console.error("Error awarding points:", error);
-          return { awarded: 0, leveledUp: false };
+        if (result.leveledUp) {
+          const vchs = await loyaltyService.getVouchers(user.id);
+          setVouchers(vchs);
         }
 
-        const result = data as { awarded: number; leveled_up: boolean; new_rank: string; new_total: number };
-
-        // Update local state from server response
-        setPoints(result.new_total);
-        setRank(result.new_rank as UserRank);
-
-        // Refresh vouchers if leveled up
-        if (result.leveled_up) {
-          const { data: vouchersData } = await supabase
-            .from("user_vouchers")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("created_at", { ascending: false });
-          if (vouchersData) setVouchers(vouchersData as Voucher[]);
-        }
-
-        return { awarded: result.awarded, leveledUp: result.leveled_up };
+        return { awarded: result.awarded, leveledUp: result.leveledUp };
       } catch (error) {
         console.error("Error awarding points:", error);
         return { awarded: 0, leveledUp: false };
@@ -183,15 +86,7 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <GamificationContext.Provider
-      value={{
-        points,
-        rank,
-        vouchers,
-        transactions,
-        loading,
-        awardPoints,
-        refreshData: fetchData,
-      }}
+      value={{ points, rank, vouchers, transactions, loading, awardPoints, refreshData: fetchData }}
     >
       {children}
     </GamificationContext.Provider>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/infrastructure/supabase";
 
 interface PrivacySettings {
   go_public: boolean;
@@ -50,7 +50,6 @@ export const usePrivacySettings = () => {
 
     fetchSettings();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel("privacy_settings_changes")
       .on(
