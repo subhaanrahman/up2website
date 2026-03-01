@@ -206,6 +206,65 @@ export type Database = {
         }
         Relationships: []
       }
+      orders: {
+        Row: {
+          amount_cents: number
+          cancelled_at: string | null
+          confirmed_at: string | null
+          created_at: string
+          currency: string
+          event_id: string
+          expires_at: string
+          id: string
+          quantity: number
+          reserved_at: string
+          status: string
+          stripe_payment_intent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          event_id: string
+          expires_at?: string
+          id?: string
+          quantity?: number
+          reserved_at?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          currency?: string
+          event_id?: string
+          expires_at?: string
+          id?: string
+          quantity?: number
+          reserved_at?: string
+          status?: string
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       point_transactions: {
         Row: {
           action_type: string
