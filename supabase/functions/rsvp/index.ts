@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,8 +16,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -26,22 +26,23 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    // Verify user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Rate limit
+    const allowed = await checkRateLimit('rsvp', user.id, getClientIp(req));
+    if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
     const { action, event_id, status } = body;
 
     if (!event_id) {
       return new Response(JSON.stringify({ error: 'event_id is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
@@ -57,14 +58,12 @@ Deno.serve(async (req) => {
           : error.message.includes('access') ? 403
           : 400;
         return new Response(JSON.stringify({ error: error.message }), {
-          status: status_code,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: status_code, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } else if (action === 'leave') {
@@ -74,27 +73,23 @@ Deno.serve(async (req) => {
 
       if (error) {
         return new Response(JSON.stringify({ error: error.message }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
       return new Response(JSON.stringify(data), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
 
     } else {
       return new Response(JSON.stringify({ error: 'action must be "join" or "leave"' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
   } catch (err) {
     console.error('Unexpected error:', err);
     return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

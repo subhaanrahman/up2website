@@ -53,7 +53,7 @@ All writes below are routed through Edge Functions even though RLS allows them. 
 - [ ] Enable leaked password protection in auth settings
 - [ ] Move avatar file upload to Edge Function (currently client-side to storage)
 - [ ] Implement `orders-reserve` and `payments-intent` Edge Functions
-- [ ] Add rate limiting to Edge Functions
+- [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC, integrated in all endpoints
 - [ ] Add input sanitization/validation library (e.g., Zod) to all Edge Functions
-- [ ] Consider revoking direct INSERT RLS on `rsvps` table (currently allowed but unused — writes go through RPC)
+- [x] ~~Revoke direct INSERT/UPDATE/DELETE RLS on `rsvps` table~~ — writes go exclusively through `rsvp_join`/`rsvp_leave` RPCs
 - [ ] Add banned/blocked user checks to `rsvp_join` when moderation is implemented
