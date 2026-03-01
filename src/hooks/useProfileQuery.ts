@@ -38,7 +38,7 @@ export function useUploadAvatar() {
   return useMutation({
     mutationFn: (file: File) => {
       if (!user) throw new Error('Not authenticated');
-      return identityService.uploadAvatar(user.id, file);
+      return identityService.uploadAvatar(file);
     },
     onSuccess: () => {
       if (user) qc.invalidateQueries({ queryKey: profileKeys.detail(user.id) });
