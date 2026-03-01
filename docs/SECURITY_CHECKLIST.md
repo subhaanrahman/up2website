@@ -10,6 +10,7 @@ These tables have RLS policies that **prevent direct client writes**. All mutati
 | `user_points` | ✅ (own) | ❌ | ❌ | `award_points` RPC |
 | `user_badges` | ❌ | ❌ | ❌ | `award_points` RPC (on level-up) |
 | `user_vouchers` | ❌ | ✅ (own) | ❌ | `award_points` RPC (on level-up) |
+| `orders` | ❌ | ❌ | ❌ | `orders-reserve` / `payments-intent` Edge Functions |
 
 ## Tables With Client Writes (via Edge Functions)
 
@@ -31,8 +32,8 @@ All writes below are routed through Edge Functions even though RLS allows them. 
 - ✅ Update profile (`profile-update`)
 - ✅ Update settings (`settings-upsert`)
 - ✅ Track referral shares (`referrals-track`)
-- 🔲 Create order reservation (`orders-reserve` — stub)
-- 🔲 Create payment intent (`payments-intent` — stub)
+- ✅ Reserve order tickets (`orders-reserve`) — Zod validation, capacity check, 15-min expiry
+- ✅ Create payment intent (`payments-intent`) — Stripe integration, Zod validation
 
 ## RSVP Race Condition Protection
 
@@ -52,8 +53,8 @@ All writes below are routed through Edge Functions even though RLS allows them. 
 
 - [ ] Enable leaked password protection in auth settings
 - [x] ~~Move avatar file upload to Edge Function~~ — `avatar-upload` Edge Function with type/size validation, rate limiting
-- [ ] Implement `orders-reserve` and `payments-intent` Edge Functions
+- [x] ~~Implement `orders-reserve` and `payments-intent` Edge Functions~~ — Zod validation, rate limiting, Stripe integration
 - [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC, integrated in all endpoints
-- [ ] Add input sanitization/validation library (e.g., Zod) to all Edge Functions
+- [x] ~~Add input sanitization/validation library (e.g., Zod) to all Edge Functions~~ — applied across all Edge Functions
 - [x] ~~Revoke direct INSERT/UPDATE/DELETE RLS on `rsvps` table~~ — writes go exclusively through `rsvp_join`/`rsvp_leave` RPCs
 - [ ] Add banned/blocked user checks to `rsvp_join` when moderation is implemented
