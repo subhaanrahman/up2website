@@ -302,6 +302,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          endpoint: string
+          id: string
+          ip_address: string | null
+          request_count: number
+          user_id: string | null
+          window_start: string
+        }
+        Insert: {
+          endpoint: string
+          id?: string
+          ip_address?: string | null
+          request_count?: number
+          user_id?: string | null
+          window_start?: string
+        }
+        Update: {
+          endpoint?: string
+          id?: string
+          ip_address?: string | null
+          request_count?: number
+          user_id?: string | null
+          window_start?: string
+        }
+        Relationships: []
+      }
       rsvps: {
         Row: {
           created_at: string
@@ -437,6 +464,17 @@ export type Database = {
         Args: { p_action_type: string; p_description?: string }
         Returns: Json
       }
+      check_rate_limit: {
+        Args: {
+          p_endpoint: string
+          p_ip_address?: string
+          p_max_requests?: number
+          p_user_id?: string
+          p_window_seconds?: number
+        }
+        Returns: boolean
+      }
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
       rsvp_join: {
         Args: { p_event_id: string; p_status?: string }
