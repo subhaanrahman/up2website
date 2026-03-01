@@ -1,11 +1,23 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Must match the hardcoded action types in the award_points DB function
+const VALID_ACTION_TYPES = [
+  'add_friend', 'save_event', 'like_post', 'follow_organiser',
+  'share_event', 'rsvp_event', 'buy_ticket', 'create_event', 'app_review',
+] as const;
+
+const awardPointsSchema = z.object({
+  action_type: z.enum(VALID_ACTION_TYPES),
+  description: z.string().trim().max(200).nullish(),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +32,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify JWT using anon client
+    // Verify JWT
     const token = authHeader.replace('Bearer ', '');
     const anonClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -39,13 +51,16 @@ Deno.serve(async (req) => {
     if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
-    const { action_type, description } = body;
 
-    if (!action_type) {
-      return new Response(JSON.stringify({ error: 'action_type is required' }), {
+    // Validate input
+    const parsed = awardPointsSchema.safeParse(body);
+    if (!parsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const { action_type, description } = parsed.data;
 
     // Call RPC with user's auth context
     const userClient = createClient(

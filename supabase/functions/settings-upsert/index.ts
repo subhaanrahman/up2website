@@ -1,11 +1,34 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const privacySettingsSchema = z.object({
+  go_public: z.boolean().optional(),
+  share_saved_events: z.boolean().optional(),
+  share_going_events: z.boolean().optional(),
+}).strict();
+
+const notificationSettingsSchema = z.object({
+  push_notifications: z.boolean().optional(),
+  email_notifications: z.boolean().optional(),
+  event_reminders: z.boolean().optional(),
+  friend_activity: z.boolean().optional(),
+  new_events: z.boolean().optional(),
+  promotions: z.boolean().optional(),
+  messages: z.boolean().optional(),
+  mentions: z.boolean().optional(),
+}).strict();
+
+const requestSchema = z.object({
+  table: z.enum(['privacy_settings', 'notification_settings']),
+  settings: z.record(z.unknown()),
+});
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -37,31 +60,28 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('settings-upsert', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    const { table, settings } = await req.json();
+    const body = await req.json();
 
-    // Validate table name
-    const allowedTables = ['privacy_settings', 'notification_settings'];
-    if (!allowedTables.includes(table)) {
-      return new Response(JSON.stringify({ error: 'Invalid table' }), {
+    // Validate top-level structure
+    const reqParsed = requestSchema.safeParse(body);
+    if (!reqParsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid input', details: reqParsed.error.flatten().fieldErrors }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Validate settings keys based on table
-    const allowedKeys: Record<string, string[]> = {
-      privacy_settings: ['go_public', 'share_saved_events', 'share_going_events'],
-      notification_settings: [
-        'push_notifications', 'email_notifications', 'event_reminders',
-        'friend_activity', 'new_events', 'promotions', 'messages', 'mentions',
-      ],
-    };
+    const { table, settings } = reqParsed.data;
 
-    const filtered: Record<string, boolean> = {};
-    for (const [key, value] of Object.entries(settings)) {
-      if (allowedKeys[table].includes(key) && typeof value === 'boolean') {
-        filtered[key] = value;
-      }
+    // Validate settings against table-specific schema
+    const settingsSchema = table === 'privacy_settings' ? privacySettingsSchema : notificationSettingsSchema;
+    const settingsParsed = settingsSchema.safeParse(settings);
+    if (!settingsParsed.success) {
+      return new Response(JSON.stringify({ error: 'Invalid settings', details: settingsParsed.error.flatten().fieldErrors }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+
+    const filtered = settingsParsed.data;
 
     if (Object.keys(filtered).length === 0) {
       return new Response(JSON.stringify({ error: 'No valid settings provided' }), {
