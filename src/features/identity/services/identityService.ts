@@ -4,6 +4,7 @@ import { identityRepository } from '../repositories/identityRepository';
 import type { UserProfile, UpdateProfileInput } from '../domain/types';
 import { createLogger } from '@/infrastructure/logger';
 import { NotFoundError, ValidationError } from '@/infrastructure/errors';
+import { profileApi } from '@/api';
 
 const logger = createLogger('identity.service');
 
@@ -29,7 +30,7 @@ export const identityService = {
     if (input.pageClassification !== undefined) updates.page_classification = input.pageClassification || null;
     if (input.avatarUrl !== undefined) updates.avatar_url = input.avatarUrl;
 
-    await identityRepository.updateProfile(userId, updates);
+    await profileApi.update(updates);
   },
 
   async uploadAvatar(userId: string, file: File): Promise<string> {
@@ -42,8 +43,8 @@ export const identityService = {
 
     const url = await identityRepository.uploadAvatar(userId, file);
 
-    // Also update the profile avatar_url
-    await identityRepository.updateProfile(userId, { avatar_url: url });
+    // Update avatar_url via Edge Function
+    await profileApi.update({ avatar_url: url });
 
     return url;
   },

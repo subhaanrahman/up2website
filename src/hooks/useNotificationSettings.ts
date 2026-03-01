@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/infrastructure/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { settingsApi } from "@/api";
 
 interface NotificationSettings {
   push_notifications: boolean;
@@ -65,7 +66,6 @@ export const useNotificationSettings = () => {
 
     fetchSettings();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel("notification_settings_changes")
       .on(
@@ -105,40 +105,20 @@ export const useNotificationSettings = () => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
 
-    const { data: existing } = await supabase
-      .from("notification_settings")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    let error;
-    if (existing) {
-      const result = await supabase
-        .from("notification_settings")
-        .update({ [key]: value })
-        .eq("user_id", user.id);
-      error = result.error;
-    } else {
-      const result = await supabase
-        .from("notification_settings")
-        .insert({ user_id: user.id, ...newSettings });
-      error = result.error;
-    }
-
-    if (error) {
-      console.error("Error updating notification settings:", error);
+    try {
+      await settingsApi.upsertNotifications(newSettings);
+      toast({
+        title: "Settings updated",
+        description: "Your notification preferences have been saved",
+      });
+    } catch (err) {
+      console.error("Error updating notification settings:", err);
       toast({
         title: "Error",
         description: "Failed to save notification settings",
         variant: "destructive",
       });
-      return;
     }
-
-    toast({
-      title: "Settings updated",
-      description: "Your notification preferences have been saved",
-    });
   };
 
   return { settings, loading, updateSetting };

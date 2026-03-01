@@ -30,14 +30,9 @@ export const identityRepository = {
     return data ? mapRow(data) : null;
   },
 
-  async updateProfile(userId: string, updates: Record<string, unknown>) {
-    const { error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-  },
+  // Profile writes are now handled by the profile-update Edge Function.
+  // This method is kept as a no-op to satisfy the service interface;
+  // actual writes go through profileApi.update() in src/api.
 
   async uploadAvatar(userId: string, file: File): Promise<string> {
     const ext = file.name.split('.').pop();

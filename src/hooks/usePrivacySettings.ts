@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/infrastructure/supabase";
+import { settingsApi } from "@/api";
 
 interface PrivacySettings {
   go_public: boolean;
@@ -84,40 +85,20 @@ export const usePrivacySettings = () => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
 
-    const { data: existing } = await supabase
-      .from("privacy_settings")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    let error;
-    if (existing) {
-      const result = await supabase
-        .from("privacy_settings")
-        .update({ [key]: value })
-        .eq("user_id", user.id);
-      error = result.error;
-    } else {
-      const result = await supabase
-        .from("privacy_settings")
-        .insert({ user_id: user.id, ...newSettings });
-      error = result.error;
-    }
-
-    if (error) {
-      console.error("Error updating privacy settings:", error);
+    try {
+      await settingsApi.upsertPrivacy(newSettings);
+      toast({
+        title: "Privacy updated",
+        description: "Your privacy preferences have been saved",
+      });
+    } catch (err) {
+      console.error("Error updating privacy settings:", err);
       toast({
         title: "Error",
         description: "Failed to save privacy settings",
         variant: "destructive",
       });
-      return;
     }
-
-    toast({
-      title: "Privacy updated",
-      description: "Your privacy preferences have been saved",
-    });
   };
 
   return { settings, loading, updateSetting };

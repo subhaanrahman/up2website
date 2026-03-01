@@ -47,6 +47,29 @@ export const rsvpApi = {
   },
 };
 
+// --- Settings API ---
+export const settingsApi = {
+  upsertPrivacy(settings: Record<string, boolean>) {
+    return callEdgeFunction<{ success: boolean }>('settings-upsert', {
+      body: { table: 'privacy_settings', settings },
+    });
+  },
+  upsertNotifications(settings: Record<string, boolean>) {
+    return callEdgeFunction<{ success: boolean }>('settings-upsert', {
+      body: { table: 'notification_settings', settings },
+    });
+  },
+};
+
+// --- Profile API (writes) ---
+export const profileApi = {
+  update(fields: Record<string, unknown>) {
+    return callEdgeFunction<{ success: boolean }>('profile-update', {
+      body: { action: 'update', ...fields },
+    });
+  },
+};
+
 // --- Referrals API (stub) ---
 export const referralsApi = {
   trackShare(eventId: string, channel: string) {
