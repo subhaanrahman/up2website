@@ -33,7 +33,7 @@ export const identityService = {
     await profileApi.update(updates);
   },
 
-  async uploadAvatar(userId: string, file: File): Promise<string> {
+  async uploadAvatar(file: File): Promise<string> {
     if (!file.type.startsWith('image/')) {
       throw new ValidationError('File must be an image');
     }
@@ -41,11 +41,6 @@ export const identityService = {
       throw new ValidationError('Image must be smaller than 5MB');
     }
 
-    const url = await identityRepository.uploadAvatar(userId, file);
-
-    // Update avatar_url via Edge Function
-    await profileApi.update({ avatar_url: url });
-
-    return url;
+    return profileApi.uploadAvatar(file);
   },
 };

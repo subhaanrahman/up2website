@@ -1,6 +1,9 @@
 // Client API wrappers — thin layer calling Edge Functions for writes
 
 import { callEdgeFunction } from '@/infrastructure/api-client';
+import { config } from '@/infrastructure/config';
+import { supabase } from '@/infrastructure/supabase';
+import { parseApiError } from '@/infrastructure/errors';
 import type { AwardPointsResult, PointAction } from '@/features/loyalty/domain/types';
 import type { CreateEventInput } from '@/features/events/domain/types';
 
@@ -67,6 +70,27 @@ export const profileApi = {
     return callEdgeFunction<{ success: boolean }>('profile-update', {
       body: { action: 'update', ...fields },
     });
+  },
+
+  async uploadAvatar(file: File): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${config.functionsUrl}/avatar-upload`, {
+      method: 'POST',
+      headers: {
+        'apikey': config.supabase.anonKey,
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: formData,
+    });
+
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw parseApiError(res.status, json);
+    return (json as { avatar_url: string }).avatar_url;
   },
 };
 

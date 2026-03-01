@@ -30,24 +30,6 @@ export const identityRepository = {
     return data ? mapRow(data) : null;
   },
 
-  // Profile writes are now handled by the profile-update Edge Function.
-  // This method is kept as a no-op to satisfy the service interface;
-  // actual writes go through profileApi.update() in src/api.
-
-  async uploadAvatar(userId: string, file: File): Promise<string> {
-    const ext = file.name.split('.').pop();
-    const path = `${userId}/avatar.${ext}`;
-
-    const { error } = await supabase.storage
-      .from('avatars')
-      .upload(path, file, { upsert: true });
-
-    if (error) throw error;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(path);
-
-    return `${publicUrl}?t=${Date.now()}`;
-  },
+  // Avatar upload is now handled by the avatar-upload Edge Function.
+  // Profile writes go through the profile-update Edge Function.
 };

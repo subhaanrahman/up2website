@@ -51,7 +51,7 @@ All writes below are routed through Edge Functions even though RLS allows them. 
 ## Remaining TODOs
 
 - [ ] Enable leaked password protection in auth settings
-- [ ] Move avatar file upload to Edge Function (currently client-side to storage)
+- [x] ~~Move avatar file upload to Edge Function~~ — `avatar-upload` Edge Function with type/size validation, rate limiting
 - [ ] Implement `orders-reserve` and `payments-intent` Edge Functions
 - [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC, integrated in all endpoints
 - [ ] Add input sanitization/validation library (e.g., Zod) to all Edge Functions
