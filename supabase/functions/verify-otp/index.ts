@@ -112,7 +112,8 @@ Deno.serve(async (req) => {
       userId = newUser.user.id;
     }
 
-    // ── Step 3: Generate a magic link token for session creation ──
+    // ── Step 3: Generate a session by signing in as the user ──
+    // Use generateLink to get the OTP, then verify it server-side immediately
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: internalEmail,
@@ -123,19 +124,35 @@ Deno.serve(async (req) => {
       return errorResponse('Failed to create session', 500);
     }
 
-    // Extract the hashed token from the link properties
+    // Extract the hashed token and verify it server-side to get a session
     const hashedToken = linkData.properties?.hashed_token;
-
     if (!hashedToken) {
-      console.error('No hashed_token in link data:', linkData);
+      console.error('No hashed_token in link data');
       return errorResponse('Failed to create session token', 500);
+    }
+
+    // Create an anon client to verify the OTP and get session tokens
+    const supabaseAnon = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+    );
+
+    const { data: sessionData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+      email: internalEmail,
+      token: hashedToken,
+      type: 'email',
+    });
+
+    if (verifyError || !sessionData.session) {
+      console.error('Server-side verify error:', verifyError);
+      return errorResponse('Failed to create session', 500);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        email: internalEmail,
-        token: hashedToken,
+        access_token: sessionData.session.access_token,
+        refresh_token: sessionData.session.refresh_token,
         user_id: userId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
