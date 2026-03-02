@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Send, Phone, Video, MoreVertical } from "lucide-react";
+import { ArrowLeft, Send, MoreVertical } from "lucide-react";
 
 const MessageThread = () => {
   const { id } = useParams();
@@ -45,11 +45,7 @@ const MessageThread = () => {
           <h1 className="font-semibold text-foreground text-sm">{userName}</h1>
           <p className="text-xs text-muted-foreground">Active now</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 text-muted-foreground"><Phone className="h-5 w-5" /></button>
-          <button className="p-2 text-muted-foreground"><Video className="h-5 w-5" /></button>
-          <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
-        </div>
+        <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
       </header>
 
       {/* Messages */}
