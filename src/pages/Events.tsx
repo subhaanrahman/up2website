@@ -69,7 +69,7 @@ const Events = () => {
             {filteredItems.map((item) => (
               <Link
                 key={item.id}
-                to={`/profile/${item.id}`}
+                to={`/messages/${item.id}`}
                 className="flex items-center gap-3 py-3 hover:bg-secondary/30 transition-colors -mx-4 px-4"
               >
                 <Avatar className="h-14 w-14 flex-shrink-0">

@@ -22,6 +22,7 @@ import HelpCenter from "./pages/HelpCenter";
 import About from "./pages/About";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
+import MessageThread from "./pages/MessageThread";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/messages" element={<Dashboard />} />
+              <Route path="/messages/:id" element={<MessageThread />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/search" element={<Events />} />
