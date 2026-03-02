@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,8 @@ const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 const Auth = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string })?.from || "/";
   const { signInWithPhone, verifyOtp, user, mockLogin } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -25,7 +27,7 @@ const Auth = () => {
 
   // Redirect if already logged in
   if (user) {
-    navigate("/");
+    navigate(from);
     return null;
   }
 
@@ -87,7 +89,7 @@ const Auth = () => {
         title: "Welcome!",
         description: "You've successfully signed in.",
       });
-      navigate("/");
+      navigate(from);
     }
 
     setLoading(false);
@@ -218,7 +220,7 @@ const Auth = () => {
               variant="outline"
               onClick={() => {
                 mockLogin();
-                navigate("/");
+                navigate(from);
               }}
               className="w-full"
             >
