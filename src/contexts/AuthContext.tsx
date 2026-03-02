@@ -54,23 +54,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const result = await callEdgeFunction<{
         success: boolean;
-        email: string;
-        token: string;
+        access_token: string;
+        refresh_token: string;
         user_id: string;
       }>('verify-otp', {
         method: 'POST',
         body: { phone, code },
       });
 
-      // Use the hashed token to create a real Supabase session
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: result.email,
-        token: result.token,
-        type: 'email',
+      // Set the session directly using the tokens from the server
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
       });
 
-      if (verifyError) {
-        return { error: verifyError };
+      if (sessionError) {
+        return { error: sessionError };
       }
 
       return { error: null };
