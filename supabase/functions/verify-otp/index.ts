@@ -112,53 +112,40 @@ Deno.serve(async (req) => {
       userId = newUser.user.id;
     }
 
-    // ── Step 3: Generate a session by signing in as the user ──
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: internalEmail,
+    // ── Step 3: Create a session using password-based sign-in ──
+    // Generate a random password, set it on the user, and sign in immediately
+    const tempPassword = crypto.randomUUID() + crypto.randomUUID();
+
+    const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: tempPassword,
     });
 
-    if (linkError || !linkData) {
-      console.error('Generate link error:', linkError);
+    if (pwError) {
+      console.error('Set password error:', pwError);
       return errorResponse('Failed to create session', 500);
     }
 
-    // Extract the raw token from the action_link URL
-    const actionLink = linkData.properties?.action_link;
-    if (!actionLink) {
-      console.error('No action_link in link data');
-      return errorResponse('Failed to create session token', 500);
-    }
-
-    const url = new URL(actionLink);
-    const rawToken = url.searchParams.get('token');
-    if (!rawToken) {
-      console.error('No token in action_link:', actionLink);
-      return errorResponse('Failed to create session token', 500);
-    }
-
-    // Verify the raw token server-side to get session tokens
+    // Sign in with the temporary password to get session tokens
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    const { data: sessionData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
       email: internalEmail,
-      token: rawToken,
-      type: 'magiclink',
+      password: tempPassword,
     });
 
-    if (verifyError || !sessionData.session) {
-      console.error('Server-side verify error:', verifyError);
+    if (signInError || !signInData.session) {
+      console.error('Sign in error:', signInError);
       return errorResponse('Failed to create session', 500);
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: sessionData.session.access_token,
-        refresh_token: sessionData.session.refresh_token,
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
         user_id: userId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
