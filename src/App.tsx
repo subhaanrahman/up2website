@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
+import PhoneFrame from "@/components/PhoneFrame";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
@@ -33,27 +34,29 @@ const App = () => (
           <Toaster />
           <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/messages" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/profile/edit" element={<EditProfile />} />
-            <Route path="/search" element={<Events />} />
-            <Route path="/search/:id" element={<EventDetail />} />
-            <Route path="/events/:id" element={<EventDetail />} />
-            <Route path="/create" element={<CreateEvent />} />
-            <Route path="/events" element={<Tickets />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/settings/notifications" element={<NotificationsSettings />} />
-            <Route path="/settings/privacy" element={<PrivacySettings />} />
-            <Route path="/settings/help" element={<HelpCenter />} />
-            <Route path="/settings/about" element={<About />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/checkout" element={<Checkout />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <PhoneFrame>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/messages" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/profile/edit" element={<EditProfile />} />
+              <Route path="/search" element={<Events />} />
+              <Route path="/search/:id" element={<EventDetail />} />
+              <Route path="/events/:id" element={<EventDetail />} />
+              <Route path="/create" element={<CreateEvent />} />
+              <Route path="/events" element={<Tickets />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/settings/notifications" element={<NotificationsSettings />} />
+              <Route path="/settings/privacy" element={<PrivacySettings />} />
+              <Route path="/settings/help" element={<HelpCenter />} />
+              <Route path="/settings/about" element={<About />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/checkout" element={<Checkout />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PhoneFrame>
         </BrowserRouter>
         </TooltipProvider>
       </GamificationProvider>
