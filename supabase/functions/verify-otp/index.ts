@@ -78,15 +78,17 @@ Deno.serve(async (req) => {
 
     const internalEmail = phoneToInternalEmail(phone);
 
-    // Try to find existing user by phone
+    // Try to find existing user by phone or internal email
     const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = usersData?.users?.find((u) => u.phone === phone);
+    const existingUser = usersData?.users?.find(
+      (u) => u.phone === phone || u.email === internalEmail
+    );
 
     let userId: string;
 
     if (existingUser) {
       userId = existingUser.id;
-      // Ensure phone is confirmed
+      // Ensure phone and email are confirmed
       await supabaseAdmin.auth.admin.updateUserById(userId, {
         phone,
         phone_confirm: true,
