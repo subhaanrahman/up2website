@@ -17,7 +17,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string })?.from || "/";
-  const { signInWithPhone, verifyOtp, user, mockLogin } = useAuth();
+  const { sendOtp, verifyOtp, user, mockLogin } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -43,7 +43,7 @@ const Auth = () => {
 
     setLoading(true);
 
-    const { error } = await signInWithPhone(phone);
+    const { error } = await sendOtp(phone);
 
     if (error) {
       setError(error.message);

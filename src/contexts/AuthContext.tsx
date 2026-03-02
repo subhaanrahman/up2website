@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithPhone: (phone: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (phone: string, token: string) => Promise<{ error: Error | null }>;
+  sendOtp: (phone: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (phone: string, code: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   mockLogin: () => void;
 }
@@ -20,7 +21,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
@@ -29,7 +29,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -39,22 +38,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithPhone = async (phone: string) => {
-    const { error } = await supabase.auth.signInWithOtp({
-      phone,
-    });
-    
-    return { error };
+  const sendOtp = async (phone: string) => {
+    try {
+      await callEdgeFunction('send-otp', {
+        method: 'POST',
+        body: { phone },
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
-  const verifyOtp = async (phone: string, token: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: "sms",
-    });
-    
-    return { error };
+  const verifyOtp = async (phone: string, code: string) => {
+    try {
+      const result = await callEdgeFunction<{
+        success: boolean;
+        email: string;
+        token: string;
+        user_id: string;
+      }>('verify-otp', {
+        method: 'POST',
+        body: { phone, code },
+      });
+
+      // Use the hashed token to create a real Supabase session
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: result.email,
+        token: result.token,
+        type: 'email',
+      });
+
+      if (verifyError) {
+        return { error: verifyError };
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
   const signOut = async () => {
@@ -64,7 +86,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const mockLogin = () => {
-    // Create a mock user for development/testing with a valid UUID
     const mockUser = {
       id: "00000000-0000-0000-0000-000000000001",
       email: "dev@example.com",
@@ -74,14 +95,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user_metadata: { display_name: "Dev User" },
       aud: "authenticated",
     } as User;
-    
+
     setUser(mockUser);
     setSession({ user: mockUser } as Session);
     setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signInWithPhone, verifyOtp, signOut, mockLogin }}>
+    <AuthContext.Provider value={{ user, session, loading, sendOtp, verifyOtp, signOut, mockLogin }}>
       {children}
     </AuthContext.Provider>
   );
