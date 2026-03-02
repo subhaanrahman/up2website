@@ -9,6 +9,8 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'settings-upsert':    { max: 10, windowSec: 60 },
   'orders-reserve':     { max: 10, windowSec: 60 },
   'payments-intent':    { max: 10, windowSec: 60 },
+  'send-otp':           { max: 5,  windowSec: 60 },
+  'verify-otp':         { max: 5,  windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };
