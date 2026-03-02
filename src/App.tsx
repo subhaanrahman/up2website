@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import PhoneFrame from "@/components/PhoneFrame";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
@@ -37,24 +38,28 @@ const App = () => (
         <BrowserRouter>
           <PhoneFrame>
             <Routes>
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
-              <Route path="/messages" element={<Dashboard />} />
-              <Route path="/messages/:id" element={<MessageThread />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/search" element={<Events />} />
               <Route path="/search/:id" element={<EventDetail />} />
               <Route path="/events/:id" element={<EventDetail />} />
-              <Route path="/create" element={<CreateEvent />} />
-              <Route path="/events" element={<Tickets />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/settings/notifications" element={<NotificationsSettings />} />
-              <Route path="/settings/privacy" element={<PrivacySettings />} />
-              <Route path="/settings/help" element={<HelpCenter />} />
-              <Route path="/settings/about" element={<About />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/checkout" element={<Checkout />} />
+
+              {/* Protected routes */}
+              <Route path="/messages" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/messages/:id" element={<ProtectedRoute><MessageThread /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+              <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
+              <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />
+              <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
+              <Route path="/settings/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
+              <Route path="/settings/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
+              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
