@@ -5,6 +5,7 @@ import type { UserProfile, UpdateProfileInput } from '../domain/types';
 import { createLogger } from '@/infrastructure/logger';
 import { NotFoundError, ValidationError } from '@/infrastructure/errors';
 import { profileApi } from '@/api';
+import { supabase } from '@/infrastructure/supabase';
 
 const logger = createLogger('identity.service');
 
@@ -30,7 +31,18 @@ export const identityService = {
     if (input.pageClassification !== undefined) updates.page_classification = input.pageClassification || null;
     if (input.avatarUrl !== undefined) updates.avatar_url = input.avatarUrl;
 
-    await profileApi.update(updates);
+    // Check if we have a real Supabase session; if not (mock login), use direct client
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await profileApi.update(updates);
+    } else {
+      // Fallback for mock/dev login — write directly via client
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('user_id', userId);
+      if (error) throw error;
+    }
   },
 
   async uploadAvatar(file: File): Promise<string> {
