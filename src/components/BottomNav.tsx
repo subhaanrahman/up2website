@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, Search, MessageSquare, User, Ticket, Plus, LogOut } from "lucide-react";
+import { Home, Search, MessageSquare, User, Ticket, LayoutDashboard, Plus, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,13 +14,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { useProfile } from "@/hooks/useProfileQuery";
 
-const navItems = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: Search, label: "Search", path: "/search" },
-  { icon: Ticket, label: "Events", path: "/events" },
-  { icon: MessageSquare, label: "Messages", path: "/messages" },
-  { icon: User, label: "Profile", path: "/profile" },
-];
 
 const LONG_PRESS_MS = 500;
 
@@ -28,11 +21,19 @@ const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { activeProfile, switchProfile, organiserProfiles } = useActiveProfile();
+  const { activeProfile, switchProfile, organiserProfiles, isOrganiser } = useActiveProfile();
   const { data: personalProfile } = useProfile(user?.id);
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+
+  const navItems = [
+    { icon: Home, label: "Home", path: "/" },
+    { icon: Search, label: "Search", path: "/search" },
+    { icon: isOrganiser ? LayoutDashboard : Ticket, label: isOrganiser ? "Dashboard" : "Events", path: "/events" },
+    { icon: MessageSquare, label: "Messages", path: "/messages" },
+    { icon: User, label: "Profile", path: "/profile" },
+  ];
 
   const startPress = useCallback(() => {
     didLongPress.current = false;

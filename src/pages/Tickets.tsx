@@ -5,13 +5,16 @@ import { Search, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { format } from "date-fns";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
+import OrganiserDashboard from "@/components/OrganiserDashboard";
 
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
+  const { isOrganiser } = useActiveProfile();
 
   const { data: rsvpEvents, isLoading } = useQuery({
     queryKey: ["user-rsvps", user?.id],
@@ -44,6 +47,16 @@ const Tickets = () => {
   const filteredEvents = rsvpEvents?.filter((rsvp) =>
     rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isOrganiser) {
+    return (
+      <div className="min-h-screen bg-background pb-20 md:pb-0">
+        <Navbar />
+        <OrganiserDashboard />
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
