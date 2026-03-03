@@ -83,7 +83,7 @@ const Events = () => {
                   <div className="flex items-center gap-1">
                     <h3 className="font-semibold text-foreground">{item.name}</h3>
                     {item.verified && (
-                      <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
+                      <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
                     )}
                   </div>
                   <p className="text-sm text-muted-foreground">{item.relationship}</p>
