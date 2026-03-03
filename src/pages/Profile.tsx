@@ -124,11 +124,14 @@ const Profile = () => {
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
             {profile?.instagramHandle ? (
-              <a href={`https://instagram.com/${profile.instagramHandle}`} target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-                  <Instagram className="h-5 w-5" />
-                </Button>
-              </a>
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-11 w-11 rounded-full"
+                onClick={() => window.open(`https://instagram.com/${profile.instagramHandle}`, '_blank', 'noopener,noreferrer')}
+              >
+                <Instagram className="h-5 w-5" />
+              </Button>
             ) : (
               <Link to="/profile/edit">
                 <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
