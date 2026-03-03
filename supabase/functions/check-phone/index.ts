@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
     );
 
     const internalEmail = phoneToInternalEmail(phone);
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
 
     const { data: users } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
@@ -48,7 +49,10 @@ Deno.serve(async (req) => {
     });
 
     const exists = users?.users?.some(
-      (u) => u.email === internalEmail || u.phone === phone,
+      (u) => u.email === internalEmail || 
+             u.phone === phone || 
+             u.phone === phoneDigits ||
+             u.phone === `+${phoneDigits}`,
     ) ?? false;
 
     return new Response(

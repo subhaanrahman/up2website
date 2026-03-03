@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
 
     // ── Check if phone already registered ──
     const internalEmail = phoneToInternalEmail(phone);
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
 
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
@@ -82,7 +83,10 @@ Deno.serve(async (req) => {
     });
 
     const existingUser = existingUsers?.users?.find(
-      (u) => u.email === internalEmail || u.phone === phone,
+      (u) => u.email === internalEmail || 
+             u.phone === phone || 
+             u.phone === phoneDigits ||
+             u.phone === `+${phoneDigits}`,
     );
 
     if (existingUser) {
