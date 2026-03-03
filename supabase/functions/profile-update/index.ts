@@ -12,9 +12,9 @@ const profileUpdateSchema = z.object({
   action: z.literal('update'),
   display_name: z.string().trim().max(100).optional(),
   username: z.string().regex(/^[a-zA-Z0-9_-]{3,30}$/, 'Username must be 3-30 alphanumeric characters, hyphens or underscores').optional(),
-  bio: z.string().trim().max(500).optional(),
-  city: z.string().trim().max(100).optional(),
-  page_classification: z.enum(['Personal', 'Venue', 'Promoter', 'Artist', 'DJ', 'Brand', 'Organization']).optional(),
+  bio: z.string().trim().max(500).optional().nullable(),
+  city: z.string().trim().max(100).optional().nullable(),
+  page_classification: z.enum(['Personal', 'Venue', 'Promoter', 'Artist', 'DJ', 'Brand', 'Organization']).optional().nullable(),
   avatar_url: z.string().url().max(500).optional(),
   instagram_handle: z.string().trim().max(30).regex(/^[a-zA-Z0-9._]*$/, 'Invalid Instagram handle').optional().nullable(),
 });
