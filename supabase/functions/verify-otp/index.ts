@@ -7,16 +7,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function errorResponse(msg: string, status: number) {
+function errorResponse(msg: string, status: number, details?: string) {
   return new Response(
-    JSON.stringify({ error: msg }),
+    JSON.stringify({ error: msg, ...(details ? { details } : {}) }),
     { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   );
 }
 
 /**
  * Derives a deterministic internal email from a phone number.
- * This is used solely to create a Supabase session via magic link token.
  */
 function phoneToInternalEmail(phone: string): string {
   return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
@@ -66,7 +65,7 @@ Deno.serve(async (req) => {
     const twilioData = await twilioRes.json();
 
     if (!twilioRes.ok || twilioData.status !== 'approved') {
-      console.error('Twilio verify failed:', twilioData);
+      console.error('Twilio verify failed:', JSON.stringify(twilioData));
       return errorResponse('Invalid or expired verification code', 400);
     }
 
@@ -78,25 +77,47 @@ Deno.serve(async (req) => {
 
     const internalEmail = phoneToInternalEmail(phone);
 
-    // Try to find existing user by phone or internal email
-    const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = usersData?.users?.find(
-      (u) => u.phone === phone || u.email === internalEmail
-    );
+    // Use paginated search to find user by email (more reliable than listUsers)
+    let existingUser = null;
+
+    // Search by internal email first (most reliable identifier)
+    const { data: emailUsers, error: emailSearchErr } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+
+    if (emailSearchErr) {
+      console.error('User search error:', JSON.stringify(emailSearchErr));
+      return errorResponse('Failed to search for existing account', 500, emailSearchErr.message);
+    }
+
+    existingUser = emailUsers?.users?.find(
+      (u) => u.email === internalEmail || u.phone === phone
+    ) ?? null;
 
     let userId: string;
+    let isNewUser = false;
 
     if (existingUser) {
       userId = existingUser.id;
+      console.log(`Found existing user ${userId} for phone ${phone}`);
+      
       // Ensure phone and email are confirmed
-      await supabaseAdmin.auth.admin.updateUserById(userId, {
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         phone,
         phone_confirm: true,
         email: internalEmail,
         email_confirm: true,
       });
+
+      if (updateErr) {
+        console.error('Update user error:', JSON.stringify(updateErr));
+        // Non-fatal: continue anyway since user exists
+      }
     } else {
-      // Create new user
+      isNewUser = true;
+      console.log(`Creating new user for phone ${phone}, email ${internalEmail}`);
+
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         phone,
         phone_confirm: true,
@@ -106,14 +127,35 @@ Deno.serve(async (req) => {
       });
 
       if (createError) {
-        console.error('Create user error:', createError);
-        return errorResponse('Failed to create account', 500);
+        console.error('Create user error:', JSON.stringify(createError));
+        
+        // Check if it's a duplicate error
+        const errMsg = createError.message?.toLowerCase() || '';
+        if (errMsg.includes('already') || errMsg.includes('duplicate') || errMsg.includes('unique')) {
+          return errorResponse(
+            'An account with this phone number already exists but could not be found. Please try again.',
+            409,
+            createError.message,
+          );
+        }
+        
+        return errorResponse(
+          'Failed to create account',
+          500,
+          createError.message,
+        );
       }
+
+      if (!newUser?.user) {
+        console.error('Create user returned no user object');
+        return errorResponse('Failed to create account: no user returned', 500);
+      }
+
       userId = newUser.user.id;
+      console.log(`Created new user ${userId}`);
     }
 
     // ── Step 3: Create a session using password-based sign-in ──
-    // Generate a random password, set it on the user, and sign in immediately
     const tempPassword = crypto.randomUUID() + crypto.randomUUID();
 
     const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -121,8 +163,12 @@ Deno.serve(async (req) => {
     });
 
     if (pwError) {
-      console.error('Set password error:', pwError);
-      return errorResponse('Failed to create session', 500);
+      console.error('Set password error:', JSON.stringify(pwError));
+      return errorResponse(
+        'Failed to create session: could not set credentials',
+        500,
+        pwError.message,
+      );
     }
 
     // Sign in with the temporary password to get session tokens
@@ -136,10 +182,21 @@ Deno.serve(async (req) => {
       password: tempPassword,
     });
 
-    if (signInError || !signInData.session) {
-      console.error('Sign in error:', signInError);
-      return errorResponse('Failed to create session', 500);
+    if (signInError) {
+      console.error('Sign in error:', JSON.stringify(signInError));
+      return errorResponse(
+        'Failed to create session: sign-in failed',
+        500,
+        signInError.message,
+      );
     }
+
+    if (!signInData?.session) {
+      console.error('Sign in returned no session');
+      return errorResponse('Failed to create session: no session returned', 500);
+    }
+
+    console.log(`Session created successfully for user ${userId} (new: ${isNewUser})`);
 
     return new Response(
       JSON.stringify({
@@ -147,11 +204,12 @@ Deno.serve(async (req) => {
         access_token: signInData.session.access_token,
         refresh_token: signInData.session.refresh_token,
         user_id: userId,
+        is_new_user: isNewUser,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
     console.error('verify-otp error:', err);
-    return errorResponse('Internal server error', 500);
+    return errorResponse('Internal server error', 500, String(err));
   }
 });
