@@ -115,7 +115,7 @@ const Profile = () => {
           </div>
 
           <p className="text-muted-foreground text-sm mb-4">
-            @{isOrganiser && activeOrg ? activeOrg.username : username.toLowerCase().replace(/\s+/g, "")}
+            @{isOrganiser && activeOrg ? activeOrg.username : (profile?.username || username.toLowerCase().replace(/\s+/g, ""))}
           </p>
 
           <div className="flex items-center justify-center gap-6 mb-5">
