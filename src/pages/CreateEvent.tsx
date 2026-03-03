@@ -16,12 +16,14 @@ import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useCreateEvent } from "@/hooks/useEventsQuery";
 
 const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
+  const { isOrganiser } = useActiveProfile();
   const createEventMutation = useCreateEvent();
   const [formData, setFormData] = useState({
     title: "",
@@ -40,8 +42,15 @@ const CreateEvent = () => {
         description: "Please sign in to create an event",
       });
       navigate("/auth");
+    } else if (!loading && user && !isOrganiser) {
+      toast({
+        title: "Organiser account required",
+        description: "Switch to an organiser profile to create events.",
+        variant: "destructive",
+      });
+      navigate("/profile");
     }
-  }, [user, loading, navigate, toast]);
+  }, [user, loading, isOrganiser, navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

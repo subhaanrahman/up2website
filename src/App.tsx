@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
+import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -26,12 +27,14 @@ import Checkout from "./pages/Checkout";
 import MessageThread from "./pages/MessageThread";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
+import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <ActiveProfileProvider>
       <GamificationProvider>
         <TooltipProvider>
           <Toaster />
@@ -52,6 +55,7 @@ const App = () => (
               <Route path="/messages/:id" element={<ProtectedRoute><MessageThread /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+              <Route path="/profile/create-organiser" element={<ProtectedRoute><CreateOrganiserProfile /></ProtectedRoute>} />
               <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
@@ -69,6 +73,7 @@ const App = () => (
         </BrowserRouter>
         </TooltipProvider>
       </GamificationProvider>
+      </ActiveProfileProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
