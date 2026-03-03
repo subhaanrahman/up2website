@@ -16,6 +16,7 @@ function mapRow(row: Record<string, unknown>): UserProfile {
     bio: row.bio as string | null,
     city: row.city as string | null,
     pageClassification: row.page_classification as string | null,
+    instagramHandle: row.instagram_handle as string | null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
