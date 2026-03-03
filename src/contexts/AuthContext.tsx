@@ -7,10 +7,21 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  checkPhone: (phone: string) => Promise<{ exists: boolean; error: Error | null }>;
   sendOtp: (phone: string) => Promise<{ error: Error | null }>;
   verifyOtp: (phone: string, code: string) => Promise<{ error: Error | null }>;
+  register: (data: RegisterInput) => Promise<{ error: Error | null }>;
+  login: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   mockLogin: () => void;
+}
+
+export interface RegisterInput {
+  phone: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  username: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,6 +49,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const checkPhone = async (phone: string) => {
+    try {
+      const result = await callEdgeFunction<{ exists: boolean }>('check-phone', {
+        method: 'POST',
+        body: { phone },
+      });
+      return { exists: result.exists, error: null };
+    } catch (err) {
+      return { exists: false, error: err as Error };
+    }
+  };
+
   const sendOtp = async (phone: string) => {
     try {
       await callEdgeFunction('send-otp', {
@@ -52,17 +75,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const verifyOtp = async (phone: string, code: string) => {
     try {
+      await callEdgeFunction<{ verified: boolean }>('verify-otp', {
+        method: 'POST',
+        body: { phone, code },
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
+  const register = async (data: RegisterInput) => {
+    try {
       const result = await callEdgeFunction<{
         success: boolean;
         access_token: string;
         refresh_token: string;
         user_id: string;
-      }>('verify-otp', {
+      }>('register', {
         method: 'POST',
-        body: { phone, code },
+        body: data,
       });
 
-      // Set the session directly using the tokens from the server
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+
+      if (sessionError) {
+        return { error: sessionError };
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
+  const login = async (phone: string, password: string) => {
+    try {
+      const result = await callEdgeFunction<{
+        success: boolean;
+        access_token: string;
+        refresh_token: string;
+        user_id: string;
+      }>('login', {
+        method: 'POST',
+        body: { phone, password },
+      });
+
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: result.access_token,
         refresh_token: result.refresh_token,
@@ -101,7 +162,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, sendOtp, verifyOtp, signOut, mockLogin }}>
+    <AuthContext.Provider value={{
+      user, session, loading,
+      checkPhone, sendOtp, verifyOtp, register, login,
+      signOut, mockLogin,
+    }}>
       {children}
     </AuthContext.Provider>
   );

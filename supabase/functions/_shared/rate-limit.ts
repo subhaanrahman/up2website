@@ -11,6 +11,9 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'payments-intent':    { max: 10, windowSec: 60 },
   'send-otp':           { max: 5,  windowSec: 60 },
   'verify-otp':         { max: 5,  windowSec: 60 },
+  'check-phone':        { max: 10, windowSec: 60 },
+  'register':           { max: 5,  windowSec: 60 },
+  'login':              { max: 10, windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };
