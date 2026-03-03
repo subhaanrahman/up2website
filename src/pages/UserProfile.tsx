@@ -172,9 +172,16 @@ const UserProfile = () => {
 
           <div className="flex items-center justify-center gap-2 mb-5">
             <Button className="px-8 h-11 rounded-full font-semibold">FOLLOW</Button>
-            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-              <Instagram className="h-5 w-5" />
-            </Button>
+            {profile.instagram_handle ? (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-11 w-11 rounded-full"
+                onClick={() => window.open(`https://instagram.com/${profile.instagram_handle}`, '_blank', 'noopener,noreferrer')}
+              >
+                <Instagram className="h-5 w-5" />
+              </Button>
+            ) : null}
             <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
               <Send className="h-5 w-5" />
             </Button>
@@ -186,10 +193,12 @@ const UserProfile = () => {
             </p>
           )}
 
-          <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
-            <MapPin className="h-4 w-4" />
-            <span>{profile.page_classification || "User"} • {profile.city || "—"}</span>
-          </div>
+          {(profile.page_classification || profile.city) && (
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
+              <MapPin className="h-4 w-4" />
+              <span>{[profile.page_classification, profile.city].filter(Boolean).join(" • ")}</span>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
