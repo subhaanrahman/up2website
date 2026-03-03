@@ -14,7 +14,7 @@ type AuthStep = "phone" | "otp" | "password" | "register";
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string })?.from || "/";
+  const from = (location.state as { from?: string })?.from || "/profile";
   const { user, mockLogin } = useAuth();
   const { toast } = useToast();
 
