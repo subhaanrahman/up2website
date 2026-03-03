@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { hashPassword } from "../_shared/password.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -94,6 +95,9 @@ Deno.serve(async (req) => {
     }
 
     // ── Create user ──
+    // Hash password for our own verification (since email provider is disabled)
+    const passwordHash = await hashPassword(password);
+
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       phone,
       phone_confirm: true,
@@ -105,6 +109,7 @@ Deno.serve(async (req) => {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         username: username.toLowerCase(),
+        password_hash: passwordHash,
       },
     });
 
