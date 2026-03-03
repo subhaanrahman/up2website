@@ -32,7 +32,7 @@ import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { toast } from "@/hooks/use-toast";
 
-const CATEGORIES = ["Promoter", "Artist", "DJ", "Brand", "Organization", "Venue"];
+const CATEGORIES = ["Venue", "Event"];
 
 const CreateOrganiserProfile = () => {
   const navigate = useNavigate();
@@ -45,7 +45,7 @@ const CreateOrganiserProfile = () => {
     bio: "",
     city: "",
     instagram_handle: "",
-    category: "Promoter",
+    category: "Venue",
   });
 
   const handleSave = async () => {

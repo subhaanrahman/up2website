@@ -8,7 +8,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const CATEGORIES = ['Promoter', 'Artist', 'DJ', 'Brand', 'Organization', 'Venue'] as const;
+const CATEGORIES = ['Venue', 'Event'] as const;
 
 const createSchema = z.object({
   display_name: z.string().trim().min(1).max(100),
@@ -16,7 +16,7 @@ const createSchema = z.object({
   bio: z.string().trim().max(500).optional().nullable(),
   city: z.string().trim().max(100).optional().nullable(),
   instagram_handle: z.string().trim().max(30).regex(/^[a-zA-Z0-9._]*$/, 'Invalid Instagram handle').optional().nullable(),
-  category: z.enum(CATEGORIES).default('Promoter'),
+  category: z.enum(CATEGORIES).default('Venue'),
 });
 
 Deno.serve(async (req) => {
