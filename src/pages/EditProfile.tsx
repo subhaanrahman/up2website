@@ -32,10 +32,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile, useUploadAvatar } from "@/hooks/useProfileQuery";
 import { toast } from "@/hooks/use-toast";
 
-const PAGE_CLASSIFICATIONS = [
-  "Personal",
-  "Venue",
-];
+const PAGE_CLASSIFICATIONS = ["DJ", "Promoter", "Artist"];
 
 const EditProfile = () => {
   const { user, loading } = useAuth();
@@ -99,7 +96,7 @@ const EditProfile = () => {
         displayName: formData.display_name,
         username: formData.username,
         bio: formData.bio,
-        pageClassification: formData.page_classification,
+        pageClassification: formData.page_classification || null,
         city: formData.city,
         instagramHandle: formData.instagram_handle || null,
       });
@@ -211,15 +208,16 @@ const EditProfile = () => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="page_classification">Page Classification</Label>
+          <Label htmlFor="page_classification">Classification (optional)</Label>
           <Select
-            value={formData.page_classification}
-            onValueChange={(value) => setFormData({ ...formData, page_classification: value })}
+            value={formData.page_classification || "none"}
+            onValueChange={(value) => setFormData({ ...formData, page_classification: value === "none" ? "" : value })}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select a classification" />
+              <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">None</SelectItem>
               {PAGE_CLASSIFICATIONS.map((c) => (
                 <SelectItem key={c} value={c}>{c}</SelectItem>
               ))}
