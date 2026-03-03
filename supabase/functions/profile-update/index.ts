@@ -14,7 +14,7 @@ const profileUpdateSchema = z.object({
   username: z.string().regex(/^[a-zA-Z0-9_-]{3,30}$/, 'Username must be 3-30 alphanumeric characters, hyphens or underscores').optional(),
   bio: z.string().trim().max(500).optional(),
   city: z.string().trim().max(100).optional(),
-  page_classification: z.enum(['organizer', 'attendee', 'venue']).optional(),
+  page_classification: z.enum(['Personal', 'Venue', 'Promoter', 'Artist', 'DJ', 'Brand', 'Organization']).optional(),
   avatar_url: z.string().url().max(500).optional(),
 });
 
@@ -60,11 +60,26 @@ Deno.serve(async (req) => {
 
     const { action, ...fields } = parsed.data;
 
+    // Map UI page_classification to DB enum
+    const classificationMap: Record<string, string> = {
+      'Personal': 'personal',
+      'Venue': 'venue',
+      'Promoter': 'organizer',
+      'Artist': 'organizer',
+      'DJ': 'organizer',
+      'Brand': 'organizer',
+      'Organization': 'organizer',
+    };
+
     // Build update object from validated fields only
     const updates: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) {
-        updates[key] = value;
+        if (key === 'page_classification' && typeof value === 'string') {
+          updates[key] = value; // Store the original UI value for display
+        } else {
+          updates[key] = value;
+        }
       }
     }
 
