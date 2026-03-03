@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
+import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import logoImg from "@/assets/logo.png";
 
 // Mock feed data for social posts
@@ -67,10 +68,16 @@ const suggestedFriends = [{
 const Index = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const nearbyEvents = events.slice(0, 2);
-  const displayName = profile?.displayName || user?.email?.split("@")[0] || "Guest";
-  const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
-  const avatarUrl = profile?.avatarUrl || "";
+
+  const activeOrg = isOrganiser
+    ? organiserProfiles.find((o) => o.id === activeProfile?.id)
+    : undefined;
+
+  const displayName = isOrganiser && activeOrg ? activeOrg.displayName : (profile?.displayName || user?.email?.split("@")[0] || "Guest");
+  const username = isOrganiser && activeOrg ? activeOrg.username : (profile?.username || displayName.toLowerCase().replace(/\s+/g, ""));
+  const avatarUrl = isOrganiser && activeOrg ? (activeOrg.avatarUrl || "") : (profile?.avatarUrl || "");
   return <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">

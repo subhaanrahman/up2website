@@ -131,7 +131,7 @@ const Profile = () => {
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-5">
-            <Link to="/profile/edit">
+            <Link to={isOrganiser ? "/profile/edit-organiser" : "/profile/edit"}>
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
             {instagramHandle ? (
