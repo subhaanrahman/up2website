@@ -100,7 +100,7 @@ const Profile = () => {
             <h2 className="text-xl font-bold tracking-wide text-foreground uppercase">
               {username}
             </h2>
-            <BadgeCheck className="h-5 w-5 text-primary fill-primary" />
+            <BadgeCheck className="h-5 w-5 text-primary-foreground fill-primary" />
           </div>
 
           <p className="text-muted-foreground text-sm mb-4">
