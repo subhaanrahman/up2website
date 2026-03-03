@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Plus, Heart, Repeat2, MoreHorizontal, BadgeCheck } from "lucide-react";
+import PostComposer from "@/components/PostComposer";
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
@@ -96,30 +97,11 @@ const Index = () => {
 
       <main>
         {/* Post Composer */}
-        <div className="px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-3">
-            <Link to="/profile">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={avatarUrl || undefined} />
-                <AvatarFallback className="bg-card text-foreground font-bold">
-                  {displayName[0]?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-            </Link>
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5">
-                <Link to="/profile" className="font-bold text-foreground hover:underline">
-                  {displayName}
-                </Link>
-                <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
-                <span className="text-muted-foreground text-sm">
-                  @{username}
-                </span>
-              </div>
-              <p className="text-muted-foreground text-sm">Write Something...</p>
-            </div>
-          </div>
-        </div>
+        <PostComposer
+          displayName={displayName}
+          username={username}
+          avatarUrl={avatarUrl}
+        />
 
         {/* Events Near You - Vertical Tiles */}
         <div className="border-b border-border">
