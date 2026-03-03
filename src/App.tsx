@@ -24,6 +24,7 @@ import About from "./pages/About";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
 import MessageThread from "./pages/MessageThread";
+import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,6 +44,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/search" element={<Events />} />
               <Route path="/search/:id" element={<EventDetail />} />
+              <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/events/:id" element={<EventDetail />} />
 
               {/* Protected routes */}
