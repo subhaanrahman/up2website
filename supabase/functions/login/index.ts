@@ -37,31 +37,52 @@ Deno.serve(async (req) => {
       return errorResponse('Password is required', 400);
     }
 
-    const internalEmail = phoneToInternalEmail(phone);
-
-    const supabaseAnon = createClient(
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      email: internalEmail,
-      password,
+    const internalEmail = phoneToInternalEmail(phone);
+    const phoneDigits = phone.replace(/[^0-9]/g, '');
+
+    // Find user by phone
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
     });
 
-    if (signInError) {
-      console.error('Login error:', JSON.stringify(signInError));
+    const user = users?.users?.find(
+      (u) => u.email === internalEmail ||
+             u.phone === phone ||
+             u.phone === phoneDigits ||
+             u.phone === `+${phoneDigits}`,
+    );
 
-      // Don't reveal whether the account exists
-      if (signInError.message?.includes('Invalid login credentials')) {
-        return errorResponse('Invalid phone number or password', 401);
-      }
-
-      return errorResponse('Login failed', 401, signInError.message);
+    if (!user) {
+      return errorResponse('Invalid phone number or password', 401);
     }
 
-    if (!signInData?.session) {
-      return errorResponse('Login failed: no session returned', 500);
+    // Verify password via GoTrue token endpoint directly
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+    const tokenRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': anonKey,
+      },
+      body: JSON.stringify({
+        email: user.email || internalEmail,
+        password,
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok || !tokenData.access_token) {
+      console.error('Login failed:', JSON.stringify(tokenData));
+      return errorResponse('Invalid phone number or password', 401);
     }
 
     console.log(`Login successful for ${phone}`);
@@ -69,9 +90,9 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: signInData.session.access_token,
-        refresh_token: signInData.session.refresh_token,
-        user_id: signInData.user.id,
+        access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
+        user_id: tokenData.user?.id || user.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
