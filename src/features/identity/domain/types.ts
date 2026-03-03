@@ -12,6 +12,7 @@ export interface UserProfile {
   bio: string | null;
   city: string | null;
   pageClassification: string | null;
+  instagramHandle: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,4 +27,5 @@ export interface UpdateProfileInput {
   city?: string;
   pageClassification?: string;
   avatarUrl?: string;
+  instagramHandle?: string | null;
 }

@@ -123,9 +123,19 @@ const Profile = () => {
             <Link to="/profile/edit">
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
-            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-              <Instagram className="h-5 w-5" />
-            </Button>
+            {profile?.instagramHandle ? (
+              <a href={`https://instagram.com/${profile.instagramHandle}`} target="_blank" rel="noopener noreferrer">
+                <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
+                  <Instagram className="h-5 w-5" />
+                </Button>
+              </a>
+            ) : (
+              <Link to="/profile/edit">
+                <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
+                  <Instagram className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
             <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
               <Send className="h-5 w-5" />
             </Button>

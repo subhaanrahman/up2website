@@ -29,6 +29,7 @@ export const identityService = {
     if (input.bio !== undefined) updates.bio = input.bio || null;
     if (input.city !== undefined) updates.city = input.city || null;
     if (input.pageClassification !== undefined) updates.page_classification = input.pageClassification || null;
+    if (input.instagramHandle !== undefined) updates.instagram_handle = input.instagramHandle || null;
     if (input.avatarUrl !== undefined) updates.avatar_url = input.avatarUrl;
 
     // Check if we have a real Supabase session; if not (mock login), use direct client

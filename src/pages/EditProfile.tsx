@@ -42,6 +42,7 @@ const EditProfile = () => {
     bio: "",
     page_classification: "",
     city: "",
+    instagram_handle: "",
   });
   const [avatarUrl, setAvatarUrl] = useState("");
 
@@ -59,6 +60,7 @@ const EditProfile = () => {
         bio: profile.bio || "",
         page_classification: profile.pageClassification || "",
         city: profile.city || "",
+        instagram_handle: profile.instagramHandle || "",
       });
       setAvatarUrl(profile.avatarUrl || "");
     }
@@ -89,6 +91,7 @@ const EditProfile = () => {
         bio: formData.bio,
         pageClassification: formData.page_classification,
         city: formData.city,
+        instagramHandle: formData.instagram_handle || null,
       });
       toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
       navigate("/profile");
@@ -212,6 +215,23 @@ const EditProfile = () => {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="instagram_handle">Instagram</Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
+            <Input
+              id="instagram_handle"
+              value={formData.instagram_handle}
+              onChange={(e) =>
+                setFormData({ ...formData, instagram_handle: e.target.value.replace(/[^a-zA-Z0-9._]/g, "").slice(0, 30) })
+              }
+              placeholder="your.instagram"
+              className="pl-8"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Your Instagram username (without the @)</p>
         </div>
 
         <div className="space-y-2">
