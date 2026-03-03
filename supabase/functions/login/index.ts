@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
+import { verifyPassword } from "../_shared/password.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,27 +63,42 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Verify password via GoTrue token endpoint directly
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    // Verify password via bcrypt hash stored in user_metadata
+    const storedHash = user.user_metadata?.password_hash;
+    if (!storedHash) {
+      console.error('No password hash found for user', user.id);
+      return errorResponse('Invalid phone number or password', 401);
+    }
 
-    const tokenRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': anonKey,
-      },
-      body: JSON.stringify({
-        email: user.email || internalEmail,
-        password,
-      }),
+    const passwordValid = await verifyPassword(password, storedHash);
+    if (!passwordValid) {
+      return errorResponse('Invalid phone number or password', 401);
+    }
+
+    // Generate session via magic link (bypasses email provider check)
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: user.email || internalEmail,
     });
 
-    const tokenData = await tokenRes.json();
+    if (linkError || !linkData?.properties?.hashed_token) {
+      console.error('Generate link error:', JSON.stringify(linkError));
+      return errorResponse('Login failed', 500);
+    }
 
-    if (!tokenRes.ok || !tokenData.access_token) {
-      console.error('Login failed:', JSON.stringify(tokenData));
-      return errorResponse('Invalid phone number or password', 401);
+    const supabaseAnon = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+    );
+
+    const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: 'magiclink',
+    });
+
+    if (verifyError || !verifyData?.session) {
+      console.error('Verify OTP error:', JSON.stringify(verifyError));
+      return errorResponse('Login failed', 500);
     }
 
     console.log(`Login successful for ${phone}`);
@@ -90,9 +106,9 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
-        user_id: tokenData.user?.id || user.id,
+        access_token: verifyData.session.access_token,
+        refresh_token: verifyData.session.refresh_token,
+        user_id: user.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
