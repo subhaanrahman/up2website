@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_cohosts: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          organiser_profile_id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          organiser_profile_id: string
+          role?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          organiser_profile_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_cohosts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_cohosts_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_messages: {
         Row: {
           content: string
@@ -66,6 +105,7 @@ export type Database = {
           is_public: boolean | null
           location: string | null
           max_guests: number | null
+          organiser_profile_id: string | null
           title: string
           updated_at: string
         }
@@ -81,6 +121,7 @@ export type Database = {
           is_public?: boolean | null
           location?: string | null
           max_guests?: number | null
+          organiser_profile_id?: string | null
           title: string
           updated_at?: string
         }
@@ -96,6 +137,7 @@ export type Database = {
           is_public?: boolean | null
           location?: string | null
           max_guests?: number | null
+          organiser_profile_id?: string | null
           title?: string
           updated_at?: string
         }
@@ -106,6 +148,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "events_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -264,6 +313,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organiser_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          category: string
+          city: string | null
+          created_at: string
+          display_name: string
+          id: string
+          instagram_handle: string | null
+          owner_id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          category?: string
+          city?: string | null
+          created_at?: string
+          display_name: string
+          id?: string
+          instagram_handle?: string | null
+          owner_id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          category?: string
+          city?: string | null
+          created_at?: string
+          display_name?: string
+          id?: string
+          instagram_handle?: string | null
+          owner_id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
       }
       point_transactions: {
         Row: {

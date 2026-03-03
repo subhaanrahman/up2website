@@ -3,6 +3,7 @@ import { Home, Search, MessageSquare, User, Ticket, Plus, LogOut } from "lucide-
 import { cn } from "@/lib/utils";
 import { useRef, useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -11,6 +12,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { useProfile } from "@/hooks/useProfileQuery";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/" },
@@ -26,6 +28,8 @@ const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { activeProfile, switchProfile, organiserProfiles } = useActiveProfile();
+  const { data: personalProfile } = useProfile(user?.id);
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
@@ -60,10 +64,19 @@ const BottomNav = () => {
     navigate("/");
   };
 
-  const handleAddAccount = () => {
+  const handleCreateOrganiser = () => {
     setSheetOpen(false);
-    navigate("/auth");
+    navigate("/profile/create-organiser");
   };
+
+  const handleSwitchProfile = (id: string, type: "personal" | "organiser") => {
+    switchProfile(id, type);
+    setSheetOpen(false);
+    navigate("/profile");
+  };
+
+  const personalDisplayName = personalProfile?.displayName || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "Personal";
+  const personalAvatarUrl = personalProfile?.avatarUrl || null;
 
   return (
     <>
@@ -118,36 +131,70 @@ const BottomNav = () => {
             <SheetTitle className="text-left">Accounts</SheetTitle>
           </SheetHeader>
 
-          {/* Current account */}
+          {/* Personal account */}
           {user && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-secondary/50 mb-3">
+            <button
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-xl mb-2 w-full text-left transition-colors",
+                activeProfile?.type === "personal" ? "bg-secondary/50" : "hover:bg-secondary/30"
+              )}
+              onClick={() => handleSwitchProfile(user.id, "personal")}
+            >
               <Avatar className="h-10 w-10">
-                <AvatarImage src={undefined} />
+                <AvatarImage src={personalAvatarUrl || undefined} />
                 <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                  {user.email?.[0]?.toUpperCase() || user.phone?.[0] || "U"}
+                  {personalDisplayName[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground text-sm truncate">
-                  {user.user_metadata?.display_name || user.email?.split("@")[0] || user.phone}
+                  {personalDisplayName}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user.email || user.phone}
-                </p>
+                <p className="text-xs text-muted-foreground truncate">Personal</p>
               </div>
-              <span className="text-xs text-primary font-medium">Active</span>
-            </div>
+              {activeProfile?.type === "personal" && (
+                <span className="text-xs text-primary font-medium">Active</span>
+              )}
+            </button>
           )}
 
+          {/* Organiser profiles */}
+          {organiserProfiles.map((org) => (
+            <button
+              key={org.id}
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-xl mb-2 w-full text-left transition-colors",
+                activeProfile?.id === org.id ? "bg-secondary/50" : "hover:bg-secondary/30"
+              )}
+              onClick={() => handleSwitchProfile(org.id, "organiser")}
+            >
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={org.avatarUrl || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {org.displayName[0]?.toUpperCase() || "O"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-foreground text-sm truncate">
+                  {org.displayName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">{org.category}</p>
+              </div>
+              {activeProfile?.id === org.id && (
+                <span className="text-xs text-primary font-medium">Active</span>
+              )}
+            </button>
+          ))}
+
           {/* Actions */}
-          <div className="space-y-1">
+          <div className="space-y-1 mt-2">
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 h-12 text-foreground"
-              onClick={handleAddAccount}
+              onClick={handleCreateOrganiser}
             >
               <Plus className="h-5 w-5" />
-              Add Account
+              Create Organiser Page
             </Button>
 
             {user && (

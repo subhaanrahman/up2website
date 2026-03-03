@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useGamification } from "@/hooks/useGamification";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useHostEvents } from "@/hooks/useEventsQuery";
+import { useActiveProfile, type OrganiserProfile } from "@/contexts/ActiveProfileContext";
 import { getProgressToNextRank } from "@/features/loyalty";
 import { format } from "date-fns";
 
@@ -37,8 +38,14 @@ const Profile = () => {
   const [followersCount] = useState(321);
   const [rewardsOpen, setRewardsOpen] = useState(false);
 
+  const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const { data: hostEvents } = useHostEvents(user?.id);
+
+  // If organiser profile is active, find the full data
+  const activeOrg: OrganiserProfile | undefined = isOrganiser
+    ? organiserProfiles.find((o) => o.id === activeProfile?.id)
+    : undefined;
 
   const progress = getProgressToNextRank(points, rank);
 
@@ -56,9 +63,13 @@ const Profile = () => {
     );
   }
 
-  const displayName = profile?.displayName || "";
-  const avatarUrl = profile?.avatarUrl || "";
-  const username = displayName || user.phone || user.email?.split("@")[0] || "User";
+  const displayName = isOrganiser && activeOrg ? activeOrg.displayName : (profile?.displayName || "");
+  const avatarUrl = isOrganiser && activeOrg ? (activeOrg.avatarUrl || "") : (profile?.avatarUrl || "");
+  const username = isOrganiser && activeOrg ? activeOrg.username : (displayName || user.phone || user.email?.split("@")[0] || "User");
+  const bio = isOrganiser && activeOrg ? (activeOrg.bio || "") : (profile?.bio || "");
+  const city = isOrganiser && activeOrg ? (activeOrg.city || "") : (profile?.city || "");
+  const classification = isOrganiser && activeOrg ? activeOrg.category : (profile?.pageClassification || "Personal");
+  const instagramHandle = isOrganiser && activeOrg ? activeOrg.instagramHandle : profile?.instagramHandle;
   const eventsCount = hostEvents?.length || 0;
 
   const upcomingEvents = (hostEvents || []).filter(
@@ -104,7 +115,7 @@ const Profile = () => {
           </div>
 
           <p className="text-muted-foreground text-sm mb-4">
-            @{username.toLowerCase().replace(/\s+/g, "")}
+            @{isOrganiser && activeOrg ? activeOrg.username : username.toLowerCase().replace(/\s+/g, "")}
           </p>
 
           <div className="flex items-center justify-center gap-6 mb-5">
@@ -123,12 +134,12 @@ const Profile = () => {
             <Link to="/profile/edit">
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
-            {profile?.instagramHandle ? (
+            {instagramHandle ? (
               <Button
                 variant="secondary"
                 size="icon"
                 className="h-11 w-11 rounded-full"
-                onClick={() => window.open(`https://instagram.com/${profile.instagramHandle}`, '_blank', 'noopener,noreferrer')}
+                onClick={() => window.open(`https://instagram.com/${instagramHandle}`, '_blank', 'noopener,noreferrer')}
               >
                 <Instagram className="h-5 w-5" />
               </Button>
@@ -145,12 +156,12 @@ const Profile = () => {
           </div>
 
           <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">
-            {profile?.bio || "Join us for an unforgettable nightlife experience."}
+            {bio || "Join us for an unforgettable nightlife experience."}
           </p>
 
           <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
             <MapPin className="h-4 w-4" />
-            <span>{profile?.pageClassification || "Venue"} • {profile?.city || "Sydney"}</span>
+            <span>{classification || "Personal"} • {city || "Sydney"}</span>
           </div>
         </div>
 

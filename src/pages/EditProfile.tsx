@@ -35,11 +35,6 @@ import { toast } from "@/hooks/use-toast";
 const PAGE_CLASSIFICATIONS = [
   "Personal",
   "Venue",
-  "Promoter",
-  "Artist",
-  "DJ",
-  "Brand",
-  "Organization",
 ];
 
 const EditProfile = () => {
