@@ -17,6 +17,26 @@ import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
+// Mock profiles for demo/search results that use non-UUID IDs
+const mockProfiles: Record<string, any> = {
+  "1": {
+    display_name: "DYLAN",
+    username: "dylan",
+    avatar_url: "",
+    bio: "Music lover & event enthusiast 🎶",
+    page_classification: "Personal",
+    city: "Sydney",
+  },
+  "2": {
+    display_name: "NOIR",
+    username: "noir",
+    avatar_url: "",
+    bio: "Nightlife curator. Follow for the best events in town 🌙",
+    page_classification: "Venue",
+    city: "Melbourne",
+  },
+};
+
 const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
@@ -26,6 +46,15 @@ const UserProfile = () => {
 
   useEffect(() => {
     if (!userId) return;
+
+    // Check if it's a mock/demo ID first
+    const mockProfile = mockProfiles[userId];
+    if (mockProfile) {
+      setProfile(mockProfile);
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
 
     const fetchProfile = async () => {
       setLoading(true);
