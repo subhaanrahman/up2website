@@ -1,29 +1,26 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { z } from "zod";
 import logoFull from "@/assets/logo-full.png";
-import PhoneInput from "@/components/PhoneInput";
+import PhoneStep from "@/components/auth/PhoneStep";
+import OtpStep from "@/components/auth/OtpStep";
+import PasswordStep from "@/components/auth/PasswordStep";
+import RegisterStep from "@/components/auth/RegisterStep";
+import { Button } from "@/components/ui/button";
 
-const phoneSchema = z.string().min(8, "Please enter a valid phone number");
-const otpSchema = z.string().length(6, "OTP must be 6 digits");
+type AuthStep = "phone" | "otp" | "password" | "register";
 
 const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string })?.from || "/";
-  const { sendOtp, verifyOtp, user, mockLogin } = useAuth();
+  const { user, mockLogin } = useAuth();
   const { toast } = useToast();
+
+  const [step, setStep] = useState<AuthStep>("phone");
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [error, setError] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
 
   // Redirect if already logged in
   if (user) {
@@ -31,73 +28,35 @@ const Auth = () => {
     return null;
   }
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const result = phoneSchema.safeParse(phone);
-    if (!result.success) {
-      setError(result.error.errors[0].message);
-      return;
-    }
-
-    setLoading(true);
-
-    const { error } = await sendOtp(phone);
-
-    if (error) {
-      setError(error.message);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+  const handlePhoneChecked = (phoneNumber: string, exists: boolean) => {
+    setPhone(phoneNumber);
+    setIsNewUser(!exists);
+    if (exists) {
+      // Returning user → password login
+      setStep("password");
     } else {
-      setOtpSent(true);
-      toast({
-        title: "Code sent!",
-        description: "Check your phone for the verification code.",
-      });
+      // New user → send OTP for verification
+      setStep("otp");
     }
-
-    setLoading(false);
   };
 
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  const handleOtpVerified = () => {
+    // OTP verified → collect registration details
+    setStep("register");
+  };
 
-    const result = otpSchema.safeParse(otp);
-    if (!result.success) {
-      setError(result.error.errors[0].message);
-      return;
-    }
+  const handleLoginSuccess = () => {
+    toast({ title: "Welcome back!", description: "You've successfully signed in." });
+    navigate(from);
+  };
 
-    setLoading(true);
-
-    const { error } = await verifyOtp(phone, otp);
-
-    if (error) {
-      setError(error.message);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Welcome!",
-        description: "You've successfully signed in.",
-      });
-      navigate(from);
-    }
-
-    setLoading(false);
+  const handleRegisterSuccess = () => {
+    toast({ title: "Welcome!", description: "Your account has been created." });
+    navigate(from);
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Mobile App-like Auth Screen */}
       <div className="flex-1 flex flex-col justify-center px-6 py-12">
         <div className="w-full max-w-sm mx-auto">
           {/* Logo */}
@@ -105,108 +64,38 @@ const Auth = () => {
             <div className="mb-8">
               <img src={logoFull} alt="Up2" className="h-16 w-auto mx-auto" />
             </div>
-            
-            {!otpSent ? (
-              <>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
-                  Welcome
-                </h1>
-                <p className="text-muted-foreground">
-                  Enter your phone number to get started
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="h-8 w-8 text-primary" />
-                </div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
-                  Enter code
-                </h1>
-                <p className="text-muted-foreground">
-                  We sent a code to <span className="font-medium text-foreground">{phone}</span>
-                </p>
-              </>
-            )}
           </div>
 
-          {!otpSent ? (
-            <form onSubmit={handleSendOtp} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-foreground">Phone number</Label>
-                <PhoneInput
-                  value={phone}
-                  onChange={(val) => setPhone(val)}
-                  disabled={loading}
-                />
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
-              </div>
+          {step === "phone" && (
+            <PhoneStep onPhoneChecked={handlePhoneChecked} />
+          )}
 
-              <Button
-                type="submit"
-                className="w-full h-14 text-lg gap-2"
-                disabled={loading}
-              >
-                {loading ? (
-                  "Sending..."
-                ) : (
-                  <>
-                    Continue
-                    <ArrowRight className="h-5 w-5" />
-                  </>
-                )}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="otp" className="text-foreground">Verification code</Label>
-                <Input
-                  id="otp"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="000000"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="text-center text-3xl tracking-[0.5em] h-16 bg-card border-border font-mono"
-                  disabled={loading}
-                  maxLength={6}
-                />
-                {error && (
-                  <p className="text-sm text-destructive">{error}</p>
-                )}
-              </div>
+          {step === "otp" && (
+            <OtpStep
+              phone={phone}
+              onVerified={handleOtpVerified}
+              onBack={() => setStep("phone")}
+            />
+          )}
 
-              <Button
-                type="submit"
-                className="w-full h-14 text-lg gap-2"
-                disabled={loading || otp.length !== 6}
-              >
-                {loading ? (
-                  "Verifying..."
-                ) : (
-                  <>
-                    Verify
-                    <ArrowRight className="h-5 w-5" />
-                  </>
-                )}
-              </Button>
+          {step === "password" && (
+            <PasswordStep
+              phone={phone}
+              onSuccess={handleLoginSuccess}
+              onBack={() => setStep("phone")}
+              onForgotPassword={() => {
+                // Future: forgot password flow via OTP
+                toast({ title: "Coming soon", description: "Password reset via SMS is coming soon." });
+              }}
+            />
+          )}
 
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setOtpSent(false);
-                  setOtp("");
-                  setError("");
-                }}
-                className="w-full"
-              >
-                Use a different number
-              </Button>
-            </form>
+          {step === "register" && (
+            <RegisterStep
+              phone={phone}
+              onSuccess={handleRegisterSuccess}
+              onBack={() => setStep("otp")}
+            />
           )}
 
           <p className="text-center text-sm text-muted-foreground mt-8">
