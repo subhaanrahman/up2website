@@ -99,7 +99,7 @@ const Index = () => {
                 <span className="font-bold text-foreground">
                   {user?.email?.split("@")[0] || "Guest"}
                 </span>
-                <BadgeCheck className="h-4 w-4 text-primary fill-primary" />
+                <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
                 <span className="text-muted-foreground text-sm">
                   @{user?.email?.split("@")[0]?.toLowerCase() || "guest"}
                 </span>
@@ -147,7 +147,7 @@ const Index = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-foreground">{post.user.name}</span>
-                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary" />}
+                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
                       {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">
                         {post.type === "text" && `@${post.user.handle}`} • {post.time}
@@ -194,7 +194,7 @@ const Index = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-foreground">{post.user.name}</span>
-                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary" />}
+                      {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
                       {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">• {post.time}</span>
                     </div>
