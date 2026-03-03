@@ -1,22 +1,27 @@
 
 
-## Plan: Update Classification Options
+## Plan: Expandable Post Composer
 
-### Changes
+Currently the "Write Something..." text is static and non-interactive. We need to make it expand inline (not full-screen) when tapped, similar to Twitter/Threads compose behavior.
 
-**1. `src/pages/EditProfile.tsx`** — Personal profile classifications
-- Change `PAGE_CLASSIFICATIONS` to `["DJ", "Promoter", "Artist"]`
-- Make the field optional (not pre-selected). Send `null` when nothing is chosen so the DB stores no classification by default
-- Add a "None" / clear option so users can deselect if they previously chose one
-- Update the label to something like "Classification (optional)"
+### Approach
 
-**2. `src/pages/CreateOrganiserProfile.tsx`** — Organiser categories
-- Change `CATEGORIES` from `["Promoter", "Artist", "DJ", "Brand", "Organization", "Venue"]` to `["Venue", "Event"]`
-- Default to `"Venue"`
+**In `src/pages/Index.tsx`:**
 
-**3. `supabase/functions/profile-update/index.ts`** — Validation
-- Update the `page_classification` enum to `z.enum(['DJ', 'Promoter', 'Artist']).optional().nullable()` — accepts these three or null
+1. Add local state: `isComposing` (boolean) and `postText` (string)
+2. When collapsed (default): Show the current "Write Something..." placeholder — clicking it sets `isComposing = true`
+3. When expanded:
+   - Replace the placeholder with an auto-growing `<textarea>` (focused automatically)
+   - Expand the composer area with a smooth transition (e.g. `min-h-[120px]`)
+   - Show a row of post action icons below the textarea (Image, Calendar/Event link, etc.) and a "Post" button aligned right
+   - Clicking outside or pressing a close/cancel button collapses it back
+4. The composer stays inline at the top of the feed — it does not cover the screen or open a modal
 
-**4. `supabase/functions/organiser-profile-create/index.ts`** — Validation
-- Update `CATEGORIES` to `['Venue', 'Event']`, default `'Venue'`
+### UI Details
+- Textarea: no border, transparent background, auto-focus, placeholder "What's happening?"
+- Action bar: small icon buttons (Image, Calendar) on the left, "Post" button on the right
+- Smooth height animation using CSS transition on max-height or similar
+- Post button disabled when text is empty
+
+No backend changes needed — this is purely a UI/UX enhancement. Actual post submission can be wired up later.
 
