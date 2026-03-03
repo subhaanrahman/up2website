@@ -5,6 +5,7 @@ import { Bell, Plus, Heart, Repeat2, MoreHorizontal, BadgeCheck } from "lucide-r
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfileQuery";
 import logoImg from "@/assets/logo.png";
 
 // Mock feed data for social posts
@@ -64,10 +65,12 @@ const suggestedFriends = [{
   added: false
 }];
 const Index = () => {
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const nearbyEvents = events.slice(0, 2);
+  const displayName = profile?.displayName || user?.email?.split("@")[0] || "Guest";
+  const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
+  const avatarUrl = profile?.avatarUrl || "";
   return <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
@@ -90,20 +93,20 @@ const Index = () => {
           <div className="flex items-center gap-3">
             <Link to="/profile">
               <Avatar className="h-12 w-12">
-                <AvatarImage src="" />
+                <AvatarImage src={avatarUrl || undefined} />
                 <AvatarFallback className="bg-card text-foreground font-bold">
-                  {user?.email?.[0]?.toUpperCase() || "U"}
+                  {displayName[0]?.toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
             </Link>
             <div className="flex-1">
               <div className="flex items-center gap-1.5">
                 <Link to="/profile" className="font-bold text-foreground hover:underline">
-                  {user?.email?.split("@")[0] || "Guest"}
+                  {displayName}
                 </Link>
                 <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
                 <span className="text-muted-foreground text-sm">
-                  @{user?.email?.split("@")[0]?.toLowerCase() || "guest"}
+                  @{username}
                 </span>
               </div>
               <p className="text-muted-foreground text-sm">Write Something...</p>
