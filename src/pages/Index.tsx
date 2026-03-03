@@ -88,17 +88,19 @@ const Index = () => {
         {/* Post Composer */}
         <div className="px-4 py-3 border-b border-border">
           <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src="" />
-              <AvatarFallback className="bg-card text-foreground font-bold">
-                {user?.email?.[0]?.toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
+            <Link to="/profile">
+              <Avatar className="h-12 w-12">
+                <AvatarImage src="" />
+                <AvatarFallback className="bg-card text-foreground font-bold">
+                  {user?.email?.[0]?.toUpperCase() || "U"}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <div className="flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-foreground">
+                <Link to="/profile" className="font-bold text-foreground hover:underline">
                   {user?.email?.split("@")[0] || "Guest"}
-                </span>
+                </Link>
                 <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
                 <span className="text-muted-foreground text-sm">
                   @{user?.email?.split("@")[0]?.toLowerCase() || "guest"}
@@ -135,18 +137,20 @@ const Index = () => {
           {feedPosts.slice(0, 1).map(post => <div key={post.id} className="px-4 py-4 border-b border-border">
               <div className="flex gap-3">
                 {/* Avatar */}
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={post.user.avatar} />
-                  <AvatarFallback className="bg-card text-foreground font-bold">
-                    {post.user.name[0]}
-                  </AvatarFallback>
-                </Avatar>
+                <Link to={`/user/${post.id}`}>
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarImage src={post.user.avatar} />
+                    <AvatarFallback className="bg-card text-foreground font-bold">
+                      {post.user.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
 
                 <div className="flex-1 min-w-0">
                   {/* User Info */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-foreground">{post.user.name}</span>
+                      <Link to={`/user/${post.id}`} className="font-bold text-foreground hover:underline">{post.user.name}</Link>
                       {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
                       {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">
@@ -182,18 +186,20 @@ const Index = () => {
           {feedPosts.slice(1, 2).map(post => <div key={post.id} className="px-4 py-4 border-b border-border">
               <div className="flex gap-3">
                 {/* Avatar */}
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={post.user.avatar} />
-                  <AvatarFallback className="bg-card text-foreground font-bold">
-                    {post.user.name[0]}
-                  </AvatarFallback>
-                </Avatar>
+                <Link to={`/user/${post.id}`}>
+                  <Avatar className="h-10 w-10 flex-shrink-0">
+                    <AvatarImage src={post.user.avatar} />
+                    <AvatarFallback className="bg-card text-foreground font-bold">
+                      {post.user.name[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
 
                 <div className="flex-1 min-w-0">
                   {/* User Info */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="font-bold text-foreground">{post.user.name}</span>
+                      <Link to={`/user/${post.id}`} className="font-bold text-foreground hover:underline">{post.user.name}</Link>
                       {post.user.verified && <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
                       {post.type === "event" && <span className="text-muted-foreground text-sm">{post.action}</span>}
                       <span className="text-muted-foreground text-sm">• {post.time}</span>
@@ -242,13 +248,15 @@ const Index = () => {
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex gap-3 px-4 pb-2">
               {suggestedFriends.map(friend => <div key={friend.id} className="flex-shrink-0 w-32 rounded-2xl bg-card border border-border p-4 flex flex-col items-center">
-                  <Avatar className="h-16 w-16 mb-3">
-                    <AvatarImage src={friend.avatar} />
-                    <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
-                      {friend.name[0]}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="font-semibold text-foreground text-sm text-center truncate w-full">{friend.name}</span>
+                  <Link to={`/user/${friend.id}`}>
+                    <Avatar className="h-16 w-16 mb-3">
+                      <AvatarImage src={friend.avatar} />
+                      <AvatarFallback className="bg-muted text-foreground font-bold text-lg">
+                        {friend.name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                  <Link to={`/user/${friend.id}`} className="font-semibold text-foreground text-sm text-center truncate w-full hover:underline">{friend.name}</Link>
                   <span className="text-xs text-muted-foreground truncate w-full text-center">@{friend.handle}</span>
                   <Button variant={friend.added ? "default" : "secondary"} size="sm" className={`mt-3 w-full rounded-full text-xs ${friend.added ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                     {friend.added ? "Added" : "Add"}
