@@ -68,7 +68,7 @@ const Profile = () => {
   const username = isOrganiser && activeOrg ? activeOrg.username : (displayName || user.phone || user.email?.split("@")[0] || "User");
   const bio = isOrganiser && activeOrg ? (activeOrg.bio || "") : (profile?.bio || "");
   const city = isOrganiser && activeOrg ? (activeOrg.city || "") : (profile?.city || "");
-  const classification = isOrganiser && activeOrg ? activeOrg.category : (profile?.pageClassification || "Personal");
+  const classification = isOrganiser && activeOrg ? activeOrg.category : (profile?.pageClassification || null);
   const instagramHandle = isOrganiser && activeOrg ? activeOrg.instagramHandle : profile?.instagramHandle;
   const eventsCount = hostEvents?.length || 0;
 
@@ -155,14 +155,18 @@ const Profile = () => {
             </Button>
           </div>
 
-          <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">
-            {bio || "Join us for an unforgettable nightlife experience."}
-          </p>
+          {bio && (
+            <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">
+              {bio}
+            </p>
+          )}
 
-          <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
-            <MapPin className="h-4 w-4" />
-            <span>{classification || "Personal"} • {city || "Sydney"}</span>
-          </div>
+          {(classification || city) && (
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
+              <MapPin className="h-4 w-4" />
+              <span>{[classification, city].filter(Boolean).join(" • ")}</span>
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
