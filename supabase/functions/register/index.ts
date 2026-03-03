@@ -91,7 +91,15 @@ Deno.serve(async (req) => {
     );
 
     if (existingUser) {
-      return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
+      // If user exists but has no password_hash (legacy/orphaned), delete and allow re-registration
+      if (!existingUser.user_metadata?.password_hash) {
+        console.log(`Deleting legacy user ${existingUser.id} without password_hash`);
+        await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
+        // Also clean up any orphaned profile
+        await supabaseAdmin.from('profiles').delete().eq('user_id', existingUser.id);
+      } else {
+        return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
+      }
     }
 
     // ── Create user ──
