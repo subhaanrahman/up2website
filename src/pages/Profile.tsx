@@ -143,13 +143,7 @@ const Profile = () => {
               >
                 <Instagram className="h-5 w-5" />
               </Button>
-            ) : (
-              <Link to="/profile/edit">
-                <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-                  <Instagram className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
+            ) : null}
             <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
               <Send className="h-5 w-5" />
             </Button>
