@@ -182,13 +182,13 @@ const EventDetail = () => {
 
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
-          <div className="flex items-center gap-2">
+          <Link to={`/user/${dbEvent?.hostId || ""}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Avatar className="h-10 w-10">
               <AvatarImage src={host?.avatarUrl || undefined} />
               <AvatarFallback>{host?.displayName?.[0] || "H"}</AvatarFallback>
             </Avatar>
             <span className="font-medium text-foreground">{host?.displayName || "Event Host"}</span>
-          </div>
+          </Link>
         </div>
 
         {guests.length > 0 && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,14 +35,16 @@ const MessageThread = () => {
         <button onClick={() => navigate(-1)} className="p-1 text-foreground">
           <ArrowLeft className="h-6 w-6" />
         </button>
-        <Avatar className="h-9 w-9">
-          <AvatarImage src="" />
-          <AvatarFallback className="bg-card text-foreground font-semibold text-xs">
-            {userName.slice(0, 2)}
-          </AvatarFallback>
-        </Avatar>
+        <Link to={`/user/${id}`}>
+          <Avatar className="h-9 w-9">
+            <AvatarImage src="" />
+            <AvatarFallback className="bg-card text-foreground font-semibold text-xs">
+              {userName.slice(0, 2)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1">
-          <h1 className="font-semibold text-foreground text-sm">{userName}</h1>
+          <Link to={`/user/${id}`} className="font-semibold text-foreground text-sm hover:underline">{userName}</Link>
           <p className="text-xs text-muted-foreground">Active now</p>
         </div>
         <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
