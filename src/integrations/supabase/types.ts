@@ -341,6 +341,47 @@ export type Database = {
           },
         ]
       }
+      organiser_members: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          invited_by: string
+          organiser_profile_id: string
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by: string
+          organiser_profile_id: string
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string
+          organiser_profile_id?: string
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_members_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organiser_profiles: {
         Row: {
           avatar_url: string | null
@@ -668,6 +709,14 @@ export type Database = {
       get_organiser_attendee_count: {
         Args: { p_organiser_profile_id: string }
         Returns: number
+      }
+      is_organiser_member: {
+        Args: { p_organiser_profile_id: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_organiser_owner: {
+        Args: { p_organiser_profile_id: string; p_user_id: string }
+        Returns: boolean
       }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
       rsvp_join: {

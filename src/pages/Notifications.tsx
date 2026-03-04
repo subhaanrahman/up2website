@@ -4,6 +4,7 @@ import { ArrowLeft, Calendar, Users, Ticket, Heart, UserPlus, Star, Bell } from 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import BottomNav from "@/components/BottomNav";
+import PendingOrganiserInvites from "@/components/PendingOrganiserInvites";
 
 type NotificationType = 
   | "shared_event" 
@@ -138,7 +139,8 @@ const Notifications = () => {
         </div>
       </header>
 
-      <main className="px-4 pt-2">
+      <main className="px-4 pt-2 space-y-4">
+        <PendingOrganiserInvites />
         {notifications.length === 0 ? (
           <div className="text-center py-20">
             <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />

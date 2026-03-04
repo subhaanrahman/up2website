@@ -12,6 +12,7 @@ import {
   Calendar,
   ChevronRight,
   BadgeCheck,
+  Users,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -157,6 +158,13 @@ const Profile = () => {
             <Link to={isOrganiser ? "/profile/edit-organiser" : "/profile/edit"}>
               <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
             </Link>
+            {isOrganiser && activeOrg && activeOrg.ownerId === user.id && (
+              <Link to="/profile/organiser-team">
+                <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
+                  <Users className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
             {instagramHandle ? (
               <Button
                 variant="secondary"
