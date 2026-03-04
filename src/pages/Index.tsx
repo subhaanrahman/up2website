@@ -63,9 +63,11 @@ const Index = () => {
         <div className="flex items-center justify-center px-4 h-14 relative">
           <img src={logoImg} alt="Up2" className="h-8 w-auto" />
           <div className="absolute right-4">
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-secondary">
-              <Bell className="h-5 w-5 text-foreground" />
-            </Button>
+            <Link to="/notifications">
+              <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-secondary">
+                <Bell className="h-5 w-5 text-foreground" />
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
