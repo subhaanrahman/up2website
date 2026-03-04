@@ -127,8 +127,13 @@ const UserProfile = () => {
     fetchFriendCount();
   }, [userId]);
 
+  const isMockProfile = !!mockProfiles[userId || ""];
+
   const handleAddFriend = async () => {
-    if (!user || !userId) return;
+    if (!user || !userId || isMockProfile) {
+      if (isMockProfile) toast("This is a demo profile");
+      return;
+    }
     setConnectionLoading(true);
     const { error } = await supabase.from("connections").insert({
       requester_id: user.id,
