@@ -238,7 +238,7 @@ const UserProfile = () => {
   }
 
   const renderFriendButton = () => {
-    if (isOwnProfile || mockProfiles[userId || ""]) {
+    if (isOwnProfile) {
       return null;
     }
 
