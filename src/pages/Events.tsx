@@ -2,38 +2,72 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Search, X, BadgeCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 
-interface ProfileResult {
-  user_id: string;
-  display_name: string | null;
+interface SearchResult {
+  id: string;
+  displayName: string | null;
   username: string | null;
-  avatar_url: string | null;
+  avatarUrl: string | null;
+  type: "user" | "organiser";
+}
+
+function mapProfiles(rows: any[]): SearchResult[] {
+  return rows.map((r) => ({
+    id: r.user_id,
+    displayName: r.display_name,
+    username: r.username,
+    avatarUrl: r.avatar_url,
+    type: "user" as const,
+  }));
+}
+
+function mapOrganisers(rows: any[]): SearchResult[] {
+  return rows.map((r) => ({
+    id: r.id,
+    displayName: r.display_name,
+    username: r.username,
+    avatarUrl: r.avatar_url,
+    type: "organiser" as const,
+  }));
 }
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [results, setResults] = useState<ProfileResult[]>([]);
-  const [recentProfiles, setRecentProfiles] = useState<ProfileResult[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load some profiles on mount as "recent" / suggestions
+  // Load suggestions on mount from both tables
   useEffect(() => {
     const loadRecent = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .order("created_at", { ascending: false })
-        .limit(6);
-      if (data) setRecentProfiles(data);
+      const [profilesRes, organisersRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, display_name, username, avatar_url")
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase
+          .from("organiser_profiles")
+          .select("id, display_name, username, avatar_url")
+          .order("created_at", { ascending: false })
+          .limit(6),
+      ]);
+
+      const merged: SearchResult[] = [
+        ...mapOrganisers(organisersRes.data || []),
+        ...mapProfiles(profilesRes.data || []),
+      ];
+      setRecentProfiles(merged);
     };
     loadRecent();
   }, []);
 
-  // Search profiles when query changes
+  // Search both tables when query changes
   useEffect(() => {
     if (!searchQuery.trim()) {
       setResults([]);
@@ -43,12 +77,25 @@ const Events = () => {
     const timer = setTimeout(async () => {
       setLoading(true);
       const q = `%${searchQuery.trim()}%`;
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .or(`display_name.ilike.${q},username.ilike.${q}`)
-        .limit(20);
-      setResults(data || []);
+
+      const [profilesRes, organisersRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, display_name, username, avatar_url")
+          .or(`display_name.ilike.${q},username.ilike.${q}`)
+          .limit(20),
+        supabase
+          .from("organiser_profiles")
+          .select("id, display_name, username, avatar_url")
+          .or(`display_name.ilike.${q},username.ilike.${q}`)
+          .limit(20),
+      ]);
+
+      const merged: SearchResult[] = [
+        ...mapOrganisers(organisersRes.data || []),
+        ...mapProfiles(profilesRes.data || []),
+      ];
+      setResults(merged);
       setLoading(false);
     }, 300);
 
@@ -57,27 +104,35 @@ const Events = () => {
 
   const displayList = searchQuery.trim() ? results : recentProfiles;
 
-  const renderProfileItem = (profile: ProfileResult) => (
+  const getLink = (result: SearchResult) =>
+    result.type === "organiser" ? `/user/${result.id}` : `/user/${result.id}`;
+
+  const renderProfileItem = (result: SearchResult, index: number) => (
     <Link
-      key={profile.user_id}
-      to={`/user/${profile.user_id}`}
+      key={`${result.type}-${result.id}-${index}`}
+      to={getLink(result)}
       className="flex items-center gap-3 py-3 hover:bg-secondary/30 transition-colors -mx-4 px-4"
     >
       <Avatar className="h-14 w-14 flex-shrink-0">
-        <AvatarImage src={profile.avatar_url || ""} />
+        <AvatarImage src={result.avatarUrl || ""} />
         <AvatarFallback className="bg-card text-foreground font-semibold text-sm">
-          {(profile.display_name || profile.username || "?").slice(0, 2).toUpperCase()}
+          {(result.displayName || result.username || "?").slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <h3 className="font-semibold text-foreground">
-            {profile.display_name || profile.username || "User"}
+            {result.displayName || result.username || "User"}
           </h3>
+          {result.type === "organiser" && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+              Organiser
+            </Badge>
+          )}
         </div>
-        {profile.username && (
-          <p className="text-sm text-muted-foreground">@{profile.username}</p>
+        {result.username && (
+          <p className="text-sm text-muted-foreground">@{result.username}</p>
         )}
       </div>
     </Link>
@@ -108,7 +163,7 @@ const Events = () => {
           </h2>
 
           <div className="space-y-0">
-            {displayList.map(renderProfileItem)}
+            {displayList.map((r, i) => renderProfileItem(r, i))}
           </div>
 
           {loading && (
@@ -148,7 +203,7 @@ const Events = () => {
           </div>
 
           <div className="space-y-0 max-w-md">
-            {displayList.map(renderProfileItem)}
+            {displayList.map((r, i) => renderProfileItem(r, i))}
           </div>
 
           {!loading && !searchQuery.trim() && displayList.length === 0 && (
