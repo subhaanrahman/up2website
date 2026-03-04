@@ -1,35 +1,66 @@
 
 
-## Problem
+## Organiser Account Team Members / Invite Flow
 
-The search page (`src/pages/Events.tsx`) only queries the `profiles` table. Organiser profiles live in a separate `organiser_profiles` table, so "Members Only" will never appear in search results.
+### Problem
+Currently, only the owner of an organiser profile can control it. There's no way to invite other users to help manage an organiser account.
 
-## Solution
+### Solution
+Create an invitation system where an organiser account owner can invite personal accounts (by username or search) to become team members with a defined role. Invited users can then switch to that organiser profile and perform actions on its behalf.
 
-Update the search page to query **both** `profiles` and `organiser_profiles`, merge the results, and distinguish them visually. When clicking an organiser result, navigate to the organiser profile page instead of a user profile page.
+### Database Changes
 
-### Changes
+**New table: `organiser_members`**
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid | PK |
+| organiser_profile_id | uuid | FK to organiser_profiles |
+| user_id | uuid | The invited user's auth ID |
+| role | text | `admin` or `editor` (owner is implicit from organiser_profiles.owner_id) |
+| status | text | `pending`, `accepted`, `declined` |
+| invited_by | uuid | The user who sent the invite |
+| created_at | timestamptz | |
+| accepted_at | timestamptz | nullable |
 
-1. **`src/pages/Events.tsx`** — Add a parallel query to `organiser_profiles` for both the "suggested" load and the debounced search. Merge results into a unified list with a `type` field (`"user"` or `"organiser"`). Route organiser results to `/organiser/:id` (or the appropriate organiser profile route) and user results to `/user/:userId` as before. Add a small badge or label to differentiate organiser profiles from personal profiles in the list.
+Unique constraint on `(organiser_profile_id, user_id)`.
 
-2. **Result type** — Define a union type like:
-   ```
-   type SearchResult = {
-     id: string;
-     displayName: string | null;
-     username: string | null;
-     avatarUrl: string | null;
-     type: "user" | "organiser";
-   }
-   ```
-   Map `profiles` rows and `organiser_profiles` rows into this common shape.
+**RLS policies:**
+- Owner of the organiser profile can SELECT, INSERT, UPDATE, DELETE
+- The invited user (`user_id`) can SELECT and UPDATE (to accept/decline)
+- Accepted members can SELECT all members of the same organiser profile
 
-3. **Visual differentiation** — Show a small "Organiser" badge or different icon next to organiser profile results so users can tell them apart.
+### UI Changes
 
-### Technical Details
+1. **Team Management Page** (`/profile/organiser-team`)
+   - Accessible from the organiser profile page (new "Manage Team" button visible only when the active profile is an organiser the user owns)
+   - Lists current members with their role and status
+   - Search bar to find users by username/display name (queries `profiles` table)
+   - Invite button sends an invite (inserts into `organiser_members` with status `pending`)
+   - Owner can remove members or change roles
 
-- The `organiser_profiles` table has RLS allowing all authenticated users to SELECT, so the query will work for logged-in users.
-- For suggestions (on mount), fetch top 6 from each table and interleave them, or fetch 6 total split between both.
-- For search, query both tables with `ilike` on `display_name` and `username`, then merge and deduplicate.
-- Need to determine the correct route for viewing an organiser profile — will check existing routes.
+2. **Invite Notifications / Pending Invites**
+   - On the personal profile's Settings or Notifications page, show pending organiser invites
+   - Accept/Decline buttons update the `organiser_members` row status
+
+3. **ActiveProfileContext Update**
+   - When fetching organiser profiles the user can switch to, also query `organiser_members` where `user_id = current_user` and `status = 'accepted'`
+   - Join with `organiser_profiles` to get the profile details
+   - Merge these "member" profiles into the profile switcher alongside owned profiles
+   - Add a `membership` field to distinguish owned vs member profiles
+
+### Edge Function (optional, for security)
+An `organiser-invite` edge function could handle the invite to ensure proper authorization, but since the RLS policies gate access appropriately, direct client inserts with RLS should suffice for the initial implementation.
+
+### Route Addition
+- `/profile/organiser-team` — new protected route for the Team Management page
+
+### File Changes Summary
+| File | Change |
+|---|---|
+| Migration SQL | Create `organiser_members` table with RLS |
+| `src/pages/OrganiserTeam.tsx` | New page: list members, search & invite users, remove members |
+| `src/contexts/ActiveProfileContext.tsx` | Fetch accepted memberships and merge into switchable profiles |
+| `src/pages/Profile.tsx` | Add "Manage Team" link when viewing owned organiser profile |
+| `src/App.tsx` | Add route for `/profile/organiser-team` |
+| `src/pages/Settings.tsx` or `src/pages/Notifications.tsx` | Show pending organiser invites for acceptance |
 
