@@ -229,7 +229,7 @@ const UserProfile = () => {
       toast.error("Failed to accept request");
     } else {
       setConnectionStatus("accepted");
-      setFriendCount((c) => c + 1);
+      setSocialCount((c) => c + 1);
       toast.success("You are now friends!");
     }
     setConnectionLoading(false);
@@ -245,7 +245,7 @@ const UserProfile = () => {
         `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
       );
     setConnectionStatus("none");
-    setFriendCount((c) => Math.max(0, c - 1));
+    setSocialCount((c) => Math.max(0, c - 1));
     setConnectionLoading(false);
   };
 
