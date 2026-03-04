@@ -279,38 +279,42 @@ const OrganiserTeam = () => {
           ) : (
             <div className="space-y-2">
               {members.map((member) => (
-                <div key={member.id} className="flex items-center gap-3 p-3 bg-card rounded-xl">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={member.avatarUrl || undefined} />
-                    <AvatarFallback>{(member.displayName || "U")[0]?.toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground text-sm truncate">{member.displayName || "User"}</p>
-                    {member.username && <p className="text-xs text-muted-foreground">@{member.username}</p>}
-                  </div>
-                  <Badge variant={member.status === "accepted" ? "default" : "secondary"} className="text-xs">
-                    {member.status}
-                  </Badge>
-                  <Badge variant="outline" className="text-xs capitalize">
-                    {member.role === "admin" ? <Shield className="h-3 w-3 mr-1" /> : <Pencil className="h-3 w-3 mr-1" />}
-                    {member.role}
-                  </Badge>
-                  {isOwner && (
-                    <div className="flex gap-1">
-                      <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v)}>
-                        <SelectTrigger className="h-8 w-20 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="editor">Editor</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleRemove(member.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                <div key={member.id} className="p-3 bg-card rounded-xl space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 flex-shrink-0">
+                      <AvatarImage src={member.avatarUrl || undefined} />
+                      <AvatarFallback>{(member.displayName || "U")[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{member.displayName || "User"}</p>
+                      {member.username && <p className="text-xs text-muted-foreground">@{member.username}</p>}
                     </div>
-                  )}
+                    <Badge variant={member.status === "accepted" ? "default" : "secondary"} className="text-xs flex-shrink-0">
+                      {member.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between pl-13">
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {member.role === "admin" ? <Shield className="h-3 w-3 mr-1" /> : <Pencil className="h-3 w-3 mr-1" />}
+                      {member.role}
+                    </Badge>
+                    {isOwner && (
+                      <div className="flex items-center gap-1">
+                        <Select value={member.role} onValueChange={(v) => handleRoleChange(member.id, v)}>
+                          <SelectTrigger className="h-8 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="editor">Editor</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => handleRemove(member.id)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
