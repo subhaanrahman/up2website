@@ -12,10 +12,16 @@ import {
   Calendar,
   ChevronRight,
   BadgeCheck,
+  UserPlus,
+  Clock,
+  Users,
+  UserMinus,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 // Mock profiles for demo/search results that use non-UUID IDs
 const mockProfiles: Record<string, any> = {
@@ -37,17 +43,22 @@ const mockProfiles: Record<string, any> = {
   },
 };
 
+type ConnectionStatus = "none" | "pending_sent" | "pending_received" | "accepted";
+
 const UserProfile = () => {
   const { userId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("none");
+  const [connectionLoading, setConnectionLoading] = useState(false);
+  const [friendCount, setFriendCount] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
 
-    // Check if it's a mock/demo ID first
     const mockProfile = mockProfiles[userId];
     if (mockProfile) {
       setProfile(mockProfile);
@@ -79,12 +90,111 @@ const UserProfile = () => {
     fetchProfile();
   }, [userId]);
 
+  // Fetch connection status between current user and this profile
+  useEffect(() => {
+    if (!user || !userId || userId === user.id || mockProfiles[userId]) return;
+
+    const fetchConnectionStatus = async () => {
+      const { data } = await supabase
+        .from("connections")
+        .select("*")
+        .or(
+          `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
+        )
+        .maybeSingle();
+
+      if (!data) {
+        setConnectionStatus("none");
+      } else if (data.status === "accepted") {
+        setConnectionStatus("accepted");
+      } else if (data.requester_id === user.id) {
+        setConnectionStatus("pending_sent");
+      } else {
+        setConnectionStatus("pending_received");
+      }
+    };
+
+    fetchConnectionStatus();
+  }, [user, userId]);
+
+  // Fetch friend count for this user
+  useEffect(() => {
+    if (!userId || mockProfiles[userId]) return;
+    const fetchFriendCount = async () => {
+      const { data } = await supabase.rpc("get_friend_count", { p_user_id: userId });
+      setFriendCount(data || 0);
+    };
+    fetchFriendCount();
+  }, [userId]);
+
+  const handleAddFriend = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    const { error } = await supabase.from("connections").insert({
+      requester_id: user.id,
+      addressee_id: userId,
+    });
+    if (error) {
+      toast.error("Failed to send friend request");
+    } else {
+      setConnectionStatus("pending_sent");
+      toast.success("Friend request sent!");
+    }
+    setConnectionLoading(false);
+  };
+
+  const handleCancelRequest = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    await supabase
+      .from("connections")
+      .delete()
+      .eq("requester_id", user.id)
+      .eq("addressee_id", userId);
+    setConnectionStatus("none");
+    setConnectionLoading(false);
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    const { error } = await supabase
+      .from("connections")
+      .update({ status: "accepted", accepted_at: new Date().toISOString() })
+      .eq("requester_id", userId)
+      .eq("addressee_id", user.id);
+    if (error) {
+      toast.error("Failed to accept request");
+    } else {
+      setConnectionStatus("accepted");
+      setFriendCount((c) => c + 1);
+      toast.success("You are now friends!");
+    }
+    setConnectionLoading(false);
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    await supabase
+      .from("connections")
+      .delete()
+      .or(
+        `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
+      );
+    setConnectionStatus("none");
+    setFriendCount((c) => Math.max(0, c - 1));
+    setConnectionLoading(false);
+  };
+
   const displayName = profile?.display_name || profile?.username || "User";
   const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
   const avatarUrl = profile?.avatar_url;
 
   const upcomingEvents = events.filter((e) => new Date(e.event_date) >= new Date());
   const pastEvents = events.filter((e) => new Date(e.event_date) < new Date());
+
+  const isOwnProfile = user?.id === userId;
 
   if (loading) {
     return (
@@ -127,9 +237,63 @@ const UserProfile = () => {
     );
   }
 
+  const renderFriendButton = () => {
+    if (isOwnProfile || mockProfiles[userId || ""]) {
+      return null;
+    }
+
+    switch (connectionStatus) {
+      case "none":
+        return (
+          <Button
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={handleAddFriend}
+            disabled={connectionLoading}
+          >
+            <UserPlus className="h-4 w-4" />
+            ADD FRIEND
+          </Button>
+        );
+      case "pending_sent":
+        return (
+          <Button
+            variant="secondary"
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={handleCancelRequest}
+            disabled={connectionLoading}
+          >
+            <Clock className="h-4 w-4" />
+            REQUESTED
+          </Button>
+        );
+      case "pending_received":
+        return (
+          <Button
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={handleAcceptRequest}
+            disabled={connectionLoading}
+          >
+            <UserPlus className="h-4 w-4" />
+            ACCEPT
+          </Button>
+        );
+      case "accepted":
+        return (
+          <Button
+            variant="secondary"
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={handleRemoveFriend}
+            disabled={connectionLoading}
+          >
+            <Users className="h-4 w-4" />
+            FRIENDS
+          </Button>
+        );
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
@@ -138,7 +302,6 @@ const UserProfile = () => {
       </header>
 
       <main className="px-4 pt-4 max-w-lg mx-auto">
-        {/* Profile Section */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <Avatar className="h-28 w-28">
@@ -160,8 +323,8 @@ const UserProfile = () => {
 
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">—</p>
-              <p className="text-xs text-muted-foreground">Followers</p>
+              <p className="text-lg font-bold text-foreground">{friendCount}</p>
+              <p className="text-xs text-muted-foreground">Friends</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">
@@ -171,7 +334,7 @@ const UserProfile = () => {
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-5">
-            <Button className="px-8 h-11 rounded-full font-semibold">FOLLOW</Button>
+            {renderFriendButton()}
             {profile.instagram_handle ? (
               <Button
                 variant="secondary"
