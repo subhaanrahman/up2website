@@ -1,27 +1,35 @@
 
 
-## Plan: Expandable Post Composer
+## Problem
 
-Currently the "Write Something..." text is static and non-interactive. We need to make it expand inline (not full-screen) when tapped, similar to Twitter/Threads compose behavior.
+The search page (`src/pages/Events.tsx`) only queries the `profiles` table. Organiser profiles live in a separate `organiser_profiles` table, so "Members Only" will never appear in search results.
 
-### Approach
+## Solution
 
-**In `src/pages/Index.tsx`:**
+Update the search page to query **both** `profiles` and `organiser_profiles`, merge the results, and distinguish them visually. When clicking an organiser result, navigate to the organiser profile page instead of a user profile page.
 
-1. Add local state: `isComposing` (boolean) and `postText` (string)
-2. When collapsed (default): Show the current "Write Something..." placeholder — clicking it sets `isComposing = true`
-3. When expanded:
-   - Replace the placeholder with an auto-growing `<textarea>` (focused automatically)
-   - Expand the composer area with a smooth transition (e.g. `min-h-[120px]`)
-   - Show a row of post action icons below the textarea (Image, Calendar/Event link, etc.) and a "Post" button aligned right
-   - Clicking outside or pressing a close/cancel button collapses it back
-4. The composer stays inline at the top of the feed — it does not cover the screen or open a modal
+### Changes
 
-### UI Details
-- Textarea: no border, transparent background, auto-focus, placeholder "What's happening?"
-- Action bar: small icon buttons (Image, Calendar) on the left, "Post" button on the right
-- Smooth height animation using CSS transition on max-height or similar
-- Post button disabled when text is empty
+1. **`src/pages/Events.tsx`** — Add a parallel query to `organiser_profiles` for both the "suggested" load and the debounced search. Merge results into a unified list with a `type` field (`"user"` or `"organiser"`). Route organiser results to `/organiser/:id` (or the appropriate organiser profile route) and user results to `/user/:userId` as before. Add a small badge or label to differentiate organiser profiles from personal profiles in the list.
 
-No backend changes needed — this is purely a UI/UX enhancement. Actual post submission can be wired up later.
+2. **Result type** — Define a union type like:
+   ```
+   type SearchResult = {
+     id: string;
+     displayName: string | null;
+     username: string | null;
+     avatarUrl: string | null;
+     type: "user" | "organiser";
+   }
+   ```
+   Map `profiles` rows and `organiser_profiles` rows into this common shape.
+
+3. **Visual differentiation** — Show a small "Organiser" badge or different icon next to organiser profile results so users can tell them apart.
+
+### Technical Details
+
+- The `organiser_profiles` table has RLS allowing all authenticated users to SELECT, so the query will work for logged-in users.
+- For suggestions (on mount), fetch top 6 from each table and interleave them, or fetch 6 total split between both.
+- For search, query both tables with `ilike` on `display_name` and `username`, then merge and deduplicate.
+- Need to determine the correct route for viewing an organiser profile — will check existing routes.
 
