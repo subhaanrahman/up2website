@@ -69,21 +69,62 @@ const UserProfile = () => {
 
     const fetchProfile = async () => {
       setLoading(true);
+
+      // Try personal profile first
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", userId)
         .maybeSingle();
 
-      const { data: eventsData } = await supabase
-        .from("events")
-        .select("*")
-        .eq("host_id", userId)
-        .eq("is_public", true)
-        .order("event_date", { ascending: false });
+      if (profileData) {
+        const { data: eventsData } = await supabase
+          .from("events")
+          .select("*")
+          .eq("host_id", userId)
+          .eq("is_public", true)
+          .order("event_date", { ascending: false });
 
-      setProfile(profileData);
-      setEvents(eventsData || []);
+        setProfile(profileData);
+        setEvents(eventsData || []);
+        setLoading(false);
+        return;
+      }
+
+      // Fallback: check organiser_profiles by id
+      const { data: orgData } = await supabase
+        .from("organiser_profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (orgData) {
+        setProfile({
+          display_name: orgData.display_name,
+          username: orgData.username,
+          avatar_url: orgData.avatar_url,
+          bio: orgData.bio,
+          city: orgData.city,
+          instagram_handle: orgData.instagram_handle,
+          page_classification: orgData.category,
+          user_id: orgData.owner_id,
+          _isOrganiser: true,
+        });
+
+        // Fetch events for this organiser profile
+        const { data: eventsData } = await supabase
+          .from("events")
+          .select("*")
+          .eq("organiser_profile_id", userId)
+          .eq("is_public", true)
+          .order("event_date", { ascending: false });
+
+        setEvents(eventsData || []);
+      } else {
+        setProfile(null);
+        setEvents([]);
+      }
+
       setLoading(false);
     };
 
