@@ -47,15 +47,48 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       setOrganiserProfiles([]);
       return;
     }
-    const { data, error } = await supabase
+
+    // Fetch owned profiles
+    const { data: ownedData } = await supabase
       .from("organiser_profiles")
       .select("*")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: true });
 
-    if (!error && data) {
-      setOrganiserProfiles(
-        data.map((r: any) => ({
+    const owned = (ownedData || []).map((r: any) => ({
+      id: r.id,
+      ownerId: r.owner_id,
+      displayName: r.display_name,
+      username: r.username,
+      avatarUrl: r.avatar_url,
+      bio: r.bio,
+      city: r.city,
+      instagramHandle: r.instagram_handle,
+      category: r.category,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    }));
+
+    // Fetch accepted memberships
+    const { data: memberData } = await supabase
+      .from("organiser_members")
+      .select("organiser_profile_id")
+      .eq("user_id", user.id)
+      .eq("status", "accepted");
+
+    let memberProfiles: OrganiserProfile[] = [];
+    if (memberData && memberData.length > 0) {
+      const memberOrgIds = memberData.map((m: any) => m.organiser_profile_id);
+      const ownedIds = new Set(owned.map((o) => o.id));
+      const newIds = memberOrgIds.filter((id: string) => !ownedIds.has(id));
+
+      if (newIds.length > 0) {
+        const { data: orgData } = await supabase
+          .from("organiser_profiles")
+          .select("*")
+          .in("id", newIds);
+
+        memberProfiles = (orgData || []).map((r: any) => ({
           id: r.id,
           ownerId: r.owner_id,
           displayName: r.display_name,
@@ -67,9 +100,11 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
           category: r.category,
           createdAt: r.created_at,
           updatedAt: r.updated_at,
-        }))
-      );
+        }));
+      }
     }
+
+    setOrganiserProfiles([...owned, ...memberProfiles]);
   }, [user]);
 
   // Initialise active profile from localStorage or default to personal
