@@ -341,6 +341,35 @@ export type Database = {
           },
         ]
       }
+      organiser_followers: {
+        Row: {
+          created_at: string
+          id: string
+          organiser_profile_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organiser_profile_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organiser_profile_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_followers_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organiser_members: {
         Row: {
           accepted_at: string | null
@@ -706,8 +735,24 @@ export type Database = {
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       get_friend_count: { Args: { p_user_id: string }; Returns: number }
+      get_friends_and_following_count: {
+        Args: { p_user_id: string }
+        Returns: number
+      }
       get_organiser_attendee_count: {
         Args: { p_organiser_profile_id: string }
+        Returns: number
+      }
+      get_organiser_follower_count: {
+        Args: { p_organiser_profile_id: string }
+        Returns: number
+      }
+      get_organiser_past_event_count: {
+        Args: { p_organiser_profile_id: string }
+        Returns: number
+      }
+      get_personal_combined_event_count: {
+        Args: { p_user_id: string }
         Returns: number
       }
       is_organiser_member: {
