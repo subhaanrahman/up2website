@@ -51,26 +51,40 @@ const Profile = () => {
 
   const progress = getProgressToNextRank(points, rank);
 
-  // Friend count for personal profiles
-  const { data: friendCount = 0 } = useQuery({
-    queryKey: ["friend-count", user?.id],
+  // Social count: Friends/Following for personal, Followers for organiser
+  const { data: socialCount = 0 } = useQuery({
+    queryKey: isOrganiser
+      ? ["organiser-follower-count", activeOrg?.id]
+      : ["friends-following-count", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_friend_count", { p_user_id: user!.id });
+      if (isOrganiser && activeOrg) {
+        const { data, error } = await supabase.rpc("get_organiser_follower_count", { p_organiser_profile_id: activeOrg.id });
+        if (error) throw error;
+        return data || 0;
+      }
+      const { data, error } = await supabase.rpc("get_friends_and_following_count", { p_user_id: user!.id });
       if (error) throw error;
       return data || 0;
     },
-    enabled: !!user && !isOrganiser,
+    enabled: !!user,
   });
 
-  // Attendee count for organiser profiles
-  const { data: attendeeCount = 0 } = useQuery({
-    queryKey: ["attendee-count", activeOrg?.id],
+  // Event count: past events for organiser, combined for personal
+  const { data: eventsCount = 0 } = useQuery({
+    queryKey: isOrganiser
+      ? ["organiser-past-events", activeOrg?.id]
+      : ["personal-combined-events", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_organiser_attendee_count", { p_organiser_profile_id: activeOrg!.id });
+      if (isOrganiser && activeOrg) {
+        const { data, error } = await supabase.rpc("get_organiser_past_event_count", { p_organiser_profile_id: activeOrg.id });
+        if (error) throw error;
+        return data || 0;
+      }
+      const { data, error } = await supabase.rpc("get_personal_combined_event_count", { p_user_id: user!.id });
       if (error) throw error;
       return data || 0;
     },
-    enabled: !!activeOrg,
+    enabled: !!user,
   });
 
   useEffect(() => {
@@ -94,7 +108,7 @@ const Profile = () => {
   const city = isOrganiser && activeOrg ? (activeOrg.city || "") : (profile?.city || "");
   const classification = isOrganiser && activeOrg ? activeOrg.category : (profile?.pageClassification || null);
   const instagramHandle = isOrganiser && activeOrg ? activeOrg.instagramHandle : profile?.instagramHandle;
-  const eventsCount = hostEvents?.length || 0;
+  
 
   const upcomingEvents = (hostEvents || []).filter(
     (e) => new Date(e.eventDate) >= new Date()
@@ -144,8 +158,8 @@ const Profile = () => {
 
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{isOrganiser ? attendeeCount : friendCount}</p>
-              <p className="text-xs text-muted-foreground">{isOrganiser ? "Attendees" : "Friends"}</p>
+              <p className="text-lg font-bold text-foreground">{socialCount}</p>
+              <p className="text-xs text-muted-foreground">{isOrganiser ? "Followers" : "Friends / Following"}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">

@@ -54,7 +54,8 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("none");
   const [connectionLoading, setConnectionLoading] = useState(false);
-  const [friendCount, setFriendCount] = useState(0);
+  const [socialCount, setSocialCount] = useState(0);
+  const [eventCount, setEventCount] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
@@ -158,15 +159,30 @@ const UserProfile = () => {
     fetchConnectionStatus();
   }, [user, userId]);
 
-  // Fetch friend count for this user
+  // Fetch social & event counts based on profile type
   useEffect(() => {
-    if (!userId || mockProfiles[userId]) return;
-    const fetchFriendCount = async () => {
-      const { data } = await supabase.rpc("get_friend_count", { p_user_id: userId });
-      setFriendCount(data || 0);
+    if (!userId || mockProfiles[userId] || !profile) return;
+    const isOrg = !!profile._isOrganiser;
+
+    const fetchCounts = async () => {
+      if (isOrg) {
+        const [{ data: followers }, { data: pastEvents }] = await Promise.all([
+          supabase.rpc("get_organiser_follower_count", { p_organiser_profile_id: userId }),
+          supabase.rpc("get_organiser_past_event_count", { p_organiser_profile_id: userId }),
+        ]);
+        setSocialCount(followers || 0);
+        setEventCount(pastEvents || 0);
+      } else {
+        const [{ data: friendsFollowing }, { data: combinedEvents }] = await Promise.all([
+          supabase.rpc("get_friends_and_following_count", { p_user_id: userId }),
+          supabase.rpc("get_personal_combined_event_count", { p_user_id: userId }),
+        ]);
+        setSocialCount(friendsFollowing || 0);
+        setEventCount(combinedEvents || 0);
+      }
     };
-    fetchFriendCount();
-  }, [userId]);
+    fetchCounts();
+  }, [userId, profile]);
 
   const isMockProfile = !!mockProfiles[userId || ""];
 
@@ -213,7 +229,7 @@ const UserProfile = () => {
       toast.error("Failed to accept request");
     } else {
       setConnectionStatus("accepted");
-      setFriendCount((c) => c + 1);
+      setSocialCount((c) => c + 1);
       toast.success("You are now friends!");
     }
     setConnectionLoading(false);
@@ -229,7 +245,7 @@ const UserProfile = () => {
         `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
       );
     setConnectionStatus("none");
-    setFriendCount((c) => Math.max(0, c - 1));
+    setSocialCount((c) => Math.max(0, c - 1));
     setConnectionLoading(false);
   };
 
@@ -369,12 +385,12 @@ const UserProfile = () => {
 
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{friendCount}</p>
-              <p className="text-xs text-muted-foreground">Friends</p>
+              <p className="text-lg font-bold text-foreground">{socialCount}</p>
+              <p className="text-xs text-muted-foreground">{profile?._isOrganiser ? "Followers" : "Friends / Following"}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{events.length}</p>
+              <p className="text-lg font-bold text-foreground">{eventCount}</p>
               <p className="text-xs text-muted-foreground">Events</p>
             </div>
           </div>
