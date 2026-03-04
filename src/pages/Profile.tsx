@@ -21,6 +21,8 @@ import { useHostEvents } from "@/hooks/useEventsQuery";
 import { useActiveProfile, type OrganiserProfile } from "@/contexts/ActiveProfileContext";
 import { getProgressToNextRank } from "@/features/loyalty";
 import { format } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EventItem {
   id: string;
@@ -35,7 +37,6 @@ const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const { points, rank } = useGamification();
   const navigate = useNavigate();
-  const [followersCount] = useState(321);
   const [rewardsOpen, setRewardsOpen] = useState(false);
 
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
@@ -48,6 +49,28 @@ const Profile = () => {
     : undefined;
 
   const progress = getProgressToNextRank(points, rank);
+
+  // Friend count for personal profiles
+  const { data: friendCount = 0 } = useQuery({
+    queryKey: ["friend-count", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_friend_count", { p_user_id: user!.id });
+      if (error) throw error;
+      return data || 0;
+    },
+    enabled: !!user && !isOrganiser,
+  });
+
+  // Attendee count for organiser profiles
+  const { data: attendeeCount = 0 } = useQuery({
+    queryKey: ["attendee-count", activeOrg?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_organiser_attendee_count", { p_organiser_profile_id: activeOrg!.id });
+      if (error) throw error;
+      return data || 0;
+    },
+    enabled: !!activeOrg,
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -120,8 +143,8 @@ const Profile = () => {
 
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{followersCount}</p>
-              <p className="text-xs text-muted-foreground">Followers</p>
+              <p className="text-lg font-bold text-foreground">{isOrganiser ? attendeeCount : friendCount}</p>
+              <p className="text-xs text-muted-foreground">{isOrganiser ? "Attendees" : "Friends"}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">

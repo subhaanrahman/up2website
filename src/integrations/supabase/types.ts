@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      connections: {
+        Row: {
+          accepted_at: string | null
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       event_cohosts: {
         Row: {
           created_at: string
@@ -637,6 +664,11 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      get_friend_count: { Args: { p_user_id: string }; Returns: number }
+      get_organiser_attendee_count: {
+        Args: { p_organiser_profile_id: string }
+        Returns: number
+      }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
       rsvp_join: {
         Args: { p_event_id: string; p_status?: string }
