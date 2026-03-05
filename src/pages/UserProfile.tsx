@@ -4,6 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import FeedPost from "@/components/FeedPost";
+import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import ShareProfileSheet from "@/components/ShareProfileSheet";
 import {
   ArrowLeft,
@@ -559,6 +561,12 @@ const UserProfile = () => {
               UPCOMING
             </TabsTrigger>
             <TabsTrigger
+              value="feed"
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+            >
+              FEED
+            </TabsTrigger>
+            <TabsTrigger
               value="past"
               className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
             >
@@ -601,6 +609,10 @@ const UserProfile = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="feed" className="mt-4">
+            <UserProfileFeedTab userId={userId!} isOrganiser={!!profile?._isOrganiser} />
+          </TabsContent>
+
           <TabsContent value="past" className="mt-4 space-y-3">
             {pastEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -637,6 +649,36 @@ const UserProfile = () => {
       </main>
 
       <BottomNav />
+    </div>
+  );
+};
+
+const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganiser: boolean }) => {
+  const { data: userPosts = [] } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: orgPosts = [] } = useOrganiserPosts(isOrganiser ? userId : undefined);
+  const posts = isOrganiser ? orgPosts : userPosts;
+
+  if (posts.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>No feed activity yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="-mx-4">
+      {posts.map((post) => (
+        <FeedPost
+          key={post.id}
+          authorId={post.author_id}
+          displayName={post.author_display_name || "User"}
+          username={post.author_username || "user"}
+          avatarUrl={post.author_avatar_url}
+          content={post.content}
+          createdAt={post.created_at}
+        />
+      ))}
     </div>
   );
 };
