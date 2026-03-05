@@ -7,15 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function phoneToInternalEmail(phone: string): string {
-  return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
+function normalizePhone(phone: string): string {
+  const digits = phone.replace(/[^0-9]/g, '');
+  return digits.startsWith('0') ? digits : `+${digits}`;
 }
 
-/**
- * Checks if a phone number is already registered.
- * Returns { exists: true/false } — used to route the auth UI
- * between login (password) and signup (OTP → registration).
- */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -40,23 +36,19 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const internalEmail = phoneToInternalEmail(phone);
-    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    // Fast indexed lookup on profiles.phone
+    const normalized = normalizePhone(phone);
+    const digits = phone.replace(/[^0-9]/g, '');
 
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-
-    const exists = users?.users?.some(
-      (u) => u.email === internalEmail || 
-             u.phone === phone || 
-             u.phone === phoneDigits ||
-             u.phone === `+${phoneDigits}`,
-    ) ?? false;
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .or(`phone.eq.${normalized},phone.eq.${digits},phone.eq.+${digits},phone.eq.${phone}`)
+      .limit(1)
+      .maybeSingle();
 
     return new Response(
-      JSON.stringify({ exists }),
+      JSON.stringify({ exists: !!data }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
