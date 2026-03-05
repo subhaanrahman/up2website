@@ -185,6 +185,65 @@ export type Database = {
           },
         ]
       }
+      group_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          group_chat_id: string
+          id: string
+          is_from_current_user: boolean
+          sender_name: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          group_chat_id: string
+          id?: string
+          is_from_current_user?: boolean
+          sender_name: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          group_chat_id?: string
+          id?: string
+          is_from_current_user?: boolean
+          sender_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_chat_messages_group_chat_id_fkey"
+            columns: ["group_chat_id"]
+            isOneToOne: false
+            referencedRelation: "group_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_chats: {
+        Row: {
+          created_at: string
+          id: string
+          member_count: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          member_count?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          member_count?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       invites: {
         Row: {
           created_at: string
