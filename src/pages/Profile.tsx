@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AvatarWithProgress from "@/components/AvatarWithProgress";
 import RewardsModal from "@/components/RewardsModal";
+import FeedPost from "@/components/FeedPost";
 import {
   Settings,
   Instagram,
@@ -24,6 +25,7 @@ import { getProgressToNextRank } from "@/features/loyalty";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 
 interface EventItem {
   id: string;
@@ -252,9 +254,7 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="feed" className="mt-4">
-            <div className="text-center py-12 text-muted-foreground">
-              <p>No feed activity yet</p>
-            </div>
+            <ProfileFeedTab userId={user.id} isOrganiser={isOrganiser} organiserProfileId={activeOrg?.id} />
           </TabsContent>
 
           <TabsContent value="past" className="mt-4 space-y-3">
@@ -273,6 +273,36 @@ const Profile = () => {
 
       <RewardsModal open={rewardsOpen} onOpenChange={setRewardsOpen} />
       <BottomNav />
+    </div>
+  );
+};
+
+const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: string; isOrganiser: boolean; organiserProfileId?: string }) => {
+  const { data: userPosts = [] } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: orgPosts = [] } = useOrganiserPosts(isOrganiser ? organiserProfileId : undefined);
+  const posts = isOrganiser ? orgPosts : userPosts;
+
+  if (posts.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <p>No feed activity yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="-mx-4">
+      {posts.map((post) => (
+        <FeedPost
+          key={post.id}
+          authorId={post.author_id}
+          displayName={post.author_display_name || "User"}
+          username={post.author_username || "user"}
+          avatarUrl={post.author_avatar_url}
+          content={post.content}
+          createdAt={post.created_at}
+        />
+      ))}
     </div>
   );
 };

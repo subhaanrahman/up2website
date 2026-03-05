@@ -2,14 +2,17 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus, Heart, Repeat2, MoreHorizontal, BadgeCheck } from "lucide-react";
+import { Bell, Plus } from "lucide-react";
 import PostComposer from "@/components/PostComposer";
+import FeedPost from "@/components/FeedPost";
 import BottomNav from "@/components/BottomNav";
 import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useFeedPosts } from "@/hooks/usePostsQuery";
+import { useQueryClient } from "@tanstack/react-query";
 import logoImg from "@/assets/logo.png";
 
 interface ProfileResult {
@@ -24,8 +27,10 @@ const Index = () => {
   const { data: profile } = useProfile(user?.id);
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const nearbyEvents = events.slice(0, 2);
+  const queryClient = useQueryClient();
 
   const [suggestedProfiles, setSuggestedProfiles] = useState<ProfileResult[]>([]);
+  const { data: feedPosts = [] } = useFeedPosts();
 
   useEffect(() => {
     const load = async () => {
@@ -34,7 +39,6 @@ const Index = () => {
         .select("user_id, display_name, username, avatar_url")
         .order("created_at", { ascending: false })
         .limit(6);
-      // Filter out current user
       if (data) {
         setSuggestedProfiles(
           user ? data.filter((p) => p.user_id !== user.id) : data
@@ -51,10 +55,6 @@ const Index = () => {
   const displayName = isOrganiser && activeOrg ? activeOrg.displayName : (profile?.displayName || user?.email?.split("@")[0] || "Guest");
   const username = isOrganiser && activeOrg ? activeOrg.username : (profile?.username || displayName.toLowerCase().replace(/\s+/g, ""));
   const avatarUrl = isOrganiser && activeOrg ? (activeOrg.avatarUrl || "") : (profile?.avatarUrl || "");
-
-  // Use the first two real profiles for feed posts, fallback to placeholder
-  const feedProfile1 = suggestedProfiles[0];
-  const feedProfile2 = suggestedProfiles[1];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -78,6 +78,8 @@ const Index = () => {
           displayName={displayName}
           username={username}
           avatarUrl={avatarUrl}
+          organiserProfileId={isOrganiser && activeOrg ? activeOrg.id : undefined}
+          onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
         />
 
         {/* Events Near You */}
@@ -102,105 +104,26 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Social Feed - Text Post */}
-        {feedProfile1 && (
-          <div className="px-4 py-4 border-b border-border">
-            <div className="flex gap-3">
-              <Link to={`/user/${feedProfile1.user_id}`}>
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={feedProfile1.avatar_url || ""} />
-                  <AvatarFallback className="bg-card text-foreground font-bold">
-                    {(feedProfile1.display_name || "?")[0]}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Link to={`/user/${feedProfile1.user_id}`} className="font-bold text-foreground hover:underline">
-                      {feedProfile1.display_name || feedProfile1.username || "User"}
-                    </Link>
-                    <span className="text-muted-foreground text-sm">
-                      @{feedProfile1.username || "user"} • 36m
-                    </span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-                <p className="text-foreground mt-1 leading-relaxed">
-                  If you're reading this, you still have time to pull up 🔥 The party everyone's talking about goes down TONIGHT... don't be the one hearing about it tomorrow 👀
-                </p>
-                <div className="flex items-center gap-6 mt-3">
-                  <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                    <Heart className="h-4 w-4" />
-                    <span className="text-sm">142</span>
-                  </button>
-                  <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                    <Repeat2 className="h-4 w-4" />
-                    <span className="text-sm">32</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* Real Feed Posts */}
+        {feedPosts.map((post) => (
+          <FeedPost
+            key={post.id}
+            authorId={post.author_id}
+            displayName={post.author_display_name || "User"}
+            username={post.author_username || "user"}
+            avatarUrl={post.author_avatar_url}
+            content={post.content}
+            createdAt={post.created_at}
+          />
+        ))}
+
+        {feedPosts.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No posts yet. Be the first to post!
           </div>
         )}
 
-        {/* Event Post */}
-        {feedProfile2 && (
-          <div className="px-4 py-4 border-b border-border">
-            <div className="flex gap-3">
-              <Link to={`/user/${feedProfile2.user_id}`}>
-                <Avatar className="h-10 w-10 flex-shrink-0">
-                  <AvatarImage src={feedProfile2.avatar_url || ""} />
-                  <AvatarFallback className="bg-card text-foreground font-bold">
-                    {(feedProfile2.display_name || "?")[0]}
-                  </AvatarFallback>
-                </Avatar>
-              </Link>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Link to={`/user/${feedProfile2.user_id}`} className="font-bold text-foreground hover:underline">
-                      {feedProfile2.display_name || feedProfile2.username || "User"}
-                    </Link>
-                    <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
-                    <span className="text-muted-foreground text-sm">posted an event</span>
-                    <span className="text-muted-foreground text-sm">• 7 hrs</span>
-                  </div>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-                {events[0] && (
-                  <Link to={`/events/${events[0].id}`} className="mt-3 flex rounded-xl overflow-hidden bg-card border border-border">
-                    <div className="w-24 flex-shrink-0 overflow-hidden bg-muted">
-                      <img src={events[0].image} alt={events[0].title} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
-                      <p className="text-xs text-muted-foreground">{events[0].location?.split(",")[0] || "Venue"}</p>
-                      <h3 className="font-semibold text-foreground text-sm">{events[0].title}</h3>
-                      <p className="text-xs text-muted-foreground">{events[0].date} - {events[0].time}</p>
-                      <p className="text-xs text-muted-foreground">From $49.99</p>
-                    </div>
-                  </Link>
-                )}
-                <div className="flex items-center gap-6 mt-3">
-                  <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                    <Heart className="h-4 w-4" />
-                    <span className="text-sm">142</span>
-                  </button>
-                  <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
-                    <Repeat2 className="h-4 w-4" />
-                    <span className="text-sm">32</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Suggested Friends - Real Profiles */}
+        {/* Suggested Friends */}
         {suggestedProfiles.length > 0 && (
           <div className="py-4 border-b border-border">
             <div className="px-4 pb-3">

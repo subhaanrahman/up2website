@@ -56,6 +56,8 @@ const UserProfile = () => {
   const [connectionLoading, setConnectionLoading] = useState(false);
   const [socialCount, setSocialCount] = useState(0);
   const [eventCount, setEventCount] = useState(0);
+  const [isFollowingOrganiser, setIsFollowingOrganiser] = useState(false);
+  const [targetIsPublic, setTargetIsPublic] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
@@ -132,11 +134,28 @@ const UserProfile = () => {
     fetchProfile();
   }, [userId]);
 
-  // Fetch connection status between current user and this profile
+  // Fetch connection/follow status
   useEffect(() => {
     if (!user || !userId || userId === user.id || mockProfiles[userId]) return;
 
-    const fetchConnectionStatus = async () => {
+    const fetchStatus = async () => {
+      // If organiser profile, check organiser_followers
+      if (profile?._isOrganiser) {
+        const { data } = await supabase
+          .from("organiser_followers")
+          .select("id")
+          .eq("organiser_profile_id", userId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        setIsFollowingOrganiser(!!data);
+        return;
+      }
+
+      // Check if target is public
+      const { data: pubData } = await supabase.rpc("is_profile_public", { p_user_id: userId });
+      setTargetIsPublic(pubData ?? true);
+
+      // Check connections
       const { data } = await supabase
         .from("connections")
         .select("*")
@@ -156,8 +175,8 @@ const UserProfile = () => {
       }
     };
 
-    fetchConnectionStatus();
-  }, [user, userId]);
+    fetchStatus();
+  }, [user, userId, profile]);
 
   // Fetch social & event counts based on profile type
   useEffect(() => {
@@ -185,6 +204,57 @@ const UserProfile = () => {
   }, [userId, profile]);
 
   const isMockProfile = !!mockProfiles[userId || ""];
+
+  // Follow organiser
+  const handleFollowOrganiser = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    const { error } = await supabase.from("organiser_followers").insert({
+      organiser_profile_id: userId,
+      user_id: user.id,
+    });
+    if (!error) {
+      setIsFollowingOrganiser(true);
+      setSocialCount((c) => c + 1);
+      toast.success("Following!");
+    } else {
+      toast.error("Failed to follow");
+    }
+    setConnectionLoading(false);
+  };
+
+  const handleUnfollowOrganiser = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    await supabase
+      .from("organiser_followers")
+      .delete()
+      .eq("organiser_profile_id", userId)
+      .eq("user_id", user.id);
+    setIsFollowingOrganiser(false);
+    setSocialCount((c) => Math.max(0, c - 1));
+    setConnectionLoading(false);
+  };
+
+  // Follow public profile (auto-accept connection)
+  const handleFollowPublic = async () => {
+    if (!user || !userId) return;
+    setConnectionLoading(true);
+    const { error } = await supabase.from("connections").insert({
+      requester_id: user.id,
+      addressee_id: userId,
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    });
+    if (!error) {
+      setConnectionStatus("accepted");
+      setSocialCount((c) => c + 1);
+      toast.success("Following!");
+    } else {
+      toast.error("Failed to follow");
+    }
+    setConnectionLoading(false);
+  };
 
   const handleAddFriend = async () => {
     if (!user || !userId || isMockProfile) {
@@ -300,10 +370,60 @@ const UserProfile = () => {
   }
 
   const renderFriendButton = () => {
-    if (isOwnProfile) {
-      return null;
+    if (isOwnProfile) return null;
+
+    // Organiser profiles: follow/unfollow
+    if (profile?._isOrganiser) {
+      return isFollowingOrganiser ? (
+        <Button
+          variant="secondary"
+          className="px-8 h-11 rounded-full font-semibold gap-2"
+          onClick={handleUnfollowOrganiser}
+          disabled={connectionLoading}
+        >
+          <Users className="h-4 w-4" />
+          FOLLOWING
+        </Button>
+      ) : (
+        <Button
+          className="px-8 h-11 rounded-full font-semibold gap-2"
+          onClick={handleFollowOrganiser}
+          disabled={connectionLoading}
+        >
+          <UserPlus className="h-4 w-4" />
+          FOLLOW
+        </Button>
+      );
     }
 
+    // Public personal profiles: follow/unfollow (auto-accept)
+    if (targetIsPublic) {
+      if (connectionStatus === "accepted") {
+        return (
+          <Button
+            variant="secondary"
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={handleRemoveFriend}
+            disabled={connectionLoading}
+          >
+            <Users className="h-4 w-4" />
+            FOLLOWING
+          </Button>
+        );
+      }
+      return (
+        <Button
+          className="px-8 h-11 rounded-full font-semibold gap-2"
+          onClick={handleFollowPublic}
+          disabled={connectionLoading}
+        >
+          <UserPlus className="h-4 w-4" />
+          FOLLOW
+        </Button>
+      );
+    }
+
+    // Private personal profiles: friend request flow
     switch (connectionStatus) {
       case "none":
         return (
