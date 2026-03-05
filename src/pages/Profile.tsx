@@ -24,6 +24,7 @@ import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface EventItem {
   id: string;
@@ -224,7 +225,9 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="upcoming" className="mt-4 space-y-3">
-            {upcomingEvents.length === 0 ? (
+            {!hostEvents ? (
+              <LoadingSpinner message="Loading events..." />
+            ) : upcomingEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No upcoming events</p>
@@ -246,7 +249,9 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="past" className="mt-4 space-y-3">
-            {pastEvents.length === 0 ? (
+            {!hostEvents ? (
+              <LoadingSpinner message="Loading events..." />
+            ) : pastEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <p>No past events</p>
               </div>
@@ -266,9 +271,14 @@ const Profile = () => {
 };
 
 const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: string; isOrganiser: boolean; organiserProfileId?: string }) => {
-  const { data: userPosts = [] } = useUserPosts(isOrganiser ? undefined : userId);
-  const { data: orgPosts = [] } = useOrganiserPosts(isOrganiser ? organiserProfileId : undefined);
+  const { data: userPosts = [], isLoading: userLoading } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: orgPosts = [], isLoading: orgLoading } = useOrganiserPosts(isOrganiser ? organiserProfileId : undefined);
   const posts = isOrganiser ? orgPosts : userPosts;
+  const isLoading = isOrganiser ? orgLoading : userLoading;
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading posts..." />;
+  }
 
   if (posts.length === 0) {
     return (
