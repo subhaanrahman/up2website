@@ -4,10 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import ShareProfileSheet from "@/components/ShareProfileSheet";
 import {
   ArrowLeft,
   Instagram,
-  Send,
   MapPin,
   Calendar,
   ChevronRight,
@@ -527,9 +527,10 @@ const UserProfile = () => {
                 <Instagram className="h-5 w-5" />
               </Button>
             ) : null}
-            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-              <Send className="h-5 w-5" />
-            </Button>
+            <ShareProfileSheet
+              profileUrl={`/user/${userId}`}
+              displayName={displayName}
+            />
           </div>
 
           {profile.bio && (

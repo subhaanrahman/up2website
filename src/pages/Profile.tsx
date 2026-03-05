@@ -7,8 +7,6 @@ import RewardsModal from "@/components/RewardsModal";
 import FeedPost from "@/components/FeedPost";
 import {
   Settings,
-  Instagram,
-  Send,
   MapPin,
   Calendar,
   ChevronRight,
@@ -181,19 +179,6 @@ const Profile = () => {
                 </Button>
               </Link>
             )}
-            {instagramHandle ? (
-              <Button
-                variant="secondary"
-                size="icon"
-                className="h-11 w-11 rounded-full"
-                onClick={() => window.open(`https://instagram.com/${instagramHandle}`, '_blank', 'noopener,noreferrer')}
-              >
-                <Instagram className="h-5 w-5" />
-              </Button>
-            ) : null}
-            <Button variant="secondary" size="icon" className="h-11 w-11 rounded-full">
-              <Send className="h-5 w-5" />
-            </Button>
           </div>
 
           {bio && (
