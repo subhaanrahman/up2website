@@ -600,25 +600,31 @@ export type Database = {
       posts: {
         Row: {
           author_id: string
-          content: string
+          content: string | null
           created_at: string
+          gif_url: string | null
           id: string
+          image_url: string | null
           organiser_profile_id: string | null
           updated_at: string
         }
         Insert: {
           author_id: string
-          content: string
+          content?: string | null
           created_at?: string
+          gif_url?: string | null
           id?: string
+          image_url?: string | null
           organiser_profile_id?: string | null
           updated_at?: string
         }
         Update: {
           author_id?: string
-          content?: string
+          content?: string | null
           created_at?: string
+          gif_url?: string | null
           id?: string
+          image_url?: string | null
           organiser_profile_id?: string | null
           updated_at?: string
         }
