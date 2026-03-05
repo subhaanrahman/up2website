@@ -1,4 +1,5 @@
 import { ReactNode, useRef, useEffect, createContext, useContext } from "react";
+import DesktopSidebar from "@/components/DesktopSidebar";
 
 const PhoneFrameContext = createContext<HTMLDivElement | null>(null);
 
@@ -27,12 +28,15 @@ const PhoneFrame = ({ children }: PhoneFrameProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background md:bg-muted/50 md:flex md:justify-center">
-      <div
-        ref={containerRef}
-        className="w-full md:max-w-[430px] min-h-screen bg-background md:border-x md:border-border md:shadow-xl"
-      >
-        {children}
+    <div className="min-h-screen bg-background md:bg-muted/50">
+      <DesktopSidebar />
+      <div className="md:ml-[72px] xl:ml-[240px] md:flex md:justify-center">
+        <div
+          ref={containerRef}
+          className="w-full md:max-w-[680px] min-h-screen bg-background md:border-x md:border-border"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
