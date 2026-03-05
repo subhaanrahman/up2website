@@ -201,9 +201,11 @@ const Profile = () => {
           )}
 
           {(classification || city) && (
-            <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-sm mb-6">
-              <MapPin className="h-4 w-4" />
-              <span>{[classification, city].filter(Boolean).join(" • ")}</span>
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm mb-6 mx-auto">
+              <MapPin className="h-3.5 w-3.5 text-primary" />
+              <span className="text-sm font-medium tracking-wide text-foreground/80">
+                {[classification, city].filter(Boolean).join(" · ")}
+              </span>
             </div>
           )}
         </div>
