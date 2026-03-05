@@ -22,3 +22,14 @@
 - **login rewrite**: Replaced `admin.listUsers()` with `profiles.phone` lookup → `getUserById()` for password verification
 - **register update**: Replaced `admin.listUsers()` duplicate check with `profiles.phone` lookup; stores phone on profile row after creation
 - **Backfill**: Updated existing profile rows with phone numbers from `auth.users`
+
+### Summary of Changes (cont.)
+
+- **Posts system**: Created `posts` table with `author_id`, `organiser_profile_id`, `content`, realtime enabled, RLS policies (authenticated read, author insert/delete)
+- **PostComposer wired**: Post button now inserts into `posts` table; clears on success; supports posting as organiser
+- **FeedPost component**: New reusable component for rendering feed posts with author info and relative timestamps
+- **Home feed**: `Index.tsx` now queries real posts from DB with realtime subscription for instant updates
+- **Profile feed tab**: `Profile.tsx` feed tab now shows user's own posts (or organiser posts when in org mode)
+- **Organiser follow model**: `UserProfile.tsx` shows FOLLOW/FOLLOWING for organiser profiles using `organiser_followers` table (no request/accept)
+- **Public/private profiles**: Personal profiles can toggle public/private via `EditProfile.tsx` switch; public profiles get FOLLOW button (auto-accepted connection), private profiles keep friend request flow
+- **usePostsQuery hook**: New hook with `useFeedPosts`, `useUserPosts`, `useOrganiserPosts` queries
