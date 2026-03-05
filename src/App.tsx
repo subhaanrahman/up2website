@@ -30,6 +30,7 @@ import NotFound from "./pages/NotFound";
 import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
 import EditOrganiserProfile from "./pages/EditOrganiserProfile";
 import OrganiserTeam from "./pages/OrganiserTeam";
+import FriendsFollowing from "./pages/FriendsFollowing";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/profile/create-organiser" element={<ProtectedRoute><CreateOrganiserProfile /></ProtectedRoute>} />
               <Route path="/profile/edit-organiser" element={<ProtectedRoute><EditOrganiserProfile /></ProtectedRoute>} />
               <Route path="/profile/organiser-team" element={<ProtectedRoute><OrganiserTeam /></ProtectedRoute>} />
+              <Route path="/profile/friends" element={<ProtectedRoute><FriendsFollowing /></ProtectedRoute>} />
               <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
