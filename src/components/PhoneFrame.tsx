@@ -28,12 +28,12 @@ const PhoneFrame = ({ children }: PhoneFrameProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background md:bg-muted/50">
+    <div className="min-h-screen bg-background md:bg-[hsl(0_0%_4%)]">
       <DesktopSidebar />
       <div className="md:ml-[72px] xl:ml-[240px] md:flex md:justify-center">
         <div
           ref={containerRef}
-          className="w-full md:max-w-[680px] min-h-screen bg-background md:border-x md:border-border"
+          className="w-full md:max-w-[680px] min-h-screen bg-background md:border-x md:border-border/50 md:mt-0 md:rounded-none md:shadow-2xl"
         >
           {children}
         </div>
