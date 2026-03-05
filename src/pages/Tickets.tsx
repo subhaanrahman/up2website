@@ -65,7 +65,7 @@ const Tickets = () => {
       {/* Mobile Tickets Page */}
       <div className="md:hidden">
         <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-foreground mb-4">TICKETS</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4 text-center">TICKETS</h1>
           
           <div className="flex items-center justify-between gap-4 mb-2">
             <span className="text-muted-foreground">Events</span>

@@ -145,7 +145,7 @@ const Events = () => {
       {/* Mobile Search Page */}
       <div className="md:hidden">
         <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-foreground mb-4">SEARCH</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-4 text-center">SEARCH</h1>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
