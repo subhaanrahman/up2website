@@ -55,7 +55,7 @@ const DesktopSidebar = () => {
                 )}
               >
                 <item.icon className={cn("h-6 w-6 flex-shrink-0", isActive && "stroke-[2.5px]")} />
-                <span className="hidden xl:block text-base">{item.label}</span>
+                <span className="hidden xl:block text-sm font-medium tracking-wide">{item.label}</span>
               </Link>
             );
           })}
@@ -67,7 +67,7 @@ const DesktopSidebar = () => {
           className="flex items-center justify-center xl:justify-start gap-4 px-3 py-3 mt-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-6 w-6 flex-shrink-0" />
-          <span className="hidden xl:block text-base font-semibold">Create</span>
+          <span className="hidden xl:block text-sm font-bold uppercase tracking-wider">Create</span>
         </Link>
       </div>
 

@@ -30,7 +30,7 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
           </div>
         </div>
         <div className="p-4">
-          <h3 className="font-semibold text-lg text-card-foreground mb-2 line-clamp-1 group-hover:text-primary transition-colors">
+          <h3 className="font-bold text-base text-card-foreground mb-2 line-clamp-1 tracking-tight group-hover:text-primary transition-colors">
             {title}
           </h3>
           <div className="space-y-2 text-sm text-muted-foreground">
