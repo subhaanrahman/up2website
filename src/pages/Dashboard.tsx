@@ -129,7 +129,7 @@ const Dashboard = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">GROUP CHATS</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight text-center">GROUP CHATS</h1>
       </header>
 
       {/* Grid */}
