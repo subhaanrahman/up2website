@@ -102,18 +102,48 @@ const Auth = () => {
             By signing in, you agree to our Terms of Service and Privacy Policy.
           </p>
 
-          {/* Dev Login Button */}
-          <div className="mt-8 pt-8 border-t border-border">
+          {/* Dev Login Buttons */}
+          <div className="mt-8 pt-8 border-t border-border space-y-2">
+            <p className="text-xs text-muted-foreground text-center mb-2">🔧 Dev Login</p>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
-                mockLogin();
+                mockLogin("1eafb563-071a-45c6-a82e-79b460b3a851", "Dylan Godwin", "+61405826420");
                 navigate(from);
               }}
               className="w-full"
             >
-              🔧 Dev Login (Skip Auth)
+              Dylan
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                mockLogin("e8f02149-2ccf-4324-950a-d2a574c46569", "Haan", "+17472753223");
+                navigate(from);
+              }}
+              className="w-full"
+            >
+              Haan
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                mockLogin("e8f02149-2ccf-4324-950a-d2a574c46569", "Haan", "+17472753223");
+                // Set active profile to Members Only organiser after navigation
+                localStorage.setItem("active_profile", JSON.stringify({
+                  id: "6348b9db-fd8a-466e-8549-6c4333cdfa56",
+                  type: "organiser",
+                  displayName: "Members Only",
+                  avatarUrl: null,
+                }));
+                navigate(from);
+              }}
+              className="w-full"
+            >
+              Haan → Members Only
             </Button>
           </div>
         </div>

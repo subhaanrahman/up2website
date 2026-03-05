@@ -13,7 +13,7 @@ interface AuthContextType {
   register: (data: RegisterInput) => Promise<{ error: Error | null }>;
   login: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  mockLogin: () => void;
+  mockLogin: (userId?: string, displayName?: string, phone?: string) => void;
 }
 
 export interface RegisterInput {
@@ -145,14 +145,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
   };
 
-  const mockLogin = () => {
+  const mockLogin = (userId?: string, displayName?: string, phone?: string) => {
     const mockUser = {
-      id: "00000000-0000-0000-0000-000000000001",
+      id: userId || "00000000-0000-0000-0000-000000000001",
       email: "dev@example.com",
-      phone: "+1234567890",
+      phone: phone || "+1234567890",
       created_at: new Date().toISOString(),
       app_metadata: {},
-      user_metadata: { display_name: "Dev User" },
+      user_metadata: { display_name: displayName || "Dev User" },
       aud: "authenticated",
     } as User;
 
