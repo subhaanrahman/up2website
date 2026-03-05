@@ -1,31 +1,76 @@
 import { useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, MoreVertical } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface ChatMessage {
+  id: string;
+  sender_name: string;
+  content: string;
+  is_from_current_user: boolean;
+  created_at: string;
+}
 
 const MessageThread = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
 
-  // Mock user data based on id
-  const userName = id === "1" ? "DYLAN" : id === "2" ? "NOIR" : "User";
+  const { data: chat } = useQuery({
+    queryKey: ["group-chat", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("group_chats")
+        .select("*")
+        .eq("id", id!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
 
-  const [messages, setMessages] = useState([
-    { id: "1", text: "Hey! What's up?", fromMe: false, time: "2:30 PM" },
-    { id: "2", text: "Not much, you?", fromMe: true, time: "2:31 PM" },
-    { id: "3", text: "Wanna hit up that event tonight?", fromMe: false, time: "2:32 PM" },
-  ]);
+  const { data: messages } = useQuery({
+    queryKey: ["group-chat-messages", id],
+    queryFn: async (): Promise<ChatMessage[]> => {
+      const { data, error } = await supabase
+        .from("group_chat_messages")
+        .select("*")
+        .eq("group_chat_id", id!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
 
-  const handleSend = () => {
+  const chatName = chat?.name ?? "Group Chat";
+  const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
+
+  const handleSend = async () => {
     if (!message.trim()) return;
-    setMessages((prev) => [
-      ...prev,
-      { id: String(prev.length + 1), text: message, fromMe: true, time: "Now" },
-    ]);
+    const content = message.trim();
     setMessage("");
+
+    await supabase.from("group_chat_messages").insert({
+      group_chat_id: id!,
+      sender_name: "You",
+      content,
+      is_from_current_user: true,
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
+    queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+  };
+
+  const formatTime = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   return (
@@ -35,35 +80,36 @@ const MessageThread = () => {
         <button onClick={() => navigate(-1)} className="p-1 text-foreground">
           <ArrowLeft className="h-6 w-6" />
         </button>
-        <Link to={`/user/${id}`}>
-          <Avatar className="h-9 w-9">
-            <AvatarImage src="" />
-            <AvatarFallback className="bg-card text-foreground font-semibold text-xs">
-              {userName.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-        </Link>
+        <Avatar className="h-9 w-9">
+          <AvatarImage src="" />
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
         <div className="flex-1">
-          <Link to={`/user/${id}`} className="font-semibold text-foreground text-sm hover:underline">{userName}</Link>
-          <p className="text-xs text-muted-foreground">Active now</p>
+          <p className="font-semibold text-foreground text-sm">{chatName}</p>
+          <p className="text-xs text-muted-foreground">{chat?.member_count ?? 0} members</p>
         </div>
         <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
       </header>
 
       {/* Messages */}
       <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.fromMe ? "justify-end" : "justify-start"}`}>
+        {(messages ?? []).map((msg) => (
+          <div key={msg.id} className={`flex ${msg.is_from_current_user ? "justify-end" : "justify-start"}`}>
             <div
               className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                msg.fromMe
+                msg.is_from_current_user
                   ? "bg-primary text-primary-foreground rounded-br-md"
                   : "bg-secondary text-foreground rounded-bl-md"
               }`}
             >
-              <p className="text-sm">{msg.text}</p>
-              <p className={`text-[10px] mt-1 ${msg.fromMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                {msg.time}
+              {!msg.is_from_current_user && (
+                <p className="text-[10px] font-semibold text-primary mb-0.5">{msg.sender_name}</p>
+              )}
+              <p className="text-sm">{msg.content}</p>
+              <p className={`text-[10px] mt-1 ${msg.is_from_current_user ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                {formatTime(msg.created_at)}
               </p>
             </div>
           </div>
