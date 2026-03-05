@@ -66,46 +66,49 @@ const mockGroupChats = [
 const GroupChatTile = ({ chat }: { chat: typeof mockGroupChats[0] }) => (
   <Link
     to={`/messages/${chat.id}`}
-    className="group relative flex flex-col justify-between rounded-2xl bg-card border border-border p-4 hover:border-primary/40 transition-all duration-200 hover:shadow-md min-h-[160px]"
+    className="group relative flex flex-col rounded-2xl bg-card border border-border/60 p-4 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 min-h-[168px] overflow-hidden"
   >
+    {/* Subtle gradient accent */}
+    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent rounded-2xl pointer-events-none" />
+
     {/* Unread badge */}
     {chat.unread > 0 && (
-      <span className="absolute top-3 right-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+      <span className="absolute top-3 right-3 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground shadow-sm shadow-primary/30">
         {chat.unread}
       </span>
     )}
 
     {/* Stacked avatars */}
-    <div className="flex -space-x-2 mb-3">
+    <div className="relative flex -space-x-2">
       {chat.avatars.slice(0, 3).map((_, i) => (
-        <Avatar key={i} className="h-8 w-8 border-2 border-card">
+        <Avatar key={i} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
           <AvatarImage src="" />
-          <AvatarFallback className="bg-secondary text-foreground text-[10px] font-semibold">
+          <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
             {chat.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
           </AvatarFallback>
         </Avatar>
       ))}
       {chat.memberCount > 3 && (
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-muted text-[10px] font-semibold text-muted-foreground">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-secondary text-[10px] font-bold text-muted-foreground ring-1 ring-border/30">
           +{chat.memberCount - 3}
         </div>
       )}
     </div>
 
-    {/* Info */}
-    <div className="flex-1 flex flex-col justify-end gap-1">
-      <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+    {/* Info — fixed spacing from avatars */}
+    <div className="relative flex flex-col gap-1 mt-3">
+      <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors duration-200">
         {chat.name}
       </h3>
       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
         {chat.lastMessage}
       </p>
-      <div className="flex items-center justify-between mt-1.5">
-        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-[10px] text-muted-foreground/80 flex items-center gap-1">
           <Users className="h-3 w-3" />
           {chat.memberCount}
         </span>
-        <span className="text-[10px] text-muted-foreground">{chat.time}</span>
+        <span className="text-[10px] text-muted-foreground/80">{chat.time}</span>
       </div>
     </div>
   </Link>
