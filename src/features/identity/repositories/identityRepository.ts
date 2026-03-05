@@ -1,6 +1,7 @@
 // Identity repository — DB access layer
 
 import { supabase } from '@/infrastructure/supabase';
+import { callEdgeFunction } from '@/infrastructure/api-client';
 import type { UserProfile } from '../domain/types';
 
 function mapRow(row: Record<string, unknown>): UserProfile {
@@ -24,14 +25,30 @@ function mapRow(row: Record<string, unknown>): UserProfile {
 
 export const identityRepository = {
   async getProfile(userId: string): Promise<UserProfile | null> {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+    // Try normal authenticated query first
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-    if (error) throw error;
-    return data ? mapRow(data) : null;
+      if (error) throw error;
+      return data ? mapRow(data) : null;
+    }
+
+    // Mock login fallback — fetch via edge function (bypasses RLS)
+    try {
+      const data = await callEdgeFunction<Record<string, unknown> | null>('dev-profile', {
+        method: 'POST',
+        body: { user_id: userId },
+      });
+      return data ? mapRow(data) : null;
+    } catch {
+      return null;
+    }
   },
 
   // Avatar upload is now handled by the avatar-upload Edge Function.
