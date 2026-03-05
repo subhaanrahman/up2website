@@ -19,7 +19,6 @@ function phoneToInternalEmail(phone: string): string {
   return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
 }
 
-// Password policy: 8+ chars, at least 1 letter, 1 number, 1 special character
 const PASSWORD_REGEX = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
@@ -74,36 +73,21 @@ Deno.serve(async (req) => {
       return errorResponse('Username is already taken', 409);
     }
 
-    // ── Check if phone already registered ──
-    const internalEmail = phoneToInternalEmail(phone);
+    // ── Check if phone already registered (fast indexed lookup) ──
     const phoneDigits = phone.replace(/[^0-9]/g, '');
+    const { data: existingPhoneProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id')
+      .or(`phone.eq.${phone},phone.eq.${phoneDigits},phone.eq.+${phoneDigits}`)
+      .limit(1)
+      .maybeSingle();
 
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-
-    const existingUser = existingUsers?.users?.find(
-      (u) => u.email === internalEmail || 
-             u.phone === phone || 
-             u.phone === phoneDigits ||
-             u.phone === `+${phoneDigits}`,
-    );
-
-    if (existingUser) {
-      // If user exists but has no password_hash (legacy/orphaned), delete and allow re-registration
-      if (!existingUser.user_metadata?.password_hash) {
-        console.log(`Deleting legacy user ${existingUser.id} without password_hash`);
-        await supabaseAdmin.auth.admin.deleteUser(existingUser.id);
-        // Also clean up any orphaned profile
-        await supabaseAdmin.from('profiles').delete().eq('user_id', existingUser.id);
-      } else {
-        return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
-      }
+    if (existingPhoneProfile) {
+      return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
     }
 
     // ── Create user ──
-    // Hash password for our own verification (since email provider is disabled)
+    const internalEmail = phoneToInternalEmail(phone);
     const passwordHash = await hashPassword(password);
 
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -133,31 +117,26 @@ Deno.serve(async (req) => {
     const userId = newUser.user.id;
     console.log(`Created user ${userId} for phone ${phone}`);
 
-    // ── Update profile with registration data ──
+    // ── Update profile with registration data + phone ──
+    const profileData = {
+      display_name: `${firstName.trim()} ${lastName.trim()}`,
+      username: username.toLowerCase(),
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      phone,
+    };
+
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
-        display_name: `${firstName.trim()} ${lastName.trim()}`,
-        username: username.toLowerCase(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-      })
+      .update(profileData)
       .eq('user_id', userId);
 
     if (profileError) {
       console.error('Profile update error:', JSON.stringify(profileError));
-      // Non-fatal — user is created, profile trigger may not have fired yet
-      // Try insert instead
-      await supabaseAdmin.from('profiles').insert({
-        user_id: userId,
-        display_name: `${firstName.trim()} ${lastName.trim()}`,
-        username: username.toLowerCase(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-      });
+      await supabaseAdmin.from('profiles').insert({ user_id: userId, ...profileData });
     }
 
-    // ── Create session via magic link (bypasses email provider check) ──
+    // ── Create session via magic link ──
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: internalEmail,

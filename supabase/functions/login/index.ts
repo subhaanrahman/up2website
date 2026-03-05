@@ -43,27 +43,27 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const internalEmail = phoneToInternalEmail(phone);
+    // Fast lookup: find user_id via profiles.phone
     const phoneDigits = phone.replace(/[^0-9]/g, '');
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('user_id')
+      .or(`phone.eq.${phone},phone.eq.${phoneDigits},phone.eq.+${phoneDigits}`)
+      .limit(1)
+      .maybeSingle();
 
-    // Find user by phone
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 1000,
-    });
-
-    const user = users?.users?.find(
-      (u) => u.email === internalEmail ||
-             u.phone === phone ||
-             u.phone === phoneDigits ||
-             u.phone === `+${phoneDigits}`,
-    );
-
-    if (!user) {
+    if (!profile) {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Verify password via bcrypt hash stored in user_metadata
+    // Get the auth user to verify password
+    const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
+
+    if (getUserError || !userData?.user) {
+      return errorResponse('Invalid phone number or password', 401);
+    }
+
+    const user = userData.user;
     const storedHash = user.user_metadata?.password_hash;
     if (!storedHash) {
       console.error('No password hash found for user', user.id);
@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Generate session via magic link (bypasses email provider check)
+    // Generate session via magic link
+    const internalEmail = phoneToInternalEmail(phone);
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: user.email || internalEmail,
