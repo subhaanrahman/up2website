@@ -3,16 +3,23 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, Image, CalendarDays } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface PostComposerProps {
   displayName: string;
   username: string;
   avatarUrl: string;
+  organiserProfileId?: string;
+  onPostCreated?: () => void;
 }
 
-const PostComposer = ({ displayName, username, avatarUrl }: PostComposerProps) => {
+const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, onPostCreated }: PostComposerProps) => {
+  const { user } = useAuth();
   const [isComposing, setIsComposing] = useState(false);
   const [postText, setPostText] = useState("");
+  const [posting, setPosting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
 
@@ -37,10 +44,27 @@ const PostComposer = ({ displayName, username, avatarUrl }: PostComposerProps) =
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPostText(e.target.value);
-    // Auto-grow
     const ta = e.target;
     ta.style.height = "auto";
     ta.style.height = ta.scrollHeight + "px";
+  };
+
+  const handlePost = async () => {
+    if (!postText.trim() || !user) return;
+    setPosting(true);
+    const { error } = await supabase.from("posts").insert({
+      author_id: user.id,
+      content: postText.trim(),
+      organiser_profile_id: organiserProfileId || null,
+    });
+    if (error) {
+      toast.error("Failed to post");
+    } else {
+      setPostText("");
+      setIsComposing(false);
+      onPostCreated?.();
+    }
+    setPosting(false);
   };
 
   return (
@@ -97,9 +121,10 @@ const PostComposer = ({ displayName, username, avatarUrl }: PostComposerProps) =
                   <Button
                     size="sm"
                     className="rounded-full px-4"
-                    disabled={!postText.trim()}
+                    disabled={!postText.trim() || posting}
+                    onClick={handlePost}
                   >
-                    Post
+                    {posting ? "Posting..." : "Post"}
                   </Button>
                 </div>
               </div>
