@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import FeedPost from "@/components/FeedPost";
 import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import ShareProfileSheet from "@/components/ShareProfileSheet";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   ArrowLeft,
   Instagram,
@@ -575,7 +576,9 @@ const UserProfile = () => {
           </TabsList>
 
           <TabsContent value="upcoming" className="mt-4 space-y-3">
-            {upcomingEvents.length === 0 ? (
+            {loading ? (
+              <LoadingSpinner message="Loading events..." />
+            ) : upcomingEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No upcoming events</p>
@@ -614,7 +617,9 @@ const UserProfile = () => {
           </TabsContent>
 
           <TabsContent value="past" className="mt-4 space-y-3">
-            {pastEvents.length === 0 ? (
+            {loading ? (
+              <LoadingSpinner message="Loading events..." />
+            ) : pastEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <p>No past events</p>
               </div>
@@ -654,9 +659,14 @@ const UserProfile = () => {
 };
 
 const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganiser: boolean }) => {
-  const { data: userPosts = [] } = useUserPosts(isOrganiser ? undefined : userId);
-  const { data: orgPosts = [] } = useOrganiserPosts(isOrganiser ? userId : undefined);
+  const { data: userPosts = [], isLoading: userLoading } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: orgPosts = [], isLoading: orgLoading } = useOrganiserPosts(isOrganiser ? userId : undefined);
   const posts = isOrganiser ? orgPosts : userPosts;
+  const isLoading = isOrganiser ? orgLoading : userLoading;
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading posts..." />;
+  }
 
   if (posts.length === 0) {
     return (

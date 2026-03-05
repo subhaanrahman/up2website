@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -134,7 +135,7 @@ const FriendsFollowing = () => {
 
           <TabsContent value="friends" className="mt-2">
             {loading ? (
-              <div className="py-12 text-center text-muted-foreground animate-pulse">Loading...</div>
+              <LoadingSpinner message="Loading friends..." />
             ) : friends.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">No friends yet</div>
             ) : (
@@ -164,7 +165,7 @@ const FriendsFollowing = () => {
 
           <TabsContent value="following" className="mt-2">
             {loading ? (
-              <div className="py-12 text-center text-muted-foreground animate-pulse">Loading...</div>
+              <LoadingSpinner message="Loading following..." />
             ) : following.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">Not following anyone yet</div>
             ) : (
