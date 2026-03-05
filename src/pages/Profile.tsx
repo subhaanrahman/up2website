@@ -147,13 +147,13 @@ const Profile = () => {
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
-            <h2 className="text-xl font-bold tracking-wide text-foreground uppercase">
+            <h2 className="text-xl font-extrabold tracking-widest text-foreground uppercase">
               {displayName || username}
             </h2>
             <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
           </div>
 
-          <p className="text-muted-foreground text-sm mb-4">
+          <p className="text-muted-foreground text-sm mb-4 tracking-wide">
             @{isOrganiser && activeOrg ? activeOrg.username : (profile?.username || username.toLowerCase().replace(/\s+/g, ""))}
           </p>
 
@@ -162,19 +162,19 @@ const Profile = () => {
               onClick={() => !isOrganiser && navigate("/profile/friends")}
               className={`text-center ${!isOrganiser ? "cursor-pointer" : ""}`}
             >
-              <p className="text-lg font-bold text-foreground">{socialCount}</p>
-              <p className="text-xs text-muted-foreground">{isOrganiser ? "Followers" : "Friends"}</p>
+              <p className="text-lg font-extrabold text-foreground">{socialCount}</p>
+              <p className="text-label text-muted-foreground">{isOrganiser ? "Followers" : "Friends"}</p>
             </button>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{eventsCount}</p>
-              <p className="text-xs text-muted-foreground">Events</p>
+              <p className="text-lg font-extrabold text-foreground">{eventsCount}</p>
+              <p className="text-label text-muted-foreground">Events</p>
             </div>
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-5">
             <Link to={isOrganiser ? "/profile/edit-organiser" : "/profile/edit"}>
-              <Button className="px-8 h-11 rounded-full font-semibold">EDIT</Button>
+              <Button className="px-8 h-11 rounded-full font-bold tracking-widest text-sm">EDIT</Button>
             </Link>
             {isOrganiser && activeOrg && activeOrg.ownerId === user.id && (
               <Link to="/profile/organiser-team">
@@ -206,19 +206,19 @@ const Profile = () => {
           <TabsList className="w-full h-auto p-0 bg-transparent border-b border-border rounded-none">
             <TabsTrigger 
               value="upcoming" 
-              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-bold tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
             >
               UPCOMING
             </TabsTrigger>
             <TabsTrigger 
               value="feed" 
-              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-bold tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
             >
               FEED
             </TabsTrigger>
             <TabsTrigger 
               value="past" 
-              className="flex-1 py-3 rounded-none bg-transparent text-sm font-semibold data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
+              className="flex-1 py-3 rounded-none bg-transparent text-sm font-bold tracking-widest data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=inactive]:text-muted-foreground"
             >
               PAST
             </TabsTrigger>
