@@ -386,7 +386,7 @@ const UserProfile = () => {
           <div className="flex items-center justify-center gap-6 mb-5">
             <div className="text-center">
               <p className="text-lg font-bold text-foreground">{socialCount}</p>
-              <p className="text-xs text-muted-foreground">{profile?._isOrganiser ? "Followers" : "Friends / Following"}</p>
+              <p className="text-xs text-muted-foreground">{profile?._isOrganiser ? "Followers" : "Friends"}</p>
             </div>
             <div className="h-8 w-px bg-border" />
             <div className="text-center">
