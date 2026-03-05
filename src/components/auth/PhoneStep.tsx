@@ -32,7 +32,7 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
 
     setLoading(true);
 
-    // Check if phone exists
+    // Check if phone exists — this should be fast
     const { exists, error: checkErr } = await checkPhone(phone);
 
     if (checkErr) {
@@ -41,20 +41,18 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
       return;
     }
 
-    if (!exists) {
-      // New user — send OTP for phone verification
-      const { error: otpErr } = await sendOtp(phone);
-      if (otpErr) {
-        setError(otpErr.message);
-        toast({ title: "Error", description: otpErr.message, variant: "destructive" });
-        setLoading(false);
-        return;
-      }
-      toast({ title: "Code sent!", description: "Check your phone for the verification code." });
-    }
-
+    // Navigate immediately — don't wait for OTP send
     setLoading(false);
     onPhoneChecked(phone, exists);
+
+    if (!exists) {
+      // Fire-and-forget: send OTP in background after navigating
+      sendOtp(phone).then(({ error: otpErr }) => {
+        if (otpErr) {
+          toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
+        }
+      });
+    }
   };
 
   return (
