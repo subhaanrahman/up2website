@@ -128,11 +128,8 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 pt-6 pb-4 flex items-center justify-between">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 pt-6 pb-4">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">GROUP CHATS</h1>
-        <Button size="icon" variant="ghost" className="h-9 w-9 rounded-full">
-          <Plus className="h-5 w-5" />
-        </Button>
       </header>
 
       {/* Grid */}
@@ -143,6 +140,15 @@ const Dashboard = () => {
           ))}
         </div>
       </main>
+
+      {/* Floating Action Button */}
+      <div className="fixed bottom-24 z-40 w-full md:max-w-[430px] md:left-1/2 md:-translate-x-1/2 left-0 pointer-events-none">
+        <div className="flex justify-end px-4 pointer-events-auto w-fit ml-auto">
+          <button className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
+            <Plus className="h-7 w-7 text-primary-foreground" />
+          </button>
+        </div>
+      </div>
 
       <BottomNav />
     </div>
