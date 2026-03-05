@@ -176,6 +176,22 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     [user, organiserProfiles]
   );
 
+  // Keep activeProfile in sync when organiserProfiles data changes
+  useEffect(() => {
+    if (activeProfile?.type === "organiser") {
+      const updated = organiserProfiles.find((o) => o.id === activeProfile.id);
+      if (updated && (updated.displayName !== activeProfile.displayName || updated.avatarUrl !== activeProfile.avatarUrl)) {
+        const synced: ActiveProfile = {
+          ...activeProfile,
+          displayName: updated.displayName,
+          avatarUrl: updated.avatarUrl,
+        };
+        setActiveProfile(synced);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+      }
+    }
+  }, [organiserProfiles, activeProfile]);
+
   const refetchOrganiserProfiles = useCallback(async () => {
     await fetchOrganiserProfiles();
   }, [fetchOrganiserProfiles]);
