@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, Image, CalendarDays } from "lucide-react";
+import { BadgeCheck, Image, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import GifPicker from "@/components/GifPicker";
 
 interface PostComposerProps {
   displayName: string;
@@ -20,8 +21,12 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
   const [isComposing, setIsComposing] = useState(false);
   const [postText, setPostText] = useState("");
   const [posting, setPosting] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedGif, setSelectedGif] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isComposing && textareaRef.current) {
@@ -33,14 +38,14 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
     if (!isComposing) return;
     const handleClickOutside = (e: MouseEvent) => {
       if (composerRef.current && !composerRef.current.contains(e.target as Node)) {
-        if (!postText.trim()) {
+        if (!postText.trim() && !selectedImage && !selectedGif) {
           setIsComposing(false);
         }
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isComposing, postText]);
+  }, [isComposing, postText, selectedImage, selectedGif]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setPostText(e.target.value);
@@ -49,26 +54,85 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
     ta.style.height = ta.scrollHeight + "px";
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setSelectedGif(null); // can't have both
+    setIsComposing(true);
+  };
+
+  const handleGifSelect = (gifUrl: string) => {
+    setSelectedGif(gifUrl);
+    setSelectedImage(null);
+    setImagePreview(null);
+    setIsComposing(true);
+  };
+
+  const clearMedia = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setSelectedGif(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handlePost = async () => {
-    if (!postText.trim() || !user) return;
+    if (!user) return;
+    const hasContent = postText.trim() || selectedImage || selectedGif;
+    if (!hasContent) return;
+
     setPosting(true);
-    const { error } = await supabase.from("posts").insert({
-      author_id: user.id,
-      content: postText.trim(),
-      organiser_profile_id: organiserProfileId || null,
-    });
-    if (error) {
-      toast.error("Failed to post");
-    } else {
+    let imageUrl: string | null = null;
+
+    try {
+      // Upload image if selected
+      if (selectedImage) {
+        const ext = selectedImage.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("post-images")
+          .upload(path, selectedImage, { contentType: selectedImage.type });
+        if (uploadError) throw uploadError;
+        const { data: urlData } = supabase.storage.from("post-images").getPublicUrl(path);
+        imageUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from("posts").insert({
+        author_id: user.id,
+        content: postText.trim() || null,
+        organiser_profile_id: organiserProfileId || null,
+        image_url: imageUrl,
+        gif_url: selectedGif,
+      });
+
+      if (error) throw error;
+
       setPostText("");
+      clearMedia();
       setIsComposing(false);
       onPostCreated?.();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to post");
     }
     setPosting(false);
   };
 
+  const hasContent = postText.trim() || selectedImage || selectedGif;
+
   return (
     <div ref={composerRef} className="px-4 py-3 border-b border-border">
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleImageSelect}
+      />
       <div className="flex gap-3">
         <Link to="/profile">
           <Avatar className="h-12 w-12 flex-shrink-0">
@@ -94,17 +158,48 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                 value={postText}
                 onChange={handleTextChange}
                 placeholder="What's happening?"
-                rows={3}
-                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none text-sm leading-relaxed min-h-[80px]"
+                rows={1}
+                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none text-sm leading-relaxed"
+                style={{ minHeight: "24px" }}
               />
+
+              {/* Image preview */}
+              {imagePreview && (
+                <div className="relative mt-2 rounded-xl overflow-hidden border border-border">
+                  <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover" />
+                  <button
+                    onClick={clearMedia}
+                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1"
+                  >
+                    <X className="h-4 w-4 text-foreground" />
+                  </button>
+                </div>
+              )}
+
+              {/* GIF preview */}
+              {selectedGif && (
+                <div className="relative mt-2 rounded-xl overflow-hidden border border-border">
+                  <img src={selectedGif} alt="GIF" className="w-full max-h-64 object-cover" />
+                  <button
+                    onClick={clearMedia}
+                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1"
+                  >
+                    <X className="h-4 w-4 text-foreground" />
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
                     <Image className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                    <CalendarDays className="h-4 w-4" />
-                  </Button>
+                  <GifPicker onSelect={handleGifSelect} />
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -114,6 +209,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                     onClick={() => {
                       setIsComposing(false);
                       setPostText("");
+                      clearMedia();
                     }}
                   >
                     Cancel
@@ -121,7 +217,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                   <Button
                     size="sm"
                     className="rounded-full px-4"
-                    disabled={!postText.trim() || posting}
+                    disabled={!hasContent || posting}
                     onClick={handlePost}
                   >
                     {posting ? "Posting..." : "Post"}

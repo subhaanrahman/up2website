@@ -4,10 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface PostWithAuthor {
   id: string;
-  content: string;
+  content: string | null;
   created_at: string;
   author_id: string;
   organiser_profile_id: string | null;
+  image_url: string | null;
+  gif_url: string | null;
   author_display_name: string | null;
   author_username: string | null;
   author_avatar_url: string | null;
@@ -16,7 +18,7 @@ export interface PostWithAuthor {
 async function fetchPosts(authorId?: string, organiserProfileId?: string): Promise<PostWithAuthor[]> {
   let query = supabase
     .from("posts")
-    .select("id, content, created_at, author_id, organiser_profile_id")
+    .select("id, content, created_at, author_id, organiser_profile_id, image_url, gif_url")
     .order("created_at", { ascending: false })
     .limit(50);
 

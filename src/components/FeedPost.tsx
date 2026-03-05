@@ -9,11 +9,13 @@ interface FeedPostProps {
   displayName: string;
   username: string;
   avatarUrl: string | null;
-  content: string;
+  content: string | null;
   createdAt: string;
+  imageUrl?: string | null;
+  gifUrl?: string | null;
 }
 
-const FeedPost = ({ authorId, displayName, username, avatarUrl, content, createdAt }: FeedPostProps) => {
+const FeedPost = ({ authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl }: FeedPostProps) => {
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
 
   return (
@@ -42,7 +44,19 @@ const FeedPost = ({ authorId, displayName, username, avatarUrl, content, created
               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
-          <p className="text-foreground mt-1 leading-relaxed whitespace-pre-wrap">{content}</p>
+          {content && (
+            <p className="text-foreground mt-1 leading-relaxed whitespace-pre-wrap">{content}</p>
+          )}
+          {imageUrl && (
+            <div className="mt-2 rounded-xl overflow-hidden border border-border">
+              <img src={imageUrl} alt="Post image" className="w-full max-h-96 object-cover" loading="lazy" />
+            </div>
+          )}
+          {gifUrl && (
+            <div className="mt-2 rounded-xl overflow-hidden border border-border">
+              <img src={gifUrl} alt="GIF" className="w-full max-h-96 object-cover" loading="lazy" />
+            </div>
+          )}
           <div className="flex items-center gap-6 mt-3">
             <button className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors">
               <Heart className="h-4 w-4" />
