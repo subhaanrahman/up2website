@@ -299,6 +299,8 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: s
           avatarUrl={post.author_avatar_url}
           content={post.content}
           createdAt={post.created_at}
+          imageUrl={post.image_url}
+          gifUrl={post.gif_url}
         />
       ))}
     </div>
