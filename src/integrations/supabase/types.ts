@@ -41,6 +41,56 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          event_id: string
+          id: string
+          is_active: boolean | null
+          reveal_hidden_tickets: boolean | null
+          ticket_limit_amount: number | null
+          ticket_limit_type: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          event_id: string
+          id?: string
+          is_active?: boolean | null
+          reveal_hidden_tickets?: boolean | null
+          ticket_limit_amount?: number | null
+          ticket_limit_type?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          event_id?: string
+          id?: string
+          is_active?: boolean | null
+          reveal_hidden_tickets?: boolean | null
+          ticket_limit_amount?: number | null
+          ticket_limit_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_cohosts: {
         Row: {
           created_at: string
@@ -119,6 +169,38 @@ export type Database = {
           },
         ]
       }
+      event_reminders: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          is_enabled: boolean | null
+          reminder_type: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          is_enabled?: boolean | null
+          reminder_type: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          reminder_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_reminders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           category: string | null
@@ -127,13 +209,22 @@ export type Database = {
           description: string | null
           end_date: string | null
           event_date: string
+          guestlist_deadline: string | null
+          guestlist_enabled: boolean | null
+          guestlist_max_capacity: number | null
+          guestlist_require_approval: boolean | null
           host_id: string
           id: string
           is_public: boolean | null
           location: string | null
           max_guests: number | null
           organiser_profile_id: string | null
+          show_tickets_remaining: boolean | null
+          sold_out_message: string | null
+          status: string
+          tags: Json | null
           ticket_price_cents: number
+          tickets_available_from: string | null
           title: string
           updated_at: string
         }
@@ -144,13 +235,22 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date: string
+          guestlist_deadline?: string | null
+          guestlist_enabled?: boolean | null
+          guestlist_max_capacity?: number | null
+          guestlist_require_approval?: boolean | null
           host_id: string
           id?: string
           is_public?: boolean | null
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          show_tickets_remaining?: boolean | null
+          sold_out_message?: string | null
+          status?: string
+          tags?: Json | null
           ticket_price_cents?: number
+          tickets_available_from?: string | null
           title: string
           updated_at?: string
         }
@@ -161,13 +261,22 @@ export type Database = {
           description?: string | null
           end_date?: string | null
           event_date?: string
+          guestlist_deadline?: string | null
+          guestlist_enabled?: boolean | null
+          guestlist_max_capacity?: number | null
+          guestlist_require_approval?: boolean | null
           host_id?: string
           id?: string
           is_public?: boolean | null
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          show_tickets_remaining?: boolean | null
+          sold_out_message?: string | null
+          status?: string
+          tags?: Json | null
           ticket_price_cents?: number
+          tickets_available_from?: string | null
           title?: string
           updated_at?: string
         }
@@ -791,6 +900,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      ticket_tiers: {
+        Row: {
+          available_quantity: number | null
+          created_at: string
+          event_id: string
+          id: string
+          name: string
+          price_cents: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          available_quantity?: number | null
+          created_at?: string
+          event_id: string
+          id?: string
+          name: string
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          available_quantity?: number | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          name?: string
+          price_cents?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_tiers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
           },
         ]
       }
