@@ -21,6 +21,7 @@ interface FeedPostProps {
 
 const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy }: FeedPostProps) => {
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
+  const firstName = (displayName || username || "User").split(" ")[0];
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
 
   return (
@@ -44,7 +45,7 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 min-w-0 overflow-hidden">
               <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
-                {displayName || username || "User"}
+                {firstName}
               </Link>
               <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />
               <span className="text-muted-foreground text-[15px] truncate">@{username || "user"}</span>
