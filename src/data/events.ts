@@ -41,6 +41,7 @@ export const events: Event[] = [
     attendees: 18,
     capacity: 24,
     category: "Dinner",
+    price: 49.99,
     host: {
       name: "Sarah Chen",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=sarah"
@@ -65,6 +66,7 @@ export const events: Event[] = [
     attendees: 87,
     capacity: 150,
     category: "New Year's",
+    price: 149.99,
     host: {
       name: "Marcus Johnson",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=marcus"
@@ -88,6 +90,7 @@ export const events: Event[] = [
     attendees: 34,
     capacity: 50,
     category: "Birthday",
+    price: 25,
     host: {
       name: "Lisa Martinez",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=lisa"
@@ -110,6 +113,7 @@ export const events: Event[] = [
     attendees: 42,
     capacity: 75,
     category: "Social",
+    price: 75,
     host: {
       name: "David Kim",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=david"
@@ -132,6 +136,7 @@ export const events: Event[] = [
     attendees: 120,
     capacity: 150,
     category: "Wedding",
+    price: 0,
     host: {
       name: "Emily & Michael",
       avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=emily"
