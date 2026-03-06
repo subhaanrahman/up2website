@@ -49,7 +49,8 @@ const MessageThread = () => {
     enabled: !!id,
   });
 
-  const chatName = chat?.name ?? "Group Chat";
+  const chatName = (chat?.name ?? "Group Chat");
+  const displayChatName = chatName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
   const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
 
   const handleSend = async () => {
