@@ -37,6 +37,7 @@ interface EventItem {
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [qrOpen, setQrOpen] = useState(false);
 
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
