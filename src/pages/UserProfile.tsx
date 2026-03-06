@@ -600,7 +600,7 @@ const UserProfile = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-1">
-                    <h3 className="font-semibold text-foreground truncate mb-0.5">{event.title}</h3>
+                    <h3 className="font-semibold text-foreground truncate mb-0.5 capitalize">{event.title}</h3>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(event.event_date), "EEE, MMM d · h:mm a")}
                     </p>
@@ -640,7 +640,7 @@ const UserProfile = () => {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-1">
-                    <h3 className="font-semibold text-foreground truncate mb-0.5">{event.title}</h3>
+                    <h3 className="font-semibold text-foreground truncate mb-0.5 capitalize">{event.title}</h3>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(event.event_date), "EEE, MMM d · h:mm a")}
                     </p>
