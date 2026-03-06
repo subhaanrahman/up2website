@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus } from "lucide-react";
+import { Bell, Plus, Calendar, DollarSign } from "lucide-react";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
 import BottomNav from "@/components/BottomNav";
@@ -96,8 +96,14 @@ const Index = () => {
                 <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                   <p className="text-xs text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
                   <h3 className="font-semibold text-foreground text-sm truncate capitalize">{event.title}</h3>
-                  <p className="text-xs text-muted-foreground">{event.date} - {event.time}</p>
-                  <p className="text-xs text-muted-foreground">From $49.99</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3 text-primary" />
+                    <span>{event.date} - {event.time}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <DollarSign className="h-3 w-3 text-primary" />
+                    <span>{event.price === 0 ? "Free" : event.price < 50 ? "$" : event.price < 100 ? "$$" : "$$$"}</span>
+                  </div>
                 </div>
               </Link>
             ))}
