@@ -21,6 +21,7 @@ interface FeedPostProps {
 
 const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy }: FeedPostProps) => {
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
+  const firstName = (displayName || username || "User").split(" ")[0];
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
 
   return (
