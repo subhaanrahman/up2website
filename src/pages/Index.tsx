@@ -102,7 +102,7 @@ const Index = () => {
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <DollarSign className="h-3 w-3 text-primary" />
-                    <span>{event.price === 0 ? "Free" : event.price < 50 ? "$" : event.price < 100 ? "$$" : "$$$"}</span>
+                    <span>{event.price === 0 ? "Free" : `$${event.price.toFixed(2)}`}</span>
                   </div>
                 </div>
               </Link>
