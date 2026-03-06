@@ -334,7 +334,7 @@ const EventListItem = ({ event }: { event: EventItem }) => {
       </div>
       <div className="flex-1 min-w-0 py-1">
         <p className="text-sm text-muted-foreground mb-0.5">{event.location || "Venue"}</p>
-        <h3 className="font-semibold text-foreground truncate mb-0.5">{event.title}</h3>
+        <h3 className="font-semibold text-foreground truncate mb-0.5 capitalize">{event.title}</h3>
         <p className="text-sm text-muted-foreground mb-0.5">
           {format(new Date(event.eventDate), "EEE, MMM d")} - {format(new Date(event.eventDate), "h:mm a")}
         </p>
