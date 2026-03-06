@@ -16,6 +16,7 @@ export interface Event {
   attendees: number;
   capacity: number;
   category: string;
+  price: number;
   host: {
     name: string;
     avatar: string;
