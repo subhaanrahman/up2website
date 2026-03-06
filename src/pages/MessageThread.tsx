@@ -88,7 +88,7 @@ const MessageThread = () => {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <p className="font-semibold text-foreground text-sm">{chatName}</p>
+          <p className="font-semibold text-foreground text-sm capitalize">{displayChatName}</p>
           <p className="text-xs text-muted-foreground">{chat?.member_count ?? 0} members</p>
         </div>
         <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>

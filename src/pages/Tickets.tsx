@@ -111,7 +111,7 @@ const Tickets = () => {
                   </div>
                   
                   <div className="flex-1 py-3 pr-2">
-                    <h3 className="font-semibold text-foreground line-clamp-2 mb-2">
+                    <h3 className="font-semibold text-foreground line-clamp-2 mb-2 capitalize">
                       {rsvp.events?.title}
                     </h3>
                     <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ const Tickets = () => {
                     className="w-full h-32 object-cover"
                   />
                   <div className="p-4">
-                    <h3 className="font-semibold text-foreground mb-2">
+                    <h3 className="font-semibold text-foreground mb-2 capitalize">
                       {rsvp.events?.title}
                     </h3>
                     <p className="text-sm text-muted-foreground">
