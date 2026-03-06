@@ -142,7 +142,7 @@ const Tickets = () => {
       {/* Desktop View */}
       <main className="hidden md:block pt-24 pb-12">
         <div className="container mx-auto px-4">
-          <h1 className="text-4xl font-bold text-foreground mb-2">My Tickets</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2 text-center">My Tickets</h1>
           <p className="text-muted-foreground mb-8">Events you've RSVP'd to</p>
 
           {isLoading ? (
