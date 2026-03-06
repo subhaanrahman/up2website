@@ -292,6 +292,7 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: s
     <div className="-mx-4">
       {posts.map((post) => (
         <FeedPost
+            postId={post.id}
           key={post.id}
           authorId={post.author_id}
           displayName={post.author_display_name || "User"}
