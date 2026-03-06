@@ -95,7 +95,7 @@ const Index = () => {
                 </div>
                 <div className="flex-1 px-3 py-2 flex flex-col justify-center min-w-0">
                   <p className="text-xs text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
-                  <h3 className="font-semibold text-foreground text-sm truncate">{event.title}</h3>
+                  <h3 className="font-semibold text-foreground text-sm truncate" style={{ textTransform: 'capitalize' }}>{event.title}</h3>
                   <p className="text-xs text-muted-foreground">{event.date} - {event.time}</p>
                   <p className="text-xs text-muted-foreground">From $49.99</p>
                 </div>

@@ -161,7 +161,7 @@ const EventDetail = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
-        <h1 className="text-2xl font-bold text-foreground uppercase tracking-tight font-sans">{eventTitle}</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight font-sans" style={{ textTransform: 'capitalize' }}>{eventTitle}</h1>
         <div className="flex items-center gap-2">
           <Calendar className="h-5 w-5 text-primary" />
           <span className="font-semibold text-foreground">{eventDate}</span>
