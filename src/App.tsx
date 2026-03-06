@@ -24,6 +24,9 @@ import NotificationsSettings from "./pages/NotificationsSettings";
 import PrivacySettings from "./pages/PrivacySettings";
 import HelpCenter from "./pages/HelpCenter";
 import About from "./pages/About";
+import ManageAccount from "./pages/ManageAccount";
+import ConnectMusic from "./pages/ConnectMusic";
+import ContactUs from "./pages/ContactUs";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
 import MessageThread from "./pages/MessageThread";
@@ -73,6 +76,9 @@ const App = () => (
               <Route path="/settings/privacy" element={<ProtectedRoute><PrivacySettings /></ProtectedRoute>} />
               <Route path="/settings/help" element={<ProtectedRoute><HelpCenter /></ProtectedRoute>} />
               <Route path="/settings/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
+              <Route path="/settings/account" element={<ProtectedRoute><ManageAccount /></ProtectedRoute>} />
+              <Route path="/settings/music" element={<ProtectedRoute><ConnectMusic /></ProtectedRoute>} />
+              <Route path="/settings/contact" element={<ProtectedRoute><ContactUs /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
