@@ -96,7 +96,7 @@ export default {
   		},
   		fontFamily: {
   			sans: [
-  				'Montserrat',
+  				'Inter',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
@@ -110,7 +110,7 @@ export default {
   			],
   			display: [
   				'Akira Expanded',
-  				'Montserrat',
+  				'Inter',
   				'sans-serif'
   			],
   			serif: [
