@@ -29,7 +29,7 @@ const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
-  const { isOrganiser } = useActiveProfile();
+  const { isOrganiser, organiserProfiles, isLoading: profileLoading } = useActiveProfile();
   const createEventMutation = useCreateEvent();
 
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
@@ -67,15 +67,18 @@ const CreateEvent = () => {
   // Notifications state
   const [reminders, setReminders] = useState<string[]>(["1_day"]);
 
+  const hasOrganiserProfile = isOrganiser || organiserProfiles.length > 0;
+
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading || profileLoading) return;
+    if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to create an event" });
       navigate("/auth");
-    } else if (!loading && user && !isOrganiser) {
-      toast({ title: "Organiser account required", description: "Switch to an organiser profile to create events.", variant: "destructive" });
+    } else if (!hasOrganiserProfile) {
+      toast({ title: "Organiser account required", description: "Create an organiser profile first to create events.", variant: "destructive" });
       navigate("/profile");
     }
-  }, [user, loading, isOrganiser, navigate, toast]);
+  }, [user, loading, profileLoading, hasOrganiserProfile, navigate, toast]);
 
   const hasData = title || date || location || description;
 
@@ -144,7 +147,7 @@ const CreateEvent = () => {
     }
   };
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
