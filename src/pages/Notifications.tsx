@@ -122,22 +122,20 @@ const Notifications = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="flex items-center justify-between px-4 py-4">
-          <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2">
-              <ArrowLeft className="h-6 w-6 text-foreground" />
-            </button>
-            <h1 className="text-xl font-bold text-foreground">Notifications</h1>
-          </div>
-          {unreadCount > 0 && (
-            <span className="text-sm text-muted-foreground">
-              {unreadCount} new
-            </span>
-          )}
-        </div>
-      </header>
+       {/* Header */}
+       <header className="sticky top-0 z-40 bg-background border-b border-border">
+         <div className="flex items-center justify-center px-4 py-4 relative">
+           <h1 className="text-2xl font-bold text-foreground text-center">NOTIFICATIONS</h1>
+           <button onClick={() => navigate(-1)} className="absolute left-2 p-2 -ml-2">
+             <ArrowLeft className="h-6 w-6 text-foreground" />
+           </button>
+           {unreadCount > 0 && (
+             <span className="absolute right-4 text-sm text-muted-foreground">
+               {unreadCount} new
+             </span>
+           )}
+         </div>
+       </header>
 
       <main className="px-4 pt-2 space-y-4">
         <PendingOrganiserInvites />

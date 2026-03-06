@@ -75,7 +75,7 @@ const EventGuests = () => {
       <main className="pt-4 md:pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-lg">
           <div className="hidden md:block mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-1">Guest List</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-1 text-center">Guest List</h1>
             <p className="text-muted-foreground">{event?.title} • {goingCount} going</p>
           </div>
 
