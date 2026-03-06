@@ -85,7 +85,7 @@ const Index = () => {
         {/* Events Near You */}
         <div className="border-b border-border">
           <div className="px-4 py-3">
-            <h2 className="text-base font-semibold text-foreground">Events Near You</h2>
+            <h2 className="text-base font-black text-foreground uppercase font-display tracking-[0.05em]" style={{ fontStretch: 'expanded' }}>Events Near You</h2>
           </div>
           <div className="px-4 pb-4 flex flex-col gap-2">
             {nearbyEvents.map(event => (
