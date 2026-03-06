@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AvatarWithProgress from "@/components/AvatarWithProgress";
-import RewardsModal from "@/components/RewardsModal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProfileQrModal from "@/components/ProfileQrModal";
 import FeedPost from "@/components/FeedPost";
 import {
   Settings,
