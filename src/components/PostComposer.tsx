@@ -135,37 +135,37 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
       />
       <div className="flex gap-3">
         <Link to="/profile">
-          <Avatar className="h-12 w-12 flex-shrink-0">
+          <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={avatarUrl || undefined} />
-            <AvatarFallback className="bg-card text-foreground font-bold">
+            <AvatarFallback className="bg-card text-foreground font-bold text-sm">
               {displayName[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <Link to="/profile" className="font-bold text-foreground hover:underline">
+          <div className="flex items-center gap-1">
+            <Link to="/profile" className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
               {displayName}
             </Link>
-            <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
-            <span className="text-muted-foreground text-sm">@{username}</span>
+            <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            <span className="text-muted-foreground text-[13px]">@{username}</span>
           </div>
 
           {isComposing ? (
-            <div className="mt-2 transition-all duration-200">
+            <div className="mt-1.5 transition-all duration-200">
               <textarea
                 ref={textareaRef}
                 value={postText}
                 onChange={handleTextChange}
                 placeholder="What's happening?"
                 rows={1}
-                className="w-full bg-transparent text-foreground placeholder:text-muted-foreground resize-none outline-none text-sm leading-relaxed"
+                className="w-full bg-transparent text-[15px] text-foreground placeholder:text-muted-foreground resize-none outline-none leading-[1.45]"
                 style={{ minHeight: "24px" }}
               />
 
               {/* Image preview */}
               {imagePreview && (
-                <div className="relative mt-2 rounded-xl overflow-hidden border border-border">
+                <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover" />
                   <button
                     onClick={clearMedia}
@@ -178,7 +178,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
 
               {/* GIF preview */}
               {selectedGif && (
-                <div className="relative mt-2 rounded-xl overflow-hidden border border-border">
+                <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
                   <img src={selectedGif} alt="GIF" className="w-full max-h-64 object-cover" />
                   <button
                     onClick={clearMedia}
@@ -197,7 +197,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                     className="h-8 w-8 text-muted-foreground hover:text-primary"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    <Image className="h-4 w-4" />
+                    <Image className="h-[18px] w-[18px]" />
                   </Button>
                   <GifPicker onSelect={handleGifSelect} />
                 </div>
@@ -205,7 +205,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-muted-foreground text-xs"
+                    className="text-muted-foreground text-[13px]"
                     onClick={() => {
                       setIsComposing(false);
                       setPostText("");
@@ -216,7 +216,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                   </Button>
                   <Button
                     size="sm"
-                    className="rounded-full px-4"
+                    className="rounded-full px-4 text-[13px]"
                     disabled={!hasContent || posting}
                     onClick={handlePost}
                   >
@@ -227,7 +227,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
             </div>
           ) : (
             <p
-              className="text-muted-foreground text-sm cursor-pointer mt-1"
+              className="text-muted-foreground text-[15px] cursor-pointer mt-0.5"
               onClick={() => setIsComposing(true)}
             >
               Write Something...
