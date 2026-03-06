@@ -5,7 +5,7 @@ import { config } from '@/infrastructure/config';
 import { supabase } from '@/infrastructure/supabase';
 import { parseApiError } from '@/infrastructure/errors';
 import type { AwardPointsResult, PointAction } from '@/features/loyalty/domain/types';
-import type { CreateEventInput } from '@/features/events/domain/types';
+import type { CreateEventInput, UpdateEventInput } from '@/features/events/domain/types';
 
 // --- Loyalty API ---
 export const loyaltyApi = {
@@ -31,6 +31,31 @@ export const eventsApi = {
         is_public: input.isPublic,
         cover_image: input.coverImage,
       },
+    });
+  },
+
+  update(input: UpdateEventInput) {
+    const { id, ...fields } = input;
+    return callEdgeFunction<Record<string, unknown>>('events-update', {
+      body: {
+        action: 'update',
+        event_id: id,
+        title: fields.title,
+        description: fields.description,
+        location: fields.location,
+        event_date: fields.eventDate,
+        end_date: fields.endDate,
+        category: fields.category,
+        max_guests: fields.maxGuests,
+        is_public: fields.isPublic,
+        cover_image: fields.coverImage,
+      },
+    });
+  },
+
+  delete(eventId: string) {
+    return callEdgeFunction<{ success: boolean }>('events-update', {
+      body: { action: 'delete', event_id: eventId },
     });
   },
 };
