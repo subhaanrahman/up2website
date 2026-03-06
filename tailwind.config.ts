@@ -108,6 +108,11 @@ export default {
   				'Noto Sans',
   				'sans-serif'
   			],
+  			display: [
+  				'Akira Expanded',
+  				'Montserrat',
+  				'sans-serif'
+  			],
   			serif: [
   				'Cormorant Garamond',
   				'ui-serif',
