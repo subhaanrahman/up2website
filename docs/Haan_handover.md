@@ -4,8 +4,11 @@
 
 ### Summary of Changes
 
-- **Logo entrance animation**: Added custom `snakeSlide` keyframe animation in `tailwind.config.ts` with skew/scale effects; applied to logo in `Index.tsx` for smooth page load entrance
-- **Post interaction RLS policies**: Fixed `post_likes` and `post_reposts` table policies to use permissive access control, enabling authenticated users to like/repost and see interaction counts persist correctly
+- **Like & repost counters**: Wired `usePostInteractions` into `FeedPost.tsx` to show live like/repost counts next to icons, filled red heart when liked, green repost icon when reposted
+- **Repost-to-feed**: Updated `usePostsQuery` to fetch `post_reposts` joined with original posts, merge into feed sorted by time with "🔁 {name} reposted" banner
+- **FeedPost props**: Added `postId` and `repostedBy` props to `FeedPost`; passed from `Index.tsx`, `Profile.tsx`, and `UserProfile.tsx`
+- **Post interaction RLS fix**: Replaced restrictive RLS policies on `post_likes` and `post_reposts` with permissive ones so likes/reposts actually persist
+- **Logo snake-slide animation**: Added custom `snakeSlide` keyframe in `tailwind.config.ts` (skew, scale, blur); applied to header logo in `Index.tsx` for smooth entrance on page load
 
 ## 5 March 2026
 
