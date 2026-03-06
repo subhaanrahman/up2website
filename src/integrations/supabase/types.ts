@@ -133,6 +133,7 @@ export type Database = {
           location: string | null
           max_guests: number | null
           organiser_profile_id: string | null
+          ticket_price_cents: number
           title: string
           updated_at: string
         }
@@ -149,6 +150,7 @@ export type Database = {
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          ticket_price_cents?: number
           title: string
           updated_at?: string
         }
@@ -165,6 +167,7 @@ export type Database = {
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          ticket_price_cents?: number
           title?: string
           updated_at?: string
         }

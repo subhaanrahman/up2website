@@ -1,0 +1,1 @@
+ALTER TABLE public.events ADD COLUMN ticket_price_cents integer NOT NULL DEFAULT 0;

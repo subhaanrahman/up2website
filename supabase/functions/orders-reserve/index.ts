@@ -11,7 +11,6 @@ const corsHeaders = {
 const reserveSchema = z.object({
   event_id: z.string().uuid('Invalid event ID'),
   quantity: z.number().int().min(1).max(20).default(1),
-  amount_cents: z.number().int().min(0),
   currency: z.string().length(3).default('zar'),
 });
 
@@ -46,7 +45,7 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('orders-reserve', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    // Validate input
+    // Validate input — amount_cents is no longer accepted from client
     const body = await req.json();
     const parsed = reserveSchema.safeParse(body);
     if (!parsed.success) {
@@ -55,7 +54,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { event_id, quantity, amount_cents, currency } = parsed.data;
+    const { event_id, quantity, currency } = parsed.data;
 
     // Use service role for order management (no client write policies)
     const serviceClient = createClient(
@@ -63,10 +62,10 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify event exists and check capacity
+    // Verify event exists, check capacity, and get canonical price
     const { data: event, error: eventError } = await serviceClient
       .from('events')
-      .select('id, max_guests, title')
+      .select('id, max_guests, title, ticket_price_cents')
       .eq('id', event_id)
       .single();
 
@@ -75,6 +74,9 @@ Deno.serve(async (req) => {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Derive amount server-side from canonical event price
+    const amount_cents = event.ticket_price_cents * quantity;
 
     // Check capacity: count confirmed RSVPs + active reservations
     if (event.max_guests) {
