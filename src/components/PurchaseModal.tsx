@@ -69,7 +69,7 @@ const PurchaseModal = ({
         <div className="p-4 border-b border-border">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="font-semibold text-foreground">{eventTitle}</h3>
+              <h3 className="font-semibold text-foreground capitalize">{eventTitle}</h3>
               <p className="text-sm text-muted-foreground">{eventDate}</p>
               <p className="text-sm text-muted-foreground">{eventLocation}</p>
             </div>
