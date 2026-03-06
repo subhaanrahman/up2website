@@ -24,10 +24,10 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
 
   return (
-    <div className="px-4 py-4 border-b border-border">
+    <div className="px-4 py-3 border-b border-border">
       {repostedBy && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2 pl-12">
-          <Repeat2 className="h-3 w-3" />
+        <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-1.5 pl-[52px]">
+          <Repeat2 className="h-3.5 w-3.5" />
           <span>{repostedBy} reposted</span>
         </div>
       )}
@@ -35,19 +35,19 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
         <Link to={`/user/${authorId}`}>
           <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={avatarUrl || ""} />
-            <AvatarFallback className="bg-card text-foreground font-bold">
+            <AvatarFallback className="bg-card text-foreground font-bold text-sm">
               {(displayName || "?")[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Link to={`/user/${authorId}`} className="font-bold text-foreground hover:underline">
+            <div className="flex items-center gap-1 flex-wrap">
+              <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
                 {displayName || username || "User"}
               </Link>
-              <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
-              <span className="text-muted-foreground text-sm">
+              <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+              <span className="text-muted-foreground text-[13px]">
                 @{username || "user"} · {timeAgo}
               </span>
             </div>
@@ -56,38 +56,38 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
             </Button>
           </div>
           {content && (
-            <p className="text-foreground mt-1 leading-relaxed whitespace-pre-wrap">{content}</p>
+            <p className="text-[15px] text-foreground mt-0.5 leading-[1.45] whitespace-pre-wrap">{content}</p>
           )}
           {imageUrl && (
-            <div className="mt-2 rounded-xl overflow-hidden border border-border">
-              <img src={imageUrl} alt="Post image" className="w-full max-h-96 object-cover" loading="lazy" />
+            <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
+              <img src={imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
           {gifUrl && (
-            <div className="mt-2 rounded-xl overflow-hidden border border-border">
-              <img src={gifUrl} alt="GIF" className="w-full max-h-96 object-cover" loading="lazy" />
+            <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
+              <img src={gifUrl} alt="GIF" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
-          <div className="flex items-center gap-6 mt-3">
+          <div className="flex items-center gap-5 mt-2.5">
             <button
               onClick={toggleLike}
               className={cn(
-                "flex items-center gap-1.5 transition-colors",
+                "flex items-center gap-1.5 transition-colors group",
                 isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"
               )}
             >
-              <Heart className={cn("h-4 w-4", isLiked && "fill-current")} />
-              {likeCount > 0 && <span className="text-xs">{likeCount}</span>}
+              <Heart className={cn("h-[18px] w-[18px]", isLiked && "fill-current")} />
+              {likeCount > 0 && <span className="text-[13px] tabular-nums">{likeCount}</span>}
             </button>
             <button
               onClick={toggleRepost}
               className={cn(
-                "flex items-center gap-1.5 transition-colors",
+                "flex items-center gap-1.5 transition-colors group",
                 isReposted ? "text-green-500" : "text-muted-foreground hover:text-green-500"
               )}
             >
-              <Repeat2 className="h-4 w-4" />
-              {repostCount > 0 && <span className="text-xs">{repostCount}</span>}
+              <Repeat2 className="h-[18px] w-[18px]" />
+              {repostCount > 0 && <span className="text-[13px] tabular-nums">{repostCount}</span>}
             </button>
           </div>
         </div>
