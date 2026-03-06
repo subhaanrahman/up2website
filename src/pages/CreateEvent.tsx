@@ -70,14 +70,15 @@ const CreateEvent = () => {
   const hasOrganiserProfile = isOrganiser || organiserProfiles.length > 0;
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading || profileLoading) return;
+    if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to create an event" });
       navigate("/auth");
-    } else if (!loading && user && !hasOrganiserProfile) {
+    } else if (!hasOrganiserProfile) {
       toast({ title: "Organiser account required", description: "Create an organiser profile first to create events.", variant: "destructive" });
       navigate("/profile");
     }
-  }, [user, loading, hasOrganiserProfile, navigate, toast]);
+  }, [user, loading, profileLoading, hasOrganiserProfile, navigate, toast]);
 
   const hasData = title || date || location || description;
 
