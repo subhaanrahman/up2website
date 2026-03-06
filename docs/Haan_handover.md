@@ -4,6 +4,10 @@
 
 ### Summary of Changes
 
+- **Rewards UI hidden, QR code modal added**: Removed `RewardsModal` and `AvatarWithProgress` from Profile page; clicking the profile avatar now opens a `ProfileQrModal` showing the user's QR code (via `qrcode.react`), avatar, name, username, and a copy-link button. Gamification backend (tables, hooks, provider) remains intact for future re-enablement.
+- **Feed post first-name only**: `FeedPost` header now shows only the author's first name instead of the full display name
+- **Feed post header inline layout**: Name, verified badge, @username, and timestamp all render on a single line with consistent `text-[15px]` sizing
+
 - **Like & repost counters**: Wired `usePostInteractions` into `FeedPost.tsx` to show live like/repost counts next to icons, filled red heart when liked, green repost icon when reposted
 - **Repost-to-feed**: Updated `usePostsQuery` to fetch `post_reposts` joined with original posts, merge into feed sorted by time with "🔁 {name} reposted" banner
 - **FeedPost props**: Added `postId` and `repostedBy` props to `FeedPost`; passed from `Index.tsx`, `Profile.tsx`, and `UserProfile.tsx`
