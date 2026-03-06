@@ -147,7 +147,7 @@ const Profile = () => {
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mb-0.5">
-            <h2 className="text-2xl font-black tracking-[0.15em] text-foreground uppercase" style={{ fontStretch: 'expanded' }}>
+            <h2 className="text-2xl font-black tracking-[0.15em] text-foreground uppercase font-display" style={{ fontStretch: 'expanded' }}>
               {displayName || username}
             </h2>
             <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
