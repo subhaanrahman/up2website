@@ -67,7 +67,6 @@ const CreateEvent = () => {
   // Notifications state
   const [reminders, setReminders] = useState<string[]>(["1_day"]);
 
-  const { organiserProfiles } = useActiveProfile();
   const hasOrganiserProfile = isOrganiser || organiserProfiles.length > 0;
 
   useEffect(() => {
