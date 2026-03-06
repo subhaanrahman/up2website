@@ -42,16 +42,16 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
         </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 flex-wrap">
-              <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
+            <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+              <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
                 {displayName || username || "User"}
               </Link>
-              <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
-              <span className="text-muted-foreground text-[13px]">
-                @{username || "user"} · {timeAgo}
-              </span>
+              <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />
+              <span className="text-muted-foreground text-[15px] truncate">@{username || "user"}</span>
+              <span className="text-muted-foreground text-[15px] shrink-0">·</span>
+              <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 shrink-0">
               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
