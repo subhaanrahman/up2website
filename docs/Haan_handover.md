@@ -1,5 +1,12 @@
 # Haan (Subhaan Rahman) — Handover Notes
 
+## 6 March 2026
+
+### Summary of Changes
+
+- **Logo entrance animation**: Added custom `snakeSlide` keyframe animation in `tailwind.config.ts` with skew/scale effects; applied to logo in `Index.tsx` for smooth page load entrance
+- **Post interaction RLS policies**: Fixed `post_likes` and `post_reposts` table policies to use permissive access control, enabling authenticated users to like/repost and see interaction counts persist correctly
+
 ## 5 March 2026
 
 ### Summary of Changes
