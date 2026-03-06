@@ -67,15 +67,18 @@ const CreateEvent = () => {
   // Notifications state
   const [reminders, setReminders] = useState<string[]>(["1_day"]);
 
+  const { organiserProfiles } = useActiveProfile();
+  const hasOrganiserProfile = isOrganiser || organiserProfiles.length > 0;
+
   useEffect(() => {
     if (!loading && !user) {
       toast({ title: "Sign in required", description: "Please sign in to create an event" });
       navigate("/auth");
-    } else if (!loading && user && !isOrganiser) {
-      toast({ title: "Organiser account required", description: "Switch to an organiser profile to create events.", variant: "destructive" });
+    } else if (!loading && user && !hasOrganiserProfile) {
+      toast({ title: "Organiser account required", description: "Create an organiser profile first to create events.", variant: "destructive" });
       navigate("/profile");
     }
-  }, [user, loading, isOrganiser, navigate, toast]);
+  }, [user, loading, hasOrganiserProfile, navigate, toast]);
 
   const hasData = title || date || location || description;
 
