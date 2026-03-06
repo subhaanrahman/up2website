@@ -40,6 +40,29 @@ export const eventsRepository = {
     return (data || []).map(mapEventRow);
   },
 
+  async search(options: { query?: string; category?: string; limit?: number }): Promise<EventEntity[]> {
+    let q = supabase
+      .from('events')
+      .select('*')
+      .gte('event_date', new Date().toISOString())
+      .order('event_date', { ascending: true });
+
+    if (options.query?.trim()) {
+      const term = `%${options.query.trim()}%`;
+      q = q.or(`title.ilike.${term},location.ilike.${term}`);
+    }
+    if (options.category) {
+      q = q.eq('category', options.category);
+    }
+    if (options.limit) {
+      q = q.limit(options.limit);
+    }
+
+    const { data, error } = await q;
+    if (error) throw error;
+    return (data || []).map(mapEventRow);
+  },
+
   async getById(id: string): Promise<EventEntity | null> {
     const { data, error } = await supabase
       .from('events')

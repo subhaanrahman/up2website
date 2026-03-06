@@ -2,3 +2,6 @@ project_id = "dcjymbpjmbfoikqjrmuo"
 
 [functions.dev-profile]
 verify_jwt = false
+
+[functions.events-update]
+verify_jwt = false

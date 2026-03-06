@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus
+  X, Share2, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
@@ -108,6 +108,7 @@ const EventDetail = () => {
 
   const event = foundMockEvent || dbEvent;
   const isFreeEvent = !foundMockEvent;
+  const isHost = user && dbEvent && dbEvent.hostId === user.id;
 
   if (!event) {
     return (
@@ -146,6 +147,11 @@ const EventDetail = () => {
         <button onClick={() => navigate(-1)} className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
           <X className="h-5 w-5 text-foreground" />
         </button>
+        {isHost && (
+          <button onClick={() => navigate(`/events/${id}/edit`)} className="absolute top-4 left-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
+            <Pencil className="h-5 w-5 text-foreground" />
+          </button>
+        )}
         <button onClick={handleShare} className="absolute top-16 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
           <Share2 className="h-5 w-5 text-foreground" />
         </button>
@@ -205,6 +211,13 @@ const EventDetail = () => {
               <Users className="h-4 w-4 inline mr-1" />{attendees} attending
             </span>
           </div>
+        )}
+
+        {dbEvent && (
+          <Link to={`/events/${id}/guests`} className="flex items-center gap-2 py-2 text-primary hover:underline transition-colors">
+            <Users className="h-4 w-4" />
+            <span className="text-sm font-medium">See who's going</span>
+          </Link>
         )}
 
         <div className="flex gap-3">

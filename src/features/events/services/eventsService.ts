@@ -11,6 +11,10 @@ export const eventsService = {
     return eventsRepository.list(options);
   },
 
+  async searchEvents(options: { query?: string; category?: string; limit?: number }): Promise<EventEntity[]> {
+    return eventsRepository.search(options);
+  },
+
   async getEvent(id: string): Promise<EventEntity | null> {
     return eventsRepository.getById(id);
   },

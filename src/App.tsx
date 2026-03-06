@@ -12,6 +12,8 @@ import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import CreateEvent from "./pages/CreateEvent";
+import EditEvent from "./pages/EditEvent";
+import EventGuests from "./pages/EventGuests";
 import Tickets from "./pages/Tickets";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -52,6 +54,8 @@ const App = () => (
               <Route path="/search/:id" element={<EventDetail />} />
               <Route path="/user/:userId" element={<UserProfile />} />
               <Route path="/events/:id" element={<EventDetail />} />
+              <Route path="/events/:id/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
+              <Route path="/events/:id/guests" element={<EventGuests />} />
 
               {/* Protected routes */}
               <Route path="/messages" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
