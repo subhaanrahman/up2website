@@ -29,7 +29,7 @@ const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
-  const { isOrganiser, organiserProfiles } = useActiveProfile();
+  const { isOrganiser, organiserProfiles, isLoading: profileLoading } = useActiveProfile();
   const createEventMutation = useCreateEvent();
 
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
