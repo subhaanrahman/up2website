@@ -95,7 +95,7 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
 
     {/* Info */}
     <div className="relative flex flex-col gap-1 mt-3">
-      <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors duration-200">
+      <h3 className="font-semibold text-sm text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors duration-200 capitalize">
         {chat.name}
       </h3>
       {chat.last_message && (

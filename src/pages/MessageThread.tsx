@@ -49,7 +49,8 @@ const MessageThread = () => {
     enabled: !!id,
   });
 
-  const chatName = chat?.name ?? "Group Chat";
+  const chatName = (chat?.name ?? "Group Chat");
+  const displayChatName = chatName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
   const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
 
   const handleSend = async () => {
@@ -87,7 +88,7 @@ const MessageThread = () => {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <p className="font-semibold text-foreground text-sm">{chatName}</p>
+          <p className="font-semibold text-foreground text-sm capitalize">{displayChatName}</p>
           <p className="text-xs text-muted-foreground">{chat?.member_count ?? 0} members</p>
         </div>
         <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
