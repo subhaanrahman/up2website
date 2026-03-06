@@ -13,7 +13,7 @@ interface AuthContextType {
   register: (data: RegisterInput) => Promise<{ error: Error | null }>;
   login: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  mockLogin: (userId?: string, displayName?: string, phone?: string) => void;
+  devLogin: (userId: string) => Promise<{ error: Error | null }>;
 }
 
 export interface RegisterInput {
@@ -145,27 +145,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
   };
 
-  const mockLogin = (userId?: string, displayName?: string, phone?: string) => {
-    const mockUser = {
-      id: userId || "00000000-0000-0000-0000-000000000001",
-      email: "dev@example.com",
-      phone: phone || "+1234567890",
-      created_at: new Date().toISOString(),
-      app_metadata: {},
-      user_metadata: { display_name: displayName || "Dev User" },
-      aud: "authenticated",
-    } as User;
+  const devLogin = async (userId: string) => {
+    try {
+      const result = await callEdgeFunction<{
+        success: boolean;
+        access_token: string;
+        refresh_token: string;
+        user_id: string;
+      }>('dev-login', {
+        method: 'POST',
+        body: { user_id: userId },
+      });
 
-    setUser(mockUser);
-    setSession({ user: mockUser } as Session);
-    setLoading(false);
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+      });
+
+      if (sessionError) {
+        return { error: sessionError };
+      }
+
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
   };
 
   return (
     <AuthContext.Provider value={{
       user, session, loading,
       checkPhone, sendOtp, verifyOtp, register, login,
-      signOut, mockLogin,
+      signOut, devLogin,
     }}>
       {children}
     </AuthContext.Provider>

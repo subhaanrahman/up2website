@@ -15,7 +15,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string })?.from || "/profile";
-  const { user, mockLogin } = useAuth();
+  const { user, devLogin } = useAuth();
   const { toast } = useToast();
 
   const [step, setStep] = useState<AuthStep>("phone");
@@ -107,8 +107,9 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                mockLogin("1eafb563-071a-45c6-a82e-79b460b3a851", "Dylan Godwin", "+61405826420");
+              onClick={async () => {
+                const { error } = await devLogin("1eafb563-071a-45c6-a82e-79b460b3a851");
+                if (error) toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
               }}
               className="w-full"
             >
@@ -117,8 +118,9 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                mockLogin("e8f02149-2ccf-4324-950a-d2a574c46569", "Haan", "+17472753223");
+              onClick={async () => {
+                const { error } = await devLogin("e8f02149-2ccf-4324-950a-d2a574c46569");
+                if (error) toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
               }}
               className="w-full"
             >
@@ -127,14 +129,18 @@ const Auth = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => {
-                mockLogin("e8f02149-2ccf-4324-950a-d2a574c46569", "Haan", "+17472753223");
-                localStorage.setItem("active_profile", JSON.stringify({
-                  id: "6348b9db-fd8a-466e-8549-6c4333cdfa56",
-                  type: "organiser",
-                  displayName: "Members Only",
-                  avatarUrl: null,
-                }));
+              onClick={async () => {
+                const { error } = await devLogin("e8f02149-2ccf-4324-950a-d2a574c46569");
+                if (!error) {
+                  localStorage.setItem("active_profile", JSON.stringify({
+                    id: "6348b9db-fd8a-466e-8549-6c4333cdfa56",
+                    type: "organiser",
+                    displayName: "Members Only",
+                    avatarUrl: null,
+                  }));
+                } else {
+                  toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
+                }
               }}
               className="w-full"
             >
