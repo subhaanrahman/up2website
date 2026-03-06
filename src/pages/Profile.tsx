@@ -15,11 +15,11 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
-import { useGamification } from "@/hooks/useGamification";
+
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useHostEvents } from "@/hooks/useEventsQuery";
 import { useActiveProfile, type OrganiserProfile } from "@/contexts/ActiveProfileContext";
-import { getProgressToNextRank } from "@/features/loyalty";
+
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,9 +37,7 @@ interface EventItem {
 
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
-  const { points, rank } = useGamification();
-  const navigate = useNavigate();
-  const [rewardsOpen, setRewardsOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
@@ -50,7 +48,7 @@ const Profile = () => {
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
     : undefined;
 
-  const progress = getProgressToNextRank(points, rank);
+  
 
   // Social count: Friends/Following for personal, Followers for organiser
   const { data: socialCount = 0 } = useQuery({
@@ -134,15 +132,18 @@ const Profile = () => {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <button
-              onClick={() => setRewardsOpen(true)}
+              onClick={() => setQrOpen(true)}
               className="cursor-pointer transition-transform hover:scale-105"
             >
-              <AvatarWithProgress
-                src={avatarUrl || undefined}
-                fallback={username[0]?.toUpperCase() || "U"}
-                progress={progress}
-                size={120}
-              />
+              <Avatar
+                className="border-2 border-border"
+                style={{ width: 120, height: 120 }}
+              >
+                <AvatarImage src={avatarUrl || undefined} />
+                <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
+                  {(username[0] || "U").toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
             </button>
           </div>
 
@@ -264,7 +265,14 @@ const Profile = () => {
         </Tabs>
       </main>
 
-      <RewardsModal open={rewardsOpen} onOpenChange={setRewardsOpen} />
+      <ProfileQrModal
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        displayName={displayName}
+        username={isOrganiser && activeOrg ? activeOrg.username : (profile?.username || username.toLowerCase().replace(/\s+/g, ""))}
+        avatarUrl={avatarUrl || undefined}
+        profileUrl={`${window.location.origin}/user/${user.id}`}
+      />
       <BottomNav />
     </div>
   );
