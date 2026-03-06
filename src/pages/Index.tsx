@@ -105,9 +105,10 @@ const Index = () => {
         </div>
 
         {/* Real Feed Posts */}
-        {feedPosts.map((post) => (
+        {feedPosts.map((post, idx) => (
           <FeedPost
-            key={post.id}
+            key={post.reposted_by_name ? `repost-${post.id}-${idx}` : post.id}
+            postId={post.id}
             authorId={post.author_id}
             displayName={post.author_display_name || "User"}
             username={post.author_username || "user"}
@@ -116,6 +117,7 @@ const Index = () => {
             createdAt={post.created_at}
             imageUrl={post.image_url}
             gifUrl={post.gif_url}
+            repostedBy={post.reposted_by_name}
           />
         ))}
 
