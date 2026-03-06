@@ -156,8 +156,12 @@ All colors MUST be HSL.
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display font-bold uppercase;
+    @apply font-bold uppercase;
     letter-spacing: 0.05em;
+  }
+
+  h1 {
+    font-family: 'Akira Expanded', 'Montserrat', sans-serif;
   }
 }
 
