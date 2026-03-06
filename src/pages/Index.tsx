@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -61,7 +61,7 @@ const Index = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-center px-4 h-14 relative">
-          <img src={logoImg} alt="Up2" className="h-8 w-auto" />
+          <img src={logoImg} alt="Up2" className="h-8 w-auto animate-snakeSlide" />
           <div className="absolute right-4">
             <Link to="/notifications">
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-secondary">

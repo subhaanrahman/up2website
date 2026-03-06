@@ -65,25 +65,24 @@ export default {
   		},
   		keyframes: {
   			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
+  				from: { height: '0' },
+  				to: { height: 'var(--radix-accordion-content-height)' }
   			},
   			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
+  				from: { height: 'var(--radix-accordion-content-height)' },
+  				to: { height: '0' }
+  			},
+  			snakeSlide: {
+  				'0%': { opacity: '0', transform: 'translateX(-60px) scaleX(0.3) skewX(20deg)', filter: 'blur(4px)' },
+  				'40%': { opacity: '0.7', transform: 'translateX(8px) scaleX(1.08) skewX(-6deg)', filter: 'blur(0px)' },
+  				'70%': { transform: 'translateX(-3px) scaleX(0.98) skewX(2deg)' },
+  				'100%': { opacity: '1', transform: 'translateX(0) scaleX(1) skewX(0deg)', filter: 'blur(0px)' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			snakeSlide: 'snakeSlide 0.8s cubic-bezier(0.34,1.56,0.64,1) both'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
