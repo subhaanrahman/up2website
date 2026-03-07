@@ -94,10 +94,16 @@ const Index = () => {
                   <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
-                  <p className="text-xs text-muted-foreground">{event.location?.split(",")[0] || "Venue"}</p>
+                  <p className="text-xs text-muted-foreground">{event.host.name}</p>
                   <h3 className="font-bold text-foreground text-sm truncate capitalize">{event.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">{event.date} -  {event.time}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">From ${event.price === 0 ? "Free" : `$${event.price.toFixed(2)}`}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <Calendar className="h-3 w-3 text-primary" />
+                    <span>{event.date} - {event.time}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <DollarSign className="h-3 w-3 text-primary" />
+                    <span>{event.price === 0 ? "Free" : `$${event.price.toFixed(2)}`}</span>
+                  </div>
                 </div>
               </Link>
             ))}
