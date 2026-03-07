@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, ChevronRight, TrendingUp, TrendingDown, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -35,7 +35,6 @@ const StatCard = ({ label, value, trend }: StatCardProps) => {
 
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [eventTab, setEventTab] = useState<"upcoming" | "past">("upcoming");
   const { activeProfile } = useActiveProfile();
 
   const { data: events, isLoading } = useQuery({
@@ -79,37 +78,37 @@ const OrganiserDashboard = () => {
   const totalAttendees = rsvpCounts
     ? Object.values(rsvpCounts).reduce((sum, c) => sum + c, 0)
     : 0;
-  const totalEvents = events?.length || 0;
-  const upcomingEvents = events?.filter((e) => !isPast(new Date(e.event_date))).length || 0;
 
   const filteredEvents = events
-    ?.filter((e) => {
-      const past = isPast(new Date(e.event_date));
-      return eventTab === "past" ? past : !past;
-    })
-    .filter((e) =>
+    ?.filter((e) =>
       e.title.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => {
-      const dateA = new Date(a.event_date).getTime();
-      const dateB = new Date(b.event_date).getTime();
-      // Upcoming: ascending (soonest first), Past: descending (most recent first)
-      return eventTab === "upcoming" ? dateA - dateB : dateB - dateA;
-    });
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
 
   return (
     <div className="md:hidden">
       <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-foreground">DASHBOARD</h1>
-        <p className="text-sm text-muted-foreground mt-1">Performance and Analytics</p>
+        <h1
+          className="text-2xl font-bold text-foreground uppercase"
+          style={{ fontFamily: "'Akira Expanded', sans-serif", fontWeight: 900, fontStretch: 'expanded', letterSpacing: '0.05em' }}
+        >
+          Dashboard
+        </h1>
+        <div className="flex items-center justify-between mt-1">
+          <p className="text-sm text-muted-foreground">Performance and Analytics</p>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full">
+            <Clock className="h-3 w-3" />
+            Past Month
+          </span>
+        </div>
       </header>
 
       {/* Stats Grid */}
       <div className="px-4 grid grid-cols-2 gap-3 mb-6">
-        <StatCard label="Total Events" value={String(totalEvents)} trend={0} />
+        <StatCard label="Total Revenue" value="$0" trend={0} />
         <StatCard label="Total Attendees" value={String(totalAttendees)} trend={totalAttendees > 0 ? 15 : 0} />
-        <StatCard label="Upcoming" value={String(upcomingEvents)} trend={0} />
-        <StatCard label="Conversion Rate" value="—" trend={0} />
+        <StatCard label="Total Views" value="0" trend={0} />
+        <StatCard label="Conversion Rate" value="0%" trend={0} />
       </div>
 
       {/* Events List */}
@@ -127,35 +126,11 @@ const OrganiserDashboard = () => {
           </div>
         </div>
 
-        {/* Upcoming / Past tabs */}
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setEventTab("upcoming")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              eventTab === "upcoming"
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            Upcoming
-          </button>
-          <button
-            onClick={() => setEventTab("past")}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              eventTab === "past"
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground"
-            }`}
-          >
-            Past
-          </button>
-        </div>
-
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-xl animate-pulse">
-                <div className="w-28 h-20 bg-secondary rounded-lg" />
+              <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-2xl animate-pulse">
+                <div className="w-28 h-28 bg-secondary rounded-lg" />
                 <div className="flex-1 space-y-2">
                   <div className="h-5 w-3/4 bg-secondary rounded" />
                   <div className="h-4 w-1/2 bg-secondary rounded" />
@@ -171,9 +146,9 @@ const OrganiserDashboard = () => {
                 <Link
                   key={event.id}
                   to={`/events/${event.id}`}
-                  className="flex items-center gap-4 bg-card rounded-xl overflow-hidden hover:bg-card/80 transition-colors"
+                  className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
                 >
-                  <div className="w-28 h-24 flex-shrink-0">
+                  <div className="w-28 h-28 flex-shrink-0">
                     <img
                       src={event.cover_image || "/placeholder.svg"}
                       alt={event.title}
@@ -181,21 +156,21 @@ const OrganiserDashboard = () => {
                     />
                   </div>
 
-                  <div className="flex-1 py-3 pr-2">
-                    <h3 className="font-semibold text-foreground line-clamp-2 mb-2">
+                  <div className="flex-1 px-4 py-3 min-w-0">
+                    <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
                       {event.title}
                     </h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs bg-secondary px-2 py-1 rounded text-muted-foreground">
-                        {format(new Date(event.event_date), "EEE M/d • h:mma")}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+                        {format(new Date(event.event_date), "EEE M/d - ha")}
                       </span>
-                      <span className={`text-xs px-2 py-1 rounded ${past ? "bg-muted text-muted-foreground" : "bg-secondary text-muted-foreground"}`}>
+                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
                         {past ? "Past" : "Upcoming"}
                       </span>
                     </div>
                   </div>
 
-                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-4 flex-shrink-0" />
+                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
                 </Link>
               );
             })}
