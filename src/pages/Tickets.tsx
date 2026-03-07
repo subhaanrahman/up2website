@@ -164,8 +164,8 @@ const Tickets = () => {
                   to={`/events/${rsvp.event_id}`}
                   className="bg-card rounded-xl overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                 >
-                  <img
-                    src={rsvp.events?.cover_image || "/placeholder.svg"}
+                   <img
+                    src={getEventFlyer(rsvp.event_id)}
                     alt={rsvp.events?.title}
                     className="w-full h-32 object-cover"
                   />

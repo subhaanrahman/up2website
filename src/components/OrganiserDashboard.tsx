@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { format, isPast } from "date-fns";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 interface StatCardProps {
   label: string;
