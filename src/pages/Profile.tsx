@@ -44,6 +44,30 @@ const Profile = () => {
   const { data: profile } = useProfile(user?.id);
   const { data: hostEvents } = useHostEvents(user?.id);
 
+  // Fetch organiser events when in organiser mode
+  const { data: organiserEvents } = useQuery({
+    queryKey: ["organiser-profile-events", activeProfile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("organiser_profile_id", activeProfile!.id)
+        .order("event_date", { ascending: true });
+      if (error) throw error;
+      return (data || []).map((row) => ({
+        id: row.id,
+        title: row.title,
+        eventDate: row.event_date,
+        location: row.location,
+        coverImage: row.cover_image,
+        category: row.category,
+      }));
+    },
+    enabled: isOrganiser && !!activeProfile?.id,
+  });
+
+  const profileEvents = isOrganiser ? organiserEvents : hostEvents;
+
   // If organiser profile is active, find the full data
   const activeOrg: OrganiserProfile | undefined = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
@@ -110,12 +134,13 @@ const Profile = () => {
   const instagramHandle = isOrganiser && activeOrg ? activeOrg.instagramHandle : profile?.instagramHandle;
   
 
-  const upcomingEvents = (hostEvents || []).filter(
-    (e) => new Date(e.eventDate) >= new Date()
-  );
-  const pastEvents = (hostEvents || []).filter(
-    (e) => new Date(e.eventDate) < new Date()
-  );
+  const now = new Date();
+  const upcomingEvents = (profileEvents || [])
+    .filter((e) => new Date(e.eventDate) >= now)
+    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+  const pastEvents = (profileEvents || [])
+    .filter((e) => new Date(e.eventDate) < now)
+    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -227,7 +252,7 @@ const Profile = () => {
           </TabsList>
 
           <TabsContent value="upcoming" className="mt-4 space-y-3">
-            {!hostEvents ? (
+            {!profileEvents ? (
               <LoadingSpinner message="Loading events..." />
             ) : upcomingEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
@@ -251,7 +276,7 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="past" className="mt-4 space-y-3">
-            {!hostEvents ? (
+            {!profileEvents ? (
               <LoadingSpinner message="Loading events..." />
             ) : pastEvents.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">

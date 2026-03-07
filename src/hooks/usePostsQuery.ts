@@ -41,7 +41,32 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
     (profiles || []).map((p) => [p.user_id, p])
   );
 
+  // Fetch organiser profiles for posts that have organiser_profile_id
+  const orgIds = [...new Set(data.filter((p) => p.organiser_profile_id).map((p) => p.organiser_profile_id!))];
+  let orgMap = new Map<string, { display_name: string; username: string; avatar_url: string | null }>();
+  if (orgIds.length > 0) {
+    const { data: orgProfiles } = await supabase
+      .from("organiser_profiles")
+      .select("id, display_name, username, avatar_url")
+      .in("id", orgIds);
+    orgMap = new Map(
+      (orgProfiles || []).map((o) => [o.id, o])
+    );
+  }
+
   return data.map((post) => {
+    // If post has organiser_profile_id, use organiser identity
+    if (post.organiser_profile_id) {
+      const org = orgMap.get(post.organiser_profile_id);
+      if (org) {
+        return {
+          ...post,
+          author_display_name: org.display_name,
+          author_username: org.username,
+          author_avatar_url: org.avatar_url,
+        };
+      }
+    }
     const prof = profileMap.get(post.author_id);
     return {
       ...post,
