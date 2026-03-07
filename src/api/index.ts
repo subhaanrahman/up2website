@@ -30,6 +30,7 @@ export const eventsApi = {
         max_guests: input.maxGuests,
         is_public: input.isPublic,
         cover_image: input.coverImage,
+        organiser_profile_id: input.organiserProfileId,
       },
     });
   },

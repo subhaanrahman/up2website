@@ -4,7 +4,7 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 Deno.serve(async (req) => {
@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
-    const { title, description, location, event_date, end_date, category, max_guests, is_public } = body;
+    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id } = body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'title is required' }), {
@@ -49,6 +49,34 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'event_date is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Validate organiser_profile_id if provided
+    let validatedOrgId: string | null = null;
+    if (organiser_profile_id) {
+      // Use service role to check ownership/membership
+      const adminClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+
+      const { data: isOwner } = await adminClient.rpc('is_organiser_owner', {
+        p_organiser_profile_id: organiser_profile_id,
+        p_user_id: user.id,
+      });
+
+      const { data: isMember } = await adminClient.rpc('is_organiser_member', {
+        p_organiser_profile_id: organiser_profile_id,
+        p_user_id: user.id,
+      });
+
+      if (!isOwner && !isMember) {
+        return new Response(JSON.stringify({ error: 'You do not have access to this organiser profile' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      validatedOrgId = organiser_profile_id;
     }
 
     const { data, error } = await supabase
@@ -63,6 +91,7 @@ Deno.serve(async (req) => {
         category: category || 'party',
         max_guests: max_guests ? Math.min(Math.max(1, max_guests), 100000) : null,
         is_public: is_public !== false,
+        organiser_profile_id: validatedOrgId,
       })
       .select()
       .single();

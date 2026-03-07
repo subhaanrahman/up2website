@@ -26,6 +26,7 @@ export interface CreateEventInput {
   maxGuests?: number;
   isPublic?: boolean;
   coverImage?: string;
+  organiserProfileId?: string;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {
