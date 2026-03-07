@@ -118,17 +118,17 @@ const Events = () => {
   const renderEventItem = (event: any) => (
     <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors mb-3">
       <div className="w-28 h-28 flex-shrink-0">
-        {event.coverImage ? (
-          <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
+        {event.coverImage || event.cover_image ? (
+          <img src={event.coverImage || event.cover_image} alt={event.title} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center text-2xl">🎉</div>
+          <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
         )}
       </div>
       <div className="flex-1 px-4 py-3 min-w-0">
         <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
         <div className="flex items-center gap-2">
           <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-            {format(new Date(event.eventDate), "EEE M/d - ha")}
+            {format(new Date(event.eventDate || event.event_date), "EEE M/d - ha")}
           </span>
           {event.category && (
             <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
