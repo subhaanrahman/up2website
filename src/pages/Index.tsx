@@ -15,7 +15,6 @@ import { useFeedPosts } from "@/hooks/usePostsQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/services/recommendationService";
 import logoImg from "@/assets/logo.png";
-import logoImg from "@/assets/logo.png";
 
 const Index = () => {
   const { user } = useAuth();
@@ -25,24 +24,12 @@ const Index = () => {
   const unreadCount = useUnreadCount();
   const queryClient = useQueryClient();
 
-  const [suggestedProfiles, setSuggestedProfiles] = useState<ProfileResult[]>([]);
+  const [suggestedProfiles, setSuggestedProfiles] = useState<SuggestedProfile[]>([]);
   const { data: feedPosts = [] } = useFeedPosts();
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .order("created_at", { ascending: false })
-        .limit(6);
-      if (data) {
-        setSuggestedProfiles(
-          user ? data.filter((p) => p.user_id !== user.id) : data
-        );
-      }
-    };
-    load();
-  }, [user]);
+    getSuggestedFriends(user?.id, 6).then(setSuggestedProfiles);
+  }, [user?.id]);
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
