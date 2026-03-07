@@ -28,6 +28,7 @@ const Index = () => {
   const { data: profile } = useProfile(user?.id);
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const nearbyEvents = events.slice(0, 2);
+  const unreadCount = useUnreadCount();
   const queryClient = useQueryClient();
 
   const [suggestedProfiles, setSuggestedProfiles] = useState<ProfileResult[]>([]);
