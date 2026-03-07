@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Repeat2, MoreHorizontal, BadgeCheck } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Heart, Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
 
@@ -17,9 +17,17 @@ interface FeedPostProps {
   imageUrl?: string | null;
   gifUrl?: string | null;
   repostedBy?: string;
+  eventData?: {
+    id: string;
+    title: string;
+    event_date: string;
+    location: string | null;
+    cover_image: string | null;
+  } | null;
+  collaborators?: { display_name: string; avatar_url: string | null }[];
 }
 
-const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy }: FeedPostProps) => {
+const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
@@ -56,10 +64,52 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </div>
+
+          {/* Collaborators line */}
+          {collaborators && collaborators.length > 0 && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[12px] text-muted-foreground">with</span>
+              <div className="flex items-center -space-x-1">
+                {collaborators.slice(0, 3).map((c, i) => (
+                  <Avatar key={i} className="h-4 w-4 border border-background">
+                    <AvatarImage src={c.avatar_url || undefined} />
+                    <AvatarFallback className="text-[7px] bg-muted">{c.display_name[0]}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-[12px] text-foreground font-medium">
+                {collaborators.map(c => c.display_name.split(" ")[0]).join(", ")}
+              </span>
+            </div>
+          )}
+
           {content && (
             <p className="text-[15px] text-foreground mt-0.5 leading-[1.45] whitespace-pre-wrap">{content}</p>
           )}
-          {imageUrl && (
+
+          {/* Event card */}
+          {eventData && (
+            <Link to={`/events/${eventData.id}`} className="block mt-2.5 rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
+              {eventData.cover_image && (
+                <img src={eventData.cover_image} alt={eventData.title} className="w-full h-32 object-cover" loading="lazy" />
+              )}
+              <div className="p-3">
+                <h4 className="font-bold text-foreground text-sm">{eventData.title}</h4>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <Calendar className="h-3 w-3 text-primary" />
+                  <span>{format(new Date(eventData.event_date), "EEE, MMM d · h:mm a")}</span>
+                </div>
+                {eventData.location && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <MapPin className="h-3 w-3 text-primary" />
+                    <span>{eventData.location}</span>
+                  </div>
+                )}
+              </div>
+            </Link>
+          )}
+
+          {!eventData && imageUrl && (
             <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
               <img src={imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>

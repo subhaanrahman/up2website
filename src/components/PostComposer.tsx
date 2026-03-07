@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { BadgeCheck, Image, X } from "lucide-react";
+import { BadgeCheck, Image, X, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GifPicker from "@/components/GifPicker";
+import CollaboratorPicker from "@/components/CollaboratorPicker";
 
 interface PostComposerProps {
   displayName: string;
@@ -24,6 +25,8 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedGif, setSelectedGif] = useState<string | null>(null);
+  const [collaborators, setCollaborators] = useState<{ user_id: string; display_name: string; avatar_url: string | null }[]>([]);
+  const [showCollabPicker, setShowCollabPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,7 +66,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
     }
     setSelectedImage(file);
     setImagePreview(URL.createObjectURL(file));
-    setSelectedGif(null); // can't have both
+    setSelectedGif(null);
     setIsComposing(true);
   };
 
@@ -81,6 +84,17 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const addCollaborator = (collab: { user_id: string; display_name: string; avatar_url: string | null }) => {
+    if (!collaborators.find(c => c.user_id === collab.user_id)) {
+      setCollaborators(prev => [...prev, collab]);
+    }
+    setShowCollabPicker(false);
+  };
+
+  const removeCollaborator = (userId: string) => {
+    setCollaborators(prev => prev.filter(c => c.user_id !== userId));
+  };
+
   const handlePost = async () => {
     if (!user) return;
     const hasContent = postText.trim() || selectedImage || selectedGif;
@@ -90,7 +104,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
     let imageUrl: string | null = null;
 
     try {
-      // Upload image if selected
       if (selectedImage) {
         const ext = selectedImage.name.split(".").pop();
         const path = `${user.id}/${Date.now()}.${ext}`;
@@ -102,18 +115,26 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
         imageUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from("posts").insert({
+      const { data: newPost, error } = await supabase.from("posts").insert({
         author_id: user.id,
         content: postText.trim() || null,
         organiser_profile_id: organiserProfileId || null,
         image_url: imageUrl,
         gif_url: selectedGif,
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
+      // Add collaborators
+      if (newPost && collaborators.length > 0) {
+        await supabase.from("post_collaborators").insert(
+          collaborators.map(c => ({ post_id: newPost.id, user_id: c.user_id }))
+        );
+      }
+
       setPostText("");
       clearMedia();
+      setCollaborators([]);
       setIsComposing(false);
       onPostCreated?.();
     } catch (err: any) {
@@ -163,30 +184,50 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                 style={{ minHeight: "24px" }}
               />
 
-              {/* Image preview */}
+              {/* Collaborator chips */}
+              {collaborators.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {collaborators.map(c => (
+                    <span key={c.user_id} className="inline-flex items-center gap-1 bg-secondary rounded-full pl-1 pr-2 py-0.5 text-[12px] text-foreground">
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage src={c.avatar_url || undefined} />
+                        <AvatarFallback className="text-[8px] bg-muted">{c.display_name[0]}</AvatarFallback>
+                      </Avatar>
+                      {c.display_name}
+                      <button onClick={() => removeCollaborator(c.user_id)} className="ml-0.5 hover:text-destructive">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {imagePreview && (
                 <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover" />
-                  <button
-                    onClick={clearMedia}
-                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1"
-                  >
+                  <button onClick={clearMedia} className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1">
                     <X className="h-4 w-4 text-foreground" />
                   </button>
                 </div>
               )}
 
-              {/* GIF preview */}
               {selectedGif && (
                 <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
                   <img src={selectedGif} alt="GIF" className="w-full max-h-64 object-cover" />
-                  <button
-                    onClick={clearMedia}
-                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1"
-                  >
+                  <button onClick={clearMedia} className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1">
                     <X className="h-4 w-4 text-foreground" />
                   </button>
                 </div>
+              )}
+
+              {/* Collaborator picker */}
+              {showCollabPicker && (
+                <CollaboratorPicker
+                  currentUserId={user?.id || ""}
+                  excludeIds={collaborators.map(c => c.user_id)}
+                  onSelect={addCollaborator}
+                  onClose={() => setShowCollabPicker(false)}
+                />
               )}
 
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
@@ -200,6 +241,14 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                     <Image className="h-[18px] w-[18px]" />
                   </Button>
                   <GifPicker onSelect={handleGifSelect} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={() => setShowCollabPicker(prev => !prev)}
+                  >
+                    <UserPlus className="h-[18px] w-[18px]" />
+                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
@@ -210,6 +259,8 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
                       setIsComposing(false);
                       setPostText("");
                       clearMedia();
+                      setCollaborators([]);
+                      setShowCollabPicker(false);
                     }}
                   >
                     Cancel

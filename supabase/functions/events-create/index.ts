@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
     // Validate organiser_profile_id if provided
     let validatedOrgId: string | null = null;
     if (organiser_profile_id) {
-      // Use service role to check ownership/membership
       const adminClient = createClient(
         Deno.env.get('SUPABASE_URL')!,
         Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -101,6 +100,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Auto-create a post for this event in the feed
+    try {
+      const postContent = `🎉 ${data.title}${data.description ? ` — ${data.description.slice(0, 200)}` : ''}`;
+      await supabase.from('posts').insert({
+        author_id: user.id,
+        organiser_profile_id: validatedOrgId,
+        event_id: data.id,
+        content: postContent,
+        image_url: data.cover_image || null,
+      });
+    } catch (postErr) {
+      console.error('Failed to create event post (non-fatal):', postErr);
     }
 
     return new Response(JSON.stringify(data), {
