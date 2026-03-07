@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { hashPassword } from "../_shared/password.ts";
+import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -134,6 +135,22 @@ Deno.serve(async (req) => {
     if (profileError) {
       console.error('Profile update error:', JSON.stringify(profileError));
       await supabaseAdmin.from('profiles').insert({ user_id: userId, ...profileData });
+    }
+
+    // ── Generate initials avatar ──
+    try {
+      const avatarUrl = await generateAndUploadInitialsAvatar(
+        supabaseAdmin,
+        userId,
+        `${firstName.trim()} ${lastName.trim()}`,
+      );
+      await supabaseAdmin
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('user_id', userId);
+      console.log(`Generated initials avatar for user ${userId}`);
+    } catch (avatarErr) {
+      console.error('Initials avatar generation failed (non-fatal):', avatarErr);
     }
 
     // ── Create session via magic link ──
