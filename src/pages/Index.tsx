@@ -112,6 +112,8 @@ const Index = () => {
             imageUrl={post.image_url}
             gifUrl={post.gif_url}
             repostedBy={post.reposted_by_name}
+            eventData={post.event_data}
+            collaborators={post.collaborators}
           />
         ))}
 
