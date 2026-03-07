@@ -149,9 +149,9 @@ const OrganiserDashboard = () => {
                   to={`/events/${event.id}`}
                   className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
                 >
-                  <div className="w-28 h-28 flex-shrink-0">
+                   <div className="w-28 h-28 flex-shrink-0">
                     <img
-                      src={event.cover_image || "/placeholder.svg"}
+                      src={getEventFlyer(event.id)}
                       alt={event.title}
                       className="w-full h-full object-cover"
                     />

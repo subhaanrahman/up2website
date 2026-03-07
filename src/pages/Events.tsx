@@ -10,6 +10,7 @@ import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchEvents } from "@/hooks/useEventsQuery";
 import { format } from "date-fns";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 interface SearchResult {
   id: string;
