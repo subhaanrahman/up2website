@@ -1,6 +1,18 @@
 # Dylan — Handover Notes
 
-## 8 March 2026
+## 8 March 2026 (Session 2)
+
+### Summary of Changes
+
+- **Event-linked posts**: Added `event_id` column to `posts` table; events-create edge function now auto-creates a feed post when an event is created
+- **Post collaborators**: Created `post_collaborators` table with RLS policies (author can add, author/self can remove); posts in the feed now display collaborator avatars and names ("with Dylan, Kai")
+- **Collaborator picker UI**: New `CollaboratorPicker` component in PostComposer — search friends and add them as collaborators to any post (auto-accept for now)
+- **Event card in feed**: `FeedPost` now renders event-linked posts as rich cards with event title, date, location, and cover image — clicking navigates to event detail
+- **Existing events backfill**: Created posts for all 7 existing events in the database, linked to the organiser profile
+
+---
+
+##
 
 ### Summary of Changes
 
