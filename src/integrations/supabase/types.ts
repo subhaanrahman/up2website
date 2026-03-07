@@ -693,6 +693,35 @@ export type Database = {
         }
         Relationships: []
       }
+      post_collaborators: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_collaborators_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_likes: {
         Row: {
           created_at: string
@@ -756,6 +785,7 @@ export type Database = {
           author_id: string
           content: string | null
           created_at: string
+          event_id: string | null
           gif_url: string | null
           id: string
           image_url: string | null
@@ -766,6 +796,7 @@ export type Database = {
           author_id: string
           content?: string | null
           created_at?: string
+          event_id?: string | null
           gif_url?: string | null
           id?: string
           image_url?: string | null
@@ -776,6 +807,7 @@ export type Database = {
           author_id?: string
           content?: string | null
           created_at?: string
+          event_id?: string | null
           gif_url?: string | null
           id?: string
           image_url?: string | null
@@ -783,6 +815,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_organiser_profile_id_fkey"
             columns: ["organiser_profile_id"]
