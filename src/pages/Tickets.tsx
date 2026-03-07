@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
