@@ -133,6 +133,14 @@ const EventDetail = () => {
   const event = foundMockEvent || dbEvent;
   const isFreeEvent = !foundMockEvent;
   const isHost = user && dbEvent && dbEvent.hostId === user.id;
+  const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
+
+  // Determine display host: organiser profile takes priority
+  const displayHostName = organiserHost?.display_name || host?.displayName || "Event Host";
+  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || undefined;
+  const displayHostLink = organiserHost
+    ? `/organiser/${organiserHost.username}`
+    : `/user/${dbEvent?.hostId || ""}`;
 
   if (!event) {
     return (
@@ -212,12 +220,12 @@ const EventDetail = () => {
 
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
-          <Link to={`/user/${dbEvent?.hostId || ""}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={host?.avatarUrl || undefined} />
-              <AvatarFallback>{host?.displayName?.[0] || "H"}</AvatarFallback>
+              <AvatarImage src={displayHostAvatar} />
+              <AvatarFallback>{displayHostName[0]}</AvatarFallback>
             </Avatar>
-            <span className="font-medium text-foreground">{host?.displayName || "Event Host"}</span>
+            <span className="font-medium text-foreground">{displayHostName}</span>
           </Link>
         </div>
 
@@ -280,7 +288,11 @@ const EventDetail = () => {
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-40">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          {isFreeEvent ? (
+          {isPastEvent ? (
+            <div className="w-full text-center py-2">
+              <p className="font-semibold text-muted-foreground">This event has ended</p>
+            </div>
+          ) : isFreeEvent ? (
             <>
               <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
               <Button size="lg" onClick={handleRSVP}>RSVP</Button>
