@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { format, isPast } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 interface StatCardProps {
   label: string;
@@ -31,6 +32,39 @@ const StatCard = ({ label, value, trend }: StatCardProps) => {
         </span>
       </div>
     </div>
+  );
+};
+
+const EventRow = ({ event, rsvpCount }: { event: any; rsvpCount: number }) => {
+  const past = isPast(new Date(event.event_date));
+  return (
+    <Link
+      key={event.id}
+      to={`/events/${event.id}`}
+      className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
+    >
+      <div className="w-28 h-28 flex-shrink-0">
+        <img
+          src={getEventFlyer(event.id)}
+          alt={event.title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 px-4 py-3 min-w-0">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
+          {event.title}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+            {format(new Date(event.event_date), "EEE M/d - ha")}
+          </span>
+          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+            {rsvpCount} going
+          </span>
+        </div>
+      </div>
+      <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
+    </Link>
   );
 };
 
@@ -80,11 +114,33 @@ const OrganiserDashboard = () => {
     ? Object.values(rsvpCounts).reduce((sum, c) => sum + c, 0)
     : 0;
 
-  const filteredEvents = events
-    ?.filter((e) =>
-      e.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+  const now = new Date();
+  const filtered = events?.filter((e) =>
+    e.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const upcomingEvents = filtered
+    ?.filter((e) => new Date(e.event_date) >= now)
     .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+  const pastEvents = filtered
+    ?.filter((e) => new Date(e.event_date) < now)
+    .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+
+  const renderEventList = (list: typeof events) => {
+    if (!list || list.length === 0) {
+      return (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>No events</p>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {list.map((event) => (
+          <EventRow key={event.id} event={event} rsvpCount={rsvpCounts?.[event.id] || 0} />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="md:hidden">
@@ -112,7 +168,7 @@ const OrganiserDashboard = () => {
         <StatCard label="Conversion Rate" value="0%" trend={0} />
       </div>
 
-      {/* Events List */}
+      {/* Events List with Tabs */}
       <div className="px-4">
         <div className="flex items-center justify-between gap-4 mb-4">
           <span className="font-semibold text-foreground">Events</span>
@@ -139,48 +195,23 @@ const OrganiserDashboard = () => {
               </div>
             ))}
           </div>
-        ) : filteredEvents && filteredEvents.length > 0 ? (
-          <div className="space-y-3">
-            {filteredEvents.map((event) => {
-              const past = isPast(new Date(event.event_date));
-              return (
-                <Link
-                  key={event.id}
-                  to={`/events/${event.id}`}
-                  className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
-                >
-                   <div className="w-28 h-28 flex-shrink-0">
-                    <img
-                      src={getEventFlyer(event.id)}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-
-                  <div className="flex-1 px-4 py-3 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
-                      {event.title}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-                        {format(new Date(event.event_date), "EEE M/d - ha")}
-                      </span>
-                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-                        {past ? "Past" : "Upcoming"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-                </Link>
-              );
-            })}
-          </div>
         ) : (
-          <div className="text-center py-20 text-muted-foreground">
-            <p>No events yet</p>
-            <p className="text-sm mt-1">Create your first event to get started</p>
-          </div>
+          <Tabs defaultValue="upcoming" className="w-full">
+            <TabsList className="w-full mb-4">
+              <TabsTrigger value="upcoming" className="flex-1">
+                Upcoming{upcomingEvents?.length ? ` (${upcomingEvents.length})` : ""}
+              </TabsTrigger>
+              <TabsTrigger value="past" className="flex-1">
+                Past{pastEvents?.length ? ` (${pastEvents.length})` : ""}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="upcoming">
+              {renderEventList(upcomingEvents)}
+            </TabsContent>
+            <TabsContent value="past">
+              {renderEventList(pastEvents)}
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>
