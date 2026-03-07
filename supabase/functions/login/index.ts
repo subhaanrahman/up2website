@@ -81,10 +81,16 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    // Lazy migration: ensure auth user has the real password set
-    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password });
-    if (updateErr) {
-      console.error('Password migration failed (non-fatal):', updateErr.message);
+    // Lazy migration: only update if password hasn't been set yet
+    // (user_metadata.password_migrated flag avoids this call on subsequent logins)
+    if (!user.user_metadata?.password_migrated) {
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        password,
+        user_metadata: { ...user.user_metadata, password_migrated: true },
+      });
+      if (updateErr) {
+        console.error('Password migration failed (non-fatal):', updateErr.message);
+      }
     }
 
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({

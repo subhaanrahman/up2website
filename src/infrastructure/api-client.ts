@@ -14,15 +14,23 @@ interface RequestOptions {
  * Call a Supabase Edge Function by name.
  * Automatically attaches the auth token and parses errors.
  */
+// Auth-free endpoints that don't need a session token
+const PUBLIC_FUNCTIONS = new Set([
+  'check-phone', 'login', 'register', 'send-otp', 'verify-otp', 'dev-login', 'health',
+]);
+
 export async function callEdgeFunction<T = unknown>(
   functionName: string,
   options: RequestOptions = {},
 ): Promise<T> {
   const { method = 'POST', body, headers = {} } = options;
 
-  // Get current session token
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  // Skip getSession() for public endpoints — saves ~100-200ms per call
+  let token: string | undefined;
+  if (!PUBLIC_FUNCTIONS.has(functionName)) {
+    const { data: { session } } = await supabase.auth.getSession();
+    token = session?.access_token;
+  }
 
   const url = `${config.functionsUrl}/${functionName}`;
 
