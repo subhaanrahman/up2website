@@ -115,12 +115,12 @@ const Tickets = () => {
                       {rsvp.events?.title}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs bg-secondary px-3 py-1.5 rounded-full text-muted-foreground font-medium">
+                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
                         {rsvp.events?.event_date
-                          ? format(new Date(rsvp.events.event_date), "EEE M/d • h:mma")
+                          ? format(new Date(rsvp.events.event_date), "EEE M/d - ha")
                           : "TBD"}
                       </span>
-                      <span className="text-xs bg-secondary px-3 py-1.5 rounded-full text-muted-foreground font-medium">
+                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
                         Upcoming
                       </span>
                     </div>
