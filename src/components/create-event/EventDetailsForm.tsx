@@ -252,15 +252,53 @@ const EventDetailsForm = ({
       </div>
 
       {/* Collaborators / Cohosts */}
-      <div className="space-y-2">
+      <div className="space-y-2" ref={dropdownRef}>
         <Label className="flex items-center gap-2 text-foreground">
           <Users className="h-4 w-4 text-primary" /> Collaborators / Co-hosts
         </Label>
-        <div className="flex gap-2">
-          <Input placeholder="@username" value={cohostInput} onChange={(e) => setCohostInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCohost())} className="h-12 bg-card border-border flex-1" />
-          <Button type="button" variant="outline" size="icon" className="h-12 w-12 shrink-0" onClick={addCohost}>
-            <Plus className="h-4 w-4" />
-          </Button>
+        <div className="relative">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Search @username or name"
+              value={cohostInput}
+              onChange={(e) => setCohostInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCohost())}
+              onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
+              className="h-12 bg-card border-border flex-1"
+            />
+            <Button type="button" variant="outline" size="icon" className="h-12 w-12 shrink-0" onClick={addCohost}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+          {showDropdown && (
+            <div className="absolute z-50 top-full left-0 right-12 mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+              {searchResults.map((result) => (
+                <button
+                  key={result.user_id}
+                  type="button"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/50 transition-colors text-left"
+                  onClick={() => selectCohost(result.username || result.display_name || "")}
+                >
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {result.avatar_url ? (
+                      <img src={result.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-bold text-foreground">
+                        {(result.display_name || result.username || "?")[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{result.display_name || result.username}</p>
+                    <p className="text-xs text-muted-foreground truncate">@{result.username}</p>
+                  </div>
+                  {result.isFriend && (
+                    <Badge variant="secondary" className="text-[10px] shrink-0">Friend</Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {cohosts.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
