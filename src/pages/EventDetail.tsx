@@ -11,9 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
 import { useProfile } from "@/hooks/useProfileQuery";
-import { format } from "date-fns";
+import { format, isPast } from "date-fns";
 import { events as mockEvents, Event as MockEvent } from "@/data/events";
 import { rsvpApi } from "@/api";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const mockTicketTiers = [
   { id: "ga", name: "General Admission", price: 49.99, description: "Standard entry" },
@@ -40,6 +42,28 @@ const EventDetail = () => {
 
   // Fetch host profile for DB events
   const { data: host } = useProfile(dbEvent?.hostId);
+
+  // Fetch organiser profile if event has one
+  const { data: organiserHost } = useQuery({
+    queryKey: ["organiser-profile", dbEvent?.id],
+    queryFn: async () => {
+      // Access the raw DB row to get organiser_profile_id
+      if (!dbEvent) return null;
+      const { data } = await supabase
+        .from("events")
+        .select("organiser_profile_id")
+        .eq("id", dbEvent.id)
+        .single();
+      if (!data?.organiser_profile_id) return null;
+      const { data: org } = await supabase
+        .from("organiser_profiles")
+        .select("*")
+        .eq("id", data.organiser_profile_id)
+        .single();
+      return org;
+    },
+    enabled: !!dbEvent,
+  });
 
   const loading = !isMock && isLoading;
 
