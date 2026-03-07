@@ -4,6 +4,13 @@
 
 ### Summary of Changes
 
+- **Login performance: `signInWithPassword` migration** — Replaced the 5-step magic-link login chain (profile lookup → getUserById → verifyPassword → generateLink → verifyOtp) with phone-based `signInWithPassword` (single call after password verification). Existing users are lazily migrated on first login. Both `login` and `register` edge functions updated.
+- **Rate limiting fixed** — Added missing partial unique indexes on `rate_limits` table for `(endpoint, user_id, window_start)` and `(endpoint, ip_address, window_start)`. Updated `check_rate_limit` DB function to include matching WHERE clauses. Fixes the `ON CONFLICT` errors logged on every auth call.
+- **Optimisation checklist created** — See `docs/OPTIMISE_CHECKLIST.md` for full platform optimisation backlog
+
+### Deferred for Haan
+- **Merge check-phone + login flow** — Currently the PhoneStep calls `checkPhone` (edge function), then PasswordStep calls `login` which re-does the phone lookup. Could combine into a single call or show password field inline for returning users. This is a UX/front-end change that needs Haan's input on the desired flow.
+
 ## 6 March 2026
 
 ### Summary of Changes
