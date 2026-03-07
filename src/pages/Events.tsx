@@ -115,30 +115,27 @@ const Events = () => {
   );
 
   const renderEventItem = (event: any) => (
-    <Link key={event.id} to={`/events/${event.id}`} className="flex gap-3 py-3 hover:bg-secondary/30 transition-colors -mx-4 px-4">
-      <div className="h-16 w-16 rounded-lg bg-secondary overflow-hidden flex-shrink-0">
+    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors mb-3">
+      <div className="w-28 h-28 flex-shrink-0">
         {event.coverImage ? (
-          <img src={event.coverImage} alt={event.title} className="h-full w-full object-cover" />
+          <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
         ) : (
-          <div className="h-full w-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center text-2xl">🎉</div>
+          <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center text-2xl">🎉</div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <h3 className="font-semibold text-foreground truncate">{event.title}</h3>
-        <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-          <Calendar className="h-3.5 w-3.5 text-primary" />
-          <span>{format(new Date(event.eventDate), "MMM d • h:mm a")}</span>
+      <div className="flex-1 px-4 py-3 min-w-0">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+            {format(new Date(event.eventDate), "EEE M/d - ha")}
+          </span>
+          {event.category && (
+            <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+              {event.category}
+            </span>
+          )}
         </div>
-        {event.location && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-            <MapPin className="h-3.5 w-3.5 text-primary" />
-            <span className="truncate">{event.location}</span>
-          </div>
-        )}
       </div>
-      {event.category && (
-        <Badge variant="secondary" className="self-start text-[10px] mt-1">{event.category}</Badge>
-      )}
     </Link>
   );
 
