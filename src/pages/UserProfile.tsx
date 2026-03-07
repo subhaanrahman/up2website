@@ -399,9 +399,20 @@ const UserProfile = () => {
       );
     }
 
-    // Public personal profiles: follow/unfollow (auto-accept)
-    if (targetIsPublic) {
-      if (connectionStatus === "accepted") {
+    // Personal profiles (public or private): friend request flow
+    switch (connectionStatus) {
+      case "none":
+        return (
+          <Button
+            className="px-8 h-11 rounded-full font-semibold gap-2"
+            onClick={targetIsPublic ? handleFollowPublic : handleAddFriend}
+            disabled={connectionLoading}
+          >
+            <UserPlus className="h-4 w-4" />
+            + FRIEND
+          </Button>
+        );
+      case "accepted":
         return (
           <Button
             variant="secondary"
@@ -410,33 +421,7 @@ const UserProfile = () => {
             disabled={connectionLoading}
           >
             <Users className="h-4 w-4" />
-            FOLLOWING
-          </Button>
-        );
-      }
-      return (
-        <Button
-          className="px-8 h-11 rounded-full font-semibold gap-2"
-          onClick={handleFollowPublic}
-          disabled={connectionLoading}
-        >
-          <UserPlus className="h-4 w-4" />
-          FOLLOW
-        </Button>
-      );
-    }
-
-    // Private personal profiles: friend request flow
-    switch (connectionStatus) {
-      case "none":
-        return (
-          <Button
-            className="px-8 h-11 rounded-full font-semibold gap-2"
-            onClick={handleAddFriend}
-            disabled={connectionLoading}
-          >
-            <UserPlus className="h-4 w-4" />
-            ADD FRIEND
+            FRIENDS
           </Button>
         );
       case "pending_sent":
@@ -460,18 +445,6 @@ const UserProfile = () => {
           >
             <UserPlus className="h-4 w-4" />
             ACCEPT
-          </Button>
-        );
-      case "accepted":
-        return (
-          <Button
-            variant="secondary"
-            className="px-8 h-11 rounded-full font-semibold gap-2"
-            onClick={handleRemoveFriend}
-            disabled={connectionLoading}
-          >
-            <Users className="h-4 w-4" />
-            FRIENDS
           </Button>
         );
     }
