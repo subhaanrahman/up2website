@@ -57,4 +57,6 @@ All writes below are routed through Edge Functions even though RLS allows them. 
 - [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC, integrated in all endpoints
 - [x] ~~Add input sanitization/validation library (e.g., Zod) to all Edge Functions~~ — applied across all Edge Functions
 - [x] ~~Revoke direct INSERT/UPDATE/DELETE RLS on `rsvps` table~~ — writes go exclusively through `rsvp_join`/`rsvp_leave` RPCs
+- [x] ~~Fix duplicate rate_limit indexes~~ — dropped 6 overlapping unique indexes causing `ON CONFLICT` failures and login latency
+- [x] ~~Auto-generate initials avatars~~ — `register` and `organiser-profile-create` now ensure `avatar_url` is never null
 - [ ] Add banned/blocked user checks to `rsvp_join` when moderation is implemented
