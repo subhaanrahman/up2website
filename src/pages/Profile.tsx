@@ -25,6 +25,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 interface EventItem {
   id: string;
@@ -346,26 +347,31 @@ const EventListItem = ({ event }: { event: EventItem }) => {
   return (
     <Link
       to={`/events/${event.id}`}
-      className="flex items-center gap-3 p-2 bg-card rounded-xl hover:bg-secondary/50 transition-colors"
+      className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
     >
-      <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-        {event.coverImage ? (
-          <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-secondary">
-            <Calendar className="h-8 w-8 text-muted-foreground" />
-          </div>
-        )}
+      <div className="w-28 h-28 flex-shrink-0">
+        <img
+          src={getEventFlyer(event.id)}
+          alt={event.title}
+          className="w-full h-full object-cover"
+        />
       </div>
-      <div className="flex-1 min-w-0 py-1">
-        <p className="text-sm text-muted-foreground mb-0.5">{event.location || "Venue"}</p>
-        <h3 className="font-semibold text-foreground truncate mb-0.5 capitalize">{event.title}</h3>
-        <p className="text-sm text-muted-foreground mb-0.5">
-          {format(new Date(event.eventDate), "EEE, MMM d")} - {format(new Date(event.eventDate), "h:mm a")}
-        </p>
-        <p className="text-sm text-muted-foreground">From $49.99</p>
+      <div className="flex-1 px-4 py-3 min-w-0">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
+          {event.title}
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+            {format(new Date(event.eventDate), "EEE M/d - ha")}
+          </span>
+          {event.category && (
+            <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+              {event.category}
+            </span>
+          )}
+        </div>
       </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+      <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
     </Link>
   );
 };
