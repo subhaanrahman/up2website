@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search, ChevronRight } from "lucide-react";
@@ -16,6 +16,8 @@ const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const { user } = useAuth();
   const { isOrganiser } = useActiveProfile();
+  const dividerRef = useRef<HTMLDivElement>(null);
+  const hasScrolled = useRef(false);
 
   const { data: rsvpEvents, isLoading } = useQuery({
     queryKey: ["user-rsvps", user?.id],
@@ -45,23 +47,87 @@ const Tickets = () => {
     enabled: !!user?.id,
   });
 
-  const filteredEvents = rsvpEvents
+  const now = new Date();
+
+  // Past events: most recent first (reverse chronological)
+  const pastEvents = rsvpEvents
     ?.filter((rsvp) =>
-      rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+      rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      rsvp.events?.event_date && new Date(rsvp.events.event_date) < now
     )
     .sort((a, b) => {
-      const now = new Date();
-      const dateA = a.events?.event_date ? new Date(a.events.event_date) : now;
-      const dateB = b.events?.event_date ? new Date(b.events.event_date) : now;
-      const aIsUpcoming = dateA >= now;
-      const bIsUpcoming = dateB >= now;
-      // Upcoming first, then past
-      if (aIsUpcoming && !bIsUpcoming) return -1;
-      if (!aIsUpcoming && bIsUpcoming) return 1;
-      // Within upcoming: soonest first; within past: most recent first
-      if (aIsUpcoming) return dateA.getTime() - dateB.getTime();
+      const dateA = new Date(a.events!.event_date);
+      const dateB = new Date(b.events!.event_date);
       return dateB.getTime() - dateA.getTime();
-    });
+    }) || [];
+
+  // Upcoming events: soonest first
+  const upcomingEvents = rsvpEvents
+    ?.filter((rsvp) =>
+      rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      rsvp.events?.event_date && new Date(rsvp.events.event_date) >= now
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.events!.event_date);
+      const dateB = new Date(b.events!.event_date);
+      return dateA.getTime() - dateB.getTime();
+    }) || [];
+
+  // Auto-scroll to the divider (today) on first load
+  const scrollToDivider = useCallback(() => {
+    if (dividerRef.current && !hasScrolled.current && pastEvents.length > 0) {
+      hasScrolled.current = true;
+      // Small delay to ensure layout is complete
+      setTimeout(() => {
+        dividerRef.current?.scrollIntoView({ block: "start" });
+      }, 100);
+    }
+  }, [pastEvents.length]);
+
+  useEffect(() => {
+    if (!isLoading && rsvpEvents) {
+      scrollToDivider();
+    }
+  }, [isLoading, rsvpEvents, scrollToDivider]);
+
+  const allEvents = [...pastEvents, ...upcomingEvents];
+
+  const renderEventCard = (rsvp: typeof allEvents[0]) => {
+    const isPast = rsvp.events?.event_date && new Date(rsvp.events.event_date) < now;
+    return (
+      <Link
+        key={rsvp.id}
+        to={`/events/${rsvp.event_id}`}
+        className={`flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
+      >
+        <div className="w-28 h-28 flex-shrink-0">
+          <img
+            src={getEventFlyer(rsvp.event_id)}
+            alt={rsvp.events?.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        
+        <div className="flex-1 px-4 py-3 min-w-0">
+          <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
+            {rsvp.events?.title}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+              {rsvp.events?.event_date
+                ? format(new Date(rsvp.events.event_date), "EEE M/d - ha")
+                : "TBD"}
+            </span>
+            <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+              {isPast ? "Past" : "Upcoming"}
+            </span>
+          </div>
+        </div>
+
+        <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
+      </Link>
+    );
+  };
 
   if (isOrganiser) {
     return (
@@ -109,41 +175,28 @@ const Tickets = () => {
                 </div>
               ))}
             </div>
-          ) : filteredEvents && filteredEvents.length > 0 ? (
+          ) : allEvents.length > 0 ? (
             <div className="space-y-3">
-              {filteredEvents.map((rsvp) => (
-                <Link
-                  key={rsvp.id}
-                  to={`/events/${rsvp.event_id}`}
-                  className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
-                >
-                   <div className="w-28 h-28 flex-shrink-0">
-                    <img
-                      src={getEventFlyer(rsvp.event_id)}
-                      alt={rsvp.events?.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <div className="flex-1 px-4 py-3 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
-                      {rsvp.events?.title}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-                        {rsvp.events?.event_date
-                          ? format(new Date(rsvp.events.event_date), "EEE M/d - ha")
-                          : "TBD"}
-                      </span>
-                      <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-                        {rsvp.events?.event_date && new Date(rsvp.events.event_date) < new Date() ? "Past" : "Upcoming"}
-                      </span>
-                    </div>
-                  </div>
+              {/* Past events (scroll up to see) */}
+              {pastEvents.map((rsvp) => renderEventCard(rsvp))}
 
-                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-                </Link>
-              ))}
+              {/* Today divider - page loads here */}
+              {pastEvents.length > 0 && (
+                <div ref={dividerRef} className="flex items-center gap-3 py-2">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Today</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              )}
+
+              {/* Upcoming events (visible on load) */}
+              {upcomingEvents.length > 0 ? (
+                upcomingEvents.map((rsvp) => renderEventCard(rsvp))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p className="text-sm">No upcoming events</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-20 text-muted-foreground">
@@ -170,13 +223,15 @@ const Tickets = () => {
                 </div>
               ))}
             </div>
-          ) : filteredEvents && filteredEvents.length > 0 ? (
+          ) : allEvents.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredEvents.map((rsvp) => (
+              {[...upcomingEvents, ...pastEvents].map((rsvp) => (
                 <Link
                   key={rsvp.id}
                   to={`/events/${rsvp.event_id}`}
-                  className="bg-card rounded-xl overflow-hidden hover:ring-2 hover:ring-primary transition-all"
+                  className={`bg-card rounded-xl overflow-hidden hover:ring-2 hover:ring-primary transition-all ${
+                    rsvp.events?.event_date && new Date(rsvp.events.event_date) < now ? "opacity-60" : ""
+                  }`}
                 >
                    <img
                     src={getEventFlyer(rsvp.event_id)}
