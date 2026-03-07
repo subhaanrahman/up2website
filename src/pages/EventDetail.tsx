@@ -139,7 +139,7 @@ const EventDetail = () => {
   const displayHostName = organiserHost?.display_name || host?.displayName || "Event Host";
   const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || undefined;
   const displayHostLink = organiserHost
-    ? `/organiser/${organiserHost.username}`
+    ? `/user/${organiserHost.owner_id}`
     : `/user/${dbEvent?.hostId || ""}`;
 
   if (!event) {

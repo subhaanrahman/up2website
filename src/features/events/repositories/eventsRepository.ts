@@ -79,6 +79,7 @@ export const eventsRepository = {
       .from('events')
       .select('*')
       .eq('host_id', hostId)
+      .is('organiser_profile_id', null)
       .order('event_date', { ascending: true });
 
     if (error) throw error;
