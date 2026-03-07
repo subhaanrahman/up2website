@@ -67,6 +67,22 @@ const EventDetail = () => {
     enabled: !!dbEvent,
   });
 
+  // Fetch user's existing RSVP for this event
+  const { data: userRsvp } = useQuery({
+    queryKey: ["user-rsvp", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data } = await supabase
+        .from("rsvps")
+        .select("id, status")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = async () => {
