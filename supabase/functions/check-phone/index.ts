@@ -36,14 +36,13 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fast indexed lookup on profiles.phone
-    const normalized = normalizePhone(phone);
+    // Fast indexed lookup on profiles.phone — single column check
     const digits = phone.replace(/[^0-9]/g, '');
 
     const { data } = await supabaseAdmin
       .from('profiles')
       .select('id')
-      .or(`phone.eq.${normalized},phone.eq.${digits},phone.eq.+${digits},phone.eq.${phone}`)
+      .or(`phone.eq.${digits},phone.eq.+${digits}`)
       .limit(1)
       .maybeSingle();
 
