@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,9 +103,9 @@ const Tickets = () => {
                   to={`/events/${rsvp.event_id}`}
                   className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
                 >
-                  <div className="w-28 h-28 flex-shrink-0">
+                   <div className="w-28 h-28 flex-shrink-0">
                     <img
-                      src={rsvp.events?.cover_image || "/placeholder.svg"}
+                      src={getEventFlyer(rsvp.event_id)}
                       alt={rsvp.events?.title}
                       className="w-full h-full object-cover"
                     />
@@ -163,8 +164,8 @@ const Tickets = () => {
                   to={`/events/${rsvp.event_id}`}
                   className="bg-card rounded-xl overflow-hidden hover:ring-2 hover:ring-primary transition-all"
                 >
-                  <img
-                    src={rsvp.events?.cover_image || "/placeholder.svg"}
+                   <img
+                    src={getEventFlyer(rsvp.event_id)}
                     alt={rsvp.events?.title}
                     className="w-full h-32 object-cover"
                   />
