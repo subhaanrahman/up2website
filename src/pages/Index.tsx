@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Plus, Calendar, DollarSign } from "lucide-react";
+import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
 import BottomNav from "@/components/BottomNav";
