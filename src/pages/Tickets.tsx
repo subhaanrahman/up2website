@@ -122,7 +122,7 @@ const Tickets = () => {
                           : "TBD"}
                       </span>
                       <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-                        Upcoming
+                        {rsvp.events?.event_date && new Date(rsvp.events.event_date) < new Date() ? "Past" : "Upcoming"}
                       </span>
                     </div>
                   </div>
