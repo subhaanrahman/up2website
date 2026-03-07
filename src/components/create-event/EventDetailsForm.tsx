@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar, MapPin, Clock, Image, X, Plus, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const GENRE_OPTIONS = ["Afrobeats", "Amapiano", "Hip-Hop", "House", "R&B", "Techno", "Pop", "Jazz", "Classical", "Other"];
 const STYLE_OPTIONS = ["Day Party", "Night Out", "Brunch", "Dinner", "Festival", "Intimate", "Formal", "Casual"];
