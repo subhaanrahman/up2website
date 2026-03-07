@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,20 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
+    // Generate initials avatar for the organiser profile
+    let avatarUrl: string | null = null;
+    try {
+      // Use a unique key based on the organiser username to avoid collisions with personal avatars
+      const tempId = `org-${parsed.data.username}`;
+      avatarUrl = await generateAndUploadInitialsAvatar(
+        serviceClient,
+        tempId,
+        parsed.data.display_name,
+      );
+    } catch (avatarErr) {
+      console.error('Organiser avatar generation failed (non-fatal):', avatarErr);
+    }
+
     const { data, error } = await serviceClient
       .from('organiser_profiles')
       .insert({
@@ -72,8 +87,9 @@ Deno.serve(async (req) => {
         city: parsed.data.city || null,
         instagram_handle: parsed.data.instagram_handle || null,
         category: parsed.data.category,
+        avatar_url: avatarUrl,
       })
-      .select('id, display_name, username, category')
+      .select('id, display_name, username, category, avatar_url')
       .single();
 
     if (error) {
