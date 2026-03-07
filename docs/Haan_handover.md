@@ -4,15 +4,6 @@
 
 ### Summary of Changes
 
-- **Auto-generated initials avatars**: On registration and organiser profile creation, an SVG initials avatar is now generated and uploaded to storage so `avatar_url` is never null — eliminates UI fallback logic
-- **Backfill edge function**: Created `backfill-avatars` to retroactively generate initials avatars for all existing profiles (personal + organiser) with null `avatar_url`
-- **Shared avatar utility**: New `_shared/avatar.ts` with deterministic hue from user ID, SVG generation, and storage upload
-- **Post attribution fix**: Posts made from an organiser profile now display the organiser's name and avatar in the feed instead of the personal profile
-- **Event ordering fix**: Upcoming events sort ascending (soonest first), past events sort descending (most recent first) across Profile and Dashboard
-- **Profile event filtering for organisers**: When viewing as an organiser, Profile page now queries events by `organiser_profile_id` instead of `host_id`
-- **Login speed fix**: Dropped 6 duplicate unique indexes on `rate_limits` table that caused `ON CONFLICT` errors and ~5s latency on phone check
-- **Co-host search**: Replaced plain text input in event creation with debounced autocomplete that queries `profiles` and prioritises accepted connections
-
 ## 6 March 2026
 
 ### Summary of Changes
