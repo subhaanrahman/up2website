@@ -11,9 +11,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
 import { useProfile } from "@/hooks/useProfileQuery";
-import { format } from "date-fns";
+import { format, isPast } from "date-fns";
 import { events as mockEvents, Event as MockEvent } from "@/data/events";
 import { rsvpApi } from "@/api";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const mockTicketTiers = [
   { id: "ga", name: "General Admission", price: 49.99, description: "Standard entry" },
@@ -40,6 +42,28 @@ const EventDetail = () => {
 
   // Fetch host profile for DB events
   const { data: host } = useProfile(dbEvent?.hostId);
+
+  // Fetch organiser profile if event has one
+  const { data: organiserHost } = useQuery({
+    queryKey: ["organiser-profile", dbEvent?.id],
+    queryFn: async () => {
+      // Access the raw DB row to get organiser_profile_id
+      if (!dbEvent) return null;
+      const { data } = await supabase
+        .from("events")
+        .select("organiser_profile_id")
+        .eq("id", dbEvent.id)
+        .single();
+      if (!data?.organiser_profile_id) return null;
+      const { data: org } = await supabase
+        .from("organiser_profiles")
+        .select("*")
+        .eq("id", data.organiser_profile_id)
+        .single();
+      return org;
+    },
+    enabled: !!dbEvent,
+  });
 
   const loading = !isMock && isLoading;
 
@@ -109,6 +133,14 @@ const EventDetail = () => {
   const event = foundMockEvent || dbEvent;
   const isFreeEvent = !foundMockEvent;
   const isHost = user && dbEvent && dbEvent.hostId === user.id;
+  const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
+
+  // Determine display host: organiser profile takes priority
+  const displayHostName = organiserHost?.display_name || host?.displayName || "Event Host";
+  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || undefined;
+  const displayHostLink = organiserHost
+    ? `/organiser/${organiserHost.username}`
+    : `/user/${dbEvent?.hostId || ""}`;
 
   if (!event) {
     return (
@@ -188,12 +220,12 @@ const EventDetail = () => {
 
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
-          <Link to={`/user/${dbEvent?.hostId || ""}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Avatar className="h-10 w-10">
-              <AvatarImage src={host?.avatarUrl || undefined} />
-              <AvatarFallback>{host?.displayName?.[0] || "H"}</AvatarFallback>
+              <AvatarImage src={displayHostAvatar} />
+              <AvatarFallback>{displayHostName[0]}</AvatarFallback>
             </Avatar>
-            <span className="font-medium text-foreground">{host?.displayName || "Event Host"}</span>
+            <span className="font-medium text-foreground">{displayHostName}</span>
           </Link>
         </div>
 
@@ -256,7 +288,11 @@ const EventDetail = () => {
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-40">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          {isFreeEvent ? (
+          {isPastEvent ? (
+            <div className="w-full text-center py-2">
+              <p className="font-semibold text-muted-foreground">This event has ended</p>
+            </div>
+          ) : isFreeEvent ? (
             <>
               <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
               <Button size="lg" onClick={handleRSVP}>RSVP</Button>

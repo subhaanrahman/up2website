@@ -115,7 +115,12 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let cancelled = false;
+
+    setIsLoading(true);
     fetchOrganiserProfiles().then(() => {
+      if (cancelled) return;
+
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         try {
@@ -123,12 +128,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
           // Verify it still belongs to this user
           if (parsed.type === "personal" && parsed.id === user.id) {
             setActiveProfile(parsed);
-            setIsLoading(false);
-            return;
-          }
-          // For organiser profiles, we'll validate after fetch
-          if (parsed.type === "organiser") {
-            setActiveProfile(parsed); // tentatively set; will be validated
             setIsLoading(false);
             return;
           }
@@ -148,7 +147,47 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
       setIsLoading(false);
     });
+
+    return () => { cancelled = true; };
   }, [user, fetchOrganiserProfiles]);
+
+  // Validate organiser profile selection after profiles are loaded
+  useEffect(() => {
+    if (isLoading || !user || organiserProfiles.length === 0) return;
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+
+    try {
+      const parsed = JSON.parse(stored) as ActiveProfile;
+      if (parsed.type !== "organiser") return;
+
+      const found = organiserProfiles.find((o) => o.id === parsed.id);
+      if (found) {
+        // Valid organiser profile — set it with fresh data
+        const synced: ActiveProfile = {
+          id: found.id,
+          type: "organiser",
+          displayName: found.displayName,
+          avatarUrl: found.avatarUrl,
+        };
+        setActiveProfile(synced);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
+      } else {
+        // Organiser profile no longer accessible — fall back to personal
+        const personal: ActiveProfile = {
+          id: user.id,
+          type: "personal",
+          displayName: user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
+          avatarUrl: null,
+        };
+        setActiveProfile(personal);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
+      }
+    } catch {
+      // ignore
+    }
+  }, [organiserProfiles, isLoading, user]);
 
   const switchProfile = useCallback(
     (id: string, type: "personal" | "organiser") => {
@@ -176,21 +215,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     [user, organiserProfiles]
   );
 
-  // Keep activeProfile in sync when organiserProfiles data changes
-  useEffect(() => {
-    if (activeProfile?.type === "organiser") {
-      const updated = organiserProfiles.find((o) => o.id === activeProfile.id);
-      if (updated && (updated.displayName !== activeProfile.displayName || updated.avatarUrl !== activeProfile.avatarUrl)) {
-        const synced: ActiveProfile = {
-          ...activeProfile,
-          displayName: updated.displayName,
-          avatarUrl: updated.avatarUrl,
-        };
-        setActiveProfile(synced);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
-      }
-    }
-  }, [organiserProfiles, activeProfile]);
 
   const refetchOrganiserProfiles = useCallback(async () => {
     await fetchOrganiserProfiles();

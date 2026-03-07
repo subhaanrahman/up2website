@@ -1,54 +1,36 @@
 
 
-# Plan: Fix Profile Switching, Event Ownership & Past Event Handling
+## Plan: Like counters, filled heart, and repost-to-feed functionality
 
-## Problems Identified
+### 1. Update FeedPost component
+- Add `postId` prop and optional `repostedBy` prop (string, the display name of the reposter)
+- Wire up `usePostInteractions(postId)` hook to get `likeCount`, `repostCount`, `isLiked`, `isReposted`, `toggleLike`, `toggleRepost`
+- Show like count next to the heart icon; show repost count next to the repost icon
+- When `isLiked` is true, render the Heart with `fill="currentColor"` and color it red/primary
+- When `isReposted` is true, color the repost icon green (Twitter-style)
+- When `repostedBy` is provided, show a small header above the post: "🔁 {name} reposted" in muted text with a Repeat2 icon
 
-1. **Profile switching is cosmetic only** — The `ActiveProfileContext` just swaps a localStorage value. The auth session always stays as the personal user. So when creating events or posts, `host_id` and `author_id` are always set to the personal user's ID, not the organiser profile.
+### 2. Update feed query to include reposts
+- Modify `useFeedPosts` to also fetch `post_reposts` for the current user, join with the original post data, and merge them into the feed sorted by time
+- Reposted items appear in the feed with the `repostedBy` label showing the current user's display name
+- Deduplicate: if a post already appears as an original, the repost still shows separately (Twitter behavior)
 
-2. **Events not linked to organiser profile** — The `events-create` edge function ignores `organiser_profile_id` entirely. It hardcodes `host_id: user.id` and the client doesn't send `organiser_profile_id`.
+### 3. Pass `postId` from Index.tsx
+- Add `id={post.id}` as `postId` prop to `<FeedPost>` in the feed rendering loop
 
-3. **Posts from organiser account use personal user ID** — `PostComposer` passes `organiser_profile_id` to the insert, but `author_id` is always `user.id`. This is actually correct by design (author is the user), but the display should show the organiser identity when `organiser_profile_id` is set.
+### Technical details
 
-4. **Past events allow RSVP** — `EventDetail.tsx` shows the RSVP/Buy Tickets bar regardless of whether the event date has passed.
+**FeedPost.tsx changes:**
+- New props: `postId: string`, `repostedBy?: string`
+- Import and call `usePostInteractions(postId)`
+- Render repostedBy banner above the post content
+- Like button: `className` toggles red color + `fill="currentColor"` when liked
+- Display `likeCount` and `repostCount` as small text next to icons (only when > 0)
 
-5. **Past events shown as "Upcoming"** — The Tickets page doesn't filter by date properly, and the OrganiserDashboard doesn't have tabs to toggle between upcoming/past.
+**usePostsQuery.ts changes:**
+- In `fetchPosts()`, after fetching posts, also fetch `post_reposts` joined with posts to get reposted content
+- Return merged + sorted array with a `reposted_by_name` field on reposted entries
 
-6. **OrganiserDashboard doesn't show events** — It queries `events.organiser_profile_id` but the create flow never sets that field.
-
-## Plan
-
-### 1. Pass `organiser_profile_id` when creating events
-- **Client** (`src/api/index.ts`): Add `organiser_profile_id` to the `create` body from `CreateEventInput`.
-- **Type** (`src/features/events/domain/types.ts`): Add optional `organiserProfileId` to `CreateEventInput`.
-- **Edge Function** (`supabase/functions/events-create/index.ts`): Accept `organiser_profile_id` from body, validate the user owns or is a member of that organiser profile, and insert it.
-- **CreateEvent page** (`src/pages/CreateEvent.tsx`): Send the active organiser profile ID (or first available) when submitting.
-
-### 2. Display organiser identity on events
-- **EventDetail.tsx**: When a DB event has `organiser_profile_id`, fetch and display the organiser profile as host instead of the personal profile. The "Hosted by" section should link to the organiser profile.
-- **OrganiserDashboard**: Events will now have `organiser_profile_id` set, so the existing query will work.
-
-### 3. Block RSVP on past events
-- **EventDetail.tsx**: Check if `event_date` is in the past. If so, replace the RSVP/Buy Tickets footer bar with a "This event has ended" message. Disable the RSVP button.
-
-### 4. Add Upcoming/Past tabs to OrganiserDashboard
-- **OrganiserDashboard.tsx**: Add a tab toggle (Upcoming | Past) between the "Events" header and the event list. Filter the `filteredEvents` array by date accordingly.
-
-### 5. Fix post display for organiser profiles
-- Posts with `organiser_profile_id` should display the organiser name/avatar rather than the personal profile. The `FeedPost` component likely already handles this if the data is fetched — will verify and fix if needed.
-
-### 6. Fix flickering on reload
-- The `ActiveProfileContext` loads from localStorage before validating against fetched organiser profiles. Add a sync check: if the stored profile is an organiser, wait for organiser profiles to load before confirming. Don't render children until resolved.
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/features/events/domain/types.ts` | Add `organiserProfileId` to `CreateEventInput` |
-| `src/api/index.ts` | Pass `organiser_profile_id` in create call |
-| `supabase/functions/events-create/index.ts` | Accept and insert `organiser_profile_id`, validate ownership |
-| `src/pages/CreateEvent.tsx` | Send active organiser profile ID on submit |
-| `src/pages/EventDetail.tsx` | Block RSVP for past events; show organiser as host when applicable |
-| `src/components/OrganiserDashboard.tsx` | Add Upcoming/Past tab filter |
-| `src/contexts/ActiveProfileContext.tsx` | Fix flicker by gating render on profile validation |
+**Index.tsx changes:**
+- Pass `postId={post.id}` and `repostedBy={post.reposted_by_name}` to each `<FeedPost>`
 

@@ -29,7 +29,7 @@ const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading } = useAuth();
-  const { isOrganiser, organiserProfiles, isLoading: profileLoading } = useActiveProfile();
+  const { activeProfile, isOrganiser, organiserProfiles, isLoading: profileLoading } = useActiveProfile();
   const createEventMutation = useCreateEvent();
 
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
@@ -98,6 +98,8 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date || new Date().toISOString().split("T")[0]}T${time}:00` : `${date || new Date().toISOString().split("T")[0]}T00:00:00`;
 
+    const orgProfileId = organiserProfiles[0]?.id;
+
     try {
       await createEventMutation.mutateAsync({
         title: title || "Untitled Event",
@@ -107,6 +109,7 @@ const CreateEvent = () => {
         category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
         isPublic: false, // draft events are private
+        organiserProfileId: orgProfileId,
       });
       toast({ title: "Draft saved", description: "Your event has been saved as a draft." });
       navigate(-1);
@@ -130,6 +133,11 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
+    // Use the active organiser profile, or fall back to first available
+    const orgProfileId = activeProfile?.type === "organiser"
+      ? activeProfile.id
+      : organiserProfiles[0]?.id;
+
     try {
       const data = await createEventMutation.mutateAsync({
         title,
@@ -138,6 +146,7 @@ const CreateEvent = () => {
         eventDate: eventDateTime,
         category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
+        organiserProfileId: orgProfileId,
       });
 
       toast({ title: "Event created!", description: "Your event has been created successfully." });
