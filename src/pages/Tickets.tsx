@@ -100,9 +100,9 @@ const Tickets = () => {
                 <Link
                   key={rsvp.id}
                   to={`/events/${rsvp.event_id}`}
-                  className="flex items-center gap-4 bg-card rounded-xl overflow-hidden hover:bg-card/80 transition-colors"
+                  className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
                 >
-                  <div className="w-28 h-24 flex-shrink-0">
+                  <div className="w-28 h-28 flex-shrink-0">
                     <img
                       src={rsvp.events?.cover_image || "/placeholder.svg"}
                       alt={rsvp.events?.title}
@@ -110,23 +110,23 @@ const Tickets = () => {
                     />
                   </div>
                   
-                  <div className="flex-1 py-3 pr-2">
-                    <h3 className="font-semibold text-foreground line-clamp-2 mb-2 capitalize">
+                  <div className="flex-1 px-4 py-3 min-w-0">
+                    <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
                       {rsvp.events?.title}
                     </h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs bg-secondary px-2 py-1 rounded text-muted-foreground">
+                      <span className="text-xs bg-secondary px-3 py-1.5 rounded-full text-muted-foreground font-medium">
                         {rsvp.events?.event_date
                           ? format(new Date(rsvp.events.event_date), "EEE M/d • h:mma")
                           : "TBD"}
                       </span>
-                      <span className="text-xs bg-secondary px-2 py-1 rounded text-muted-foreground">
+                      <span className="text-xs bg-secondary px-3 py-1.5 rounded-full text-muted-foreground font-medium">
                         Upcoming
                       </span>
                     </div>
                   </div>
 
-                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-4 flex-shrink-0" />
+                  <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
                 </Link>
               ))}
             </div>
