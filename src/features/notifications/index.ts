@@ -1,2 +1,3 @@
-// Notifications module — scaffolded, not implemented yet
-export {};
+// Notifications module
+export { useNotifications, useUnreadCount, useMarkNotificationRead, useMarkAllRead } from '@/hooks/useNotificationsQuery';
+export type { AppNotification } from '@/hooks/useNotificationsQuery';
