@@ -82,9 +82,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    // Ensure auth user has the real password set (lazy migration)
-    // This updates the actual Supabase auth password to match the custom hash
-    await supabaseAdmin.auth.admin.updateUser(user.id, { password });
+    // Lazy migration: ensure auth user has the real password set
+    const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, { password });
+    if (updateErr) {
+      console.error('Password migration failed (non-fatal):', updateErr.message);
+    }
 
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
       email: user.email || internalEmail,
