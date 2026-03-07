@@ -192,8 +192,28 @@ const EventDetail = () => {
 
   const eventTitle = foundMockEvent?.title || dbEvent?.title || "";
   const eventImage = foundMockEvent?.image || dbEvent?.coverImage;
-  const eventDate = foundMockEvent ? foundMockEvent.date : format(new Date(dbEvent!.eventDate), "EEEE, MMM d");
-  const eventTime = foundMockEvent ? "9:00 PM" : format(new Date(dbEvent!.eventDate), "h:mm a");
+  
+  // Format dates — use UTC-aware formatting to avoid timezone shift issues
+  const startDate = dbEvent ? new Date(dbEvent.eventDate) : null;
+  const endDateObj = dbEvent?.endDate ? new Date(dbEvent.endDate) : null;
+  
+  const formatEventDate = () => {
+    if (foundMockEvent) return foundMockEvent.date;
+    if (!startDate) return "";
+    const startStr = format(startDate, "EEEE, MMM d");
+    // Multi-day: show range
+    if (endDateObj && format(endDateObj, "yyyy-MM-dd") !== format(startDate, "yyyy-MM-dd")) {
+      return `${startStr} – ${format(endDateObj, "EEEE, MMM d")}`;
+    }
+    return startStr;
+  };
+  
+  const eventDate = formatEventDate();
+  const eventTime = foundMockEvent ? "9:00 PM" : startDate
+    ? (endDateObj
+      ? `${format(startDate, "h:mm a")} – ${format(endDateObj, "h:mm a")}`
+      : format(startDate, "h:mm a"))
+    : "";
   const eventLocation = foundMockEvent?.location || dbEvent?.category || "";
   const eventAddress = foundMockEvent?.address || dbEvent?.location || "";
   const eventDescription = foundMockEvent?.description || dbEvent?.description || "";
