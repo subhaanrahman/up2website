@@ -14,7 +14,7 @@ import { useProfile } from "@/hooks/useProfileQuery";
 import { format, isPast } from "date-fns";
 import { events as mockEvents, Event as MockEvent } from "@/data/events";
 import { rsvpApi } from "@/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const mockTicketTiers = [
