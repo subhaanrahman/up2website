@@ -28,9 +28,11 @@ const EventDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [isInterested, setIsInterested] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [rsvpLoading, setRsvpLoading] = useState(false);
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
