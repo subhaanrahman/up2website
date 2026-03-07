@@ -447,18 +447,6 @@ const UserProfile = () => {
             ACCEPT
           </Button>
         );
-      case "accepted":
-        return (
-          <Button
-            variant="secondary"
-            className="px-8 h-11 rounded-full font-semibold gap-2"
-            onClick={handleRemoveFriend}
-            disabled={connectionLoading}
-          >
-            <Users className="h-4 w-4" />
-            FRIENDS
-          </Button>
-        );
     }
   };
 
