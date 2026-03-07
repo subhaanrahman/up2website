@@ -11,6 +11,10 @@
 - **Organiser Dashboard tabs**: Added Upcoming/Past tabs to event list in organiser dashboard with correct chronological sorting
 - **Tickets page scroll-to-today**: Tickets page now anchors at "Today" divider on load — upcoming events below, past events above (scrollable)
 - **RSVP population**: Assigned Dylan's account as "going" to all 7 existing events to populate tickets list
+- **RSVP-aware event detail**: Event detail page now checks user's existing RSVP — shows "You're Going!" with cancel option instead of duplicate RSVP button; added loading state for RSVP actions
+- **Suggested friends fix**: Friends recommendation now excludes users with existing connections (pending or accepted) so existing friends no longer appear in suggestions
+- **Recommendation service**: Created `src/features/social/services/recommendationService.ts` — centralised module for friend suggestions and feed ranking; currently rule-based, designed for future ML scoring
+- **Social module export**: Updated `src/features/social/index.ts` to export recommendation service
 
 ## 7 March 2026
 
