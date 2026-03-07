@@ -1,8 +1,8 @@
-import eventDinner from "@/assets/event-dinner.jpg";
-import eventNewyear from "@/assets/event-newyear.jpg";
-import eventBirthday from "@/assets/event-birthday.jpg";
-import eventRooftop from "@/assets/event-rooftop.jpg";
-import eventWedding from "@/assets/event-wedding.jpg";
+import flyer1 from "@/assets/flyer-1.jpg";
+import flyer2 from "@/assets/flyer-2.jpg";
+import flyer3 from "@/assets/flyer-3.jpg";
+import flyer4 from "@/assets/flyer-4.jpg";
+import flyer5 from "@/assets/flyer-5.jpg";
 
 export interface Event {
   id: string;
@@ -37,7 +37,7 @@ export const events: Event[] = [
     time: "6:00 PM",
     location: "Brooklyn, NY",
     address: "245 Garden Ave, Brooklyn, NY 11201",
-    image: eventDinner,
+    image: flyer1,
     attendees: 18,
     capacity: 24,
     category: "Dinner",
@@ -62,7 +62,7 @@ export const events: Event[] = [
     time: "9:00 PM",
     location: "Manhattan, NY",
     address: "789 Skyline Rooftop, Manhattan, NY 10001",
-    image: eventNewyear,
+    image: flyer2,
     attendees: 87,
     capacity: 150,
     category: "New Year's",
@@ -86,7 +86,7 @@ export const events: Event[] = [
     time: "7:30 PM",
     location: "Queens, NY",
     address: "456 Celebration Lane, Queens, NY 11375",
-    image: eventBirthday,
+    image: flyer3,
     attendees: 34,
     capacity: 50,
     category: "Birthday",
@@ -109,7 +109,7 @@ export const events: Event[] = [
     time: "5:00 PM",
     location: "Manhattan, NY",
     address: "123 Skyview Tower, Manhattan, NY 10016",
-    image: eventRooftop,
+    image: flyer4,
     attendees: 42,
     capacity: 75,
     category: "Social",
@@ -132,7 +132,7 @@ export const events: Event[] = [
     time: "6:00 PM",
     location: "The Hamptons, NY",
     address: "Ocean View Estate, Southampton, NY 11968",
-    image: eventWedding,
+    image: flyer5,
     attendees: 120,
     capacity: 150,
     category: "Wedding",
