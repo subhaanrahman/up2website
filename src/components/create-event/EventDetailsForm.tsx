@@ -90,11 +90,96 @@ const EventDetailsForm = ({
   cohosts, setCohosts,
   cohostInput, setCohostInput,
 }: EventDetailsFormProps) => {
+  const { user } = useAuth();
+  const [searchResults, setSearchResults] = useState<Array<{ user_id: string; display_name: string | null; username: string | null; avatar_url: string | null; isFriend: boolean }>>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Debounced search for co-host usernames
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+    const query = cohostInput.trim().replace(/^@/, "");
+    if (query.length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      const term = `%${query}%`;
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, username, avatar_url")
+        .or(`username.ilike.${term},display_name.ilike.${term}`)
+        .neq("user_id", user?.id ?? "")
+        .limit(10);
+
+      if (!profiles || profiles.length === 0) {
+        setSearchResults([]);
+        setShowDropdown(false);
+        return;
+      }
+
+      // Check which are friends
+      let friendIds = new Set<string>();
+      if (user) {
+        const { data: connections } = await supabase
+          .from("connections")
+          .select("requester_id, addressee_id")
+          .eq("status", "accepted")
+          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+
+        if (connections) {
+          connections.forEach((c) => {
+            friendIds.add(c.requester_id === user.id ? c.addressee_id : c.requester_id);
+          });
+        }
+      }
+
+      const results = profiles
+        .filter((p) => !cohosts.includes(p.username || ""))
+        .map((p) => ({
+          ...p,
+          isFriend: friendIds.has(p.user_id),
+        }))
+        .sort((a, b) => (a.isFriend === b.isFriend ? 0 : a.isFriend ? -1 : 1));
+
+      setSearchResults(results);
+      setShowDropdown(results.length > 0);
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [cohostInput, user?.id, cohosts]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const selectCohost = (username: string) => {
+    if (username && !cohosts.includes(username)) {
+      setCohosts([...cohosts, username]);
+    }
+    setCohostInput("");
+    setShowDropdown(false);
+  };
+
   const addCohost = () => {
-    const trimmed = cohostInput.trim();
+    const trimmed = cohostInput.trim().replace(/^@/, "");
     if (trimmed && !cohosts.includes(trimmed)) {
       setCohosts([...cohosts, trimmed]);
       setCohostInput("");
+      setShowDropdown(false);
     }
   };
 
