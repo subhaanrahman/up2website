@@ -153,14 +153,14 @@ Deno.serve(async (req) => {
       console.error('Initials avatar generation failed (non-fatal):', avatarErr);
     }
 
-    // ── Create session via signInWithPassword (single fast call) ──
+    // ── Create session via signInWithPassword using phone (single fast call) ──
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      email: internalEmail,
+      phone: phone.replace(/[^0-9]/g, ''),
       password,
     });
 
