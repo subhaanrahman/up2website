@@ -35,6 +35,7 @@ const StatCard = ({ label, value, trend }: StatCardProps) => {
 
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [eventTab, setEventTab] = useState<"upcoming" | "past">("upcoming");
   const { activeProfile } = useActiveProfile();
 
   const { data: events, isLoading } = useQuery({
@@ -81,9 +82,14 @@ const OrganiserDashboard = () => {
   const totalEvents = events?.length || 0;
   const upcomingEvents = events?.filter((e) => !isPast(new Date(e.event_date))).length || 0;
 
-  const filteredEvents = events?.filter((e) =>
-    e.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEvents = events
+    ?.filter((e) => {
+      const past = isPast(new Date(e.event_date));
+      return eventTab === "past" ? past : !past;
+    })
+    .filter((e) =>
+      e.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   return (
     <div className="md:hidden">
@@ -113,6 +119,30 @@ const OrganiserDashboard = () => {
               className="pl-10 bg-secondary border-0 h-9 text-sm"
             />
           </div>
+        </div>
+
+        {/* Upcoming / Past tabs */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setEventTab("upcoming")}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              eventTab === "upcoming"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            Upcoming
+          </button>
+          <button
+            onClick={() => setEventTab("past")}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              eventTab === "past"
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-muted-foreground"
+            }`}
+          >
+            Past
+          </button>
         </div>
 
         {isLoading ? (
