@@ -18,7 +18,7 @@ const StatCard = ({ label, value, trend }: StatCardProps) => {
   return (
     <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-2xl font-bold text-foreground">{value}</span>
+      <span className="text-2xl font-bold text-foreground" style={{ fontFamily: "'Akira Expanded', sans-serif", fontWeight: 900, fontStretch: 'expanded', letterSpacing: '0.05em' }}>{value}</span>
       <div className="flex items-center gap-1">
         {isPositive ? (
           <TrendingUp className="h-3 w-3 text-green-500" />
