@@ -15,6 +15,8 @@
 - **Suggested friends fix**: Friends recommendation now excludes users with existing connections (pending or accepted) so existing friends no longer appear in suggestions
 - **Recommendation service**: Created `src/features/social/services/recommendationService.ts` — centralised module for friend suggestions and feed ranking; currently rule-based, designed for future ML scoring
 - **Social module export**: Updated `src/features/social/index.ts` to export recommendation service
+- **Multi-day event date display**: Fixed timezone-shift bug causing Dec 31 events to render as Jan 1; event detail now shows date ranges (e.g. "Wednesday, Dec 31 – Thursday, Jan 1") and time ranges for multi-day events
+- **NYE 2026 DB fix**: Updated NYE event to span Dec 31 2026 → Jan 1 2027 as a multi-day event test case
 
 ## 7 March 2026
 
