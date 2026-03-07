@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,9 +11,10 @@ import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useFeedPosts } from "@/hooks/usePostsQuery";
 import { useQueryClient } from "@tanstack/react-query";
+import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/services/recommendationService";
+import logoImg from "@/assets/logo.png";
 import logoImg from "@/assets/logo.png";
 
 interface ProfileResult {
