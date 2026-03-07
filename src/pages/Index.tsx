@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,17 +11,10 @@ import { events } from "@/data/events";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useFeedPosts } from "@/hooks/usePostsQuery";
 import { useQueryClient } from "@tanstack/react-query";
+import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/services/recommendationService";
 import logoImg from "@/assets/logo.png";
-
-interface ProfileResult {
-  user_id: string;
-  display_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-}
 
 const Index = () => {
   const { user } = useAuth();
@@ -31,24 +24,12 @@ const Index = () => {
   const unreadCount = useUnreadCount();
   const queryClient = useQueryClient();
 
-  const [suggestedProfiles, setSuggestedProfiles] = useState<ProfileResult[]>([]);
+  const [suggestedProfiles, setSuggestedProfiles] = useState<SuggestedProfile[]>([]);
   const { data: feedPosts = [] } = useFeedPosts();
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .order("created_at", { ascending: false })
-        .limit(6);
-      if (data) {
-        setSuggestedProfiles(
-          user ? data.filter((p) => p.user_id !== user.id) : data
-        );
-      }
-    };
-    load();
-  }, [user]);
+    getSuggestedFriends(user?.id, 6).then(setSuggestedProfiles);
+  }, [user?.id]);
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)

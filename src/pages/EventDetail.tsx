@@ -14,7 +14,7 @@ import { useProfile } from "@/hooks/useProfileQuery";
 import { format, isPast } from "date-fns";
 import { events as mockEvents, Event as MockEvent } from "@/data/events";
 import { rsvpApi } from "@/api";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const mockTicketTiers = [
@@ -28,9 +28,11 @@ const EventDetail = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const [isInterested, setIsInterested] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [rsvpLoading, setRsvpLoading] = useState(false);
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
@@ -63,6 +65,22 @@ const EventDetail = () => {
       return org;
     },
     enabled: !!dbEvent,
+  });
+
+  // Fetch user's existing RSVP for this event
+  const { data: userRsvp } = useQuery({
+    queryKey: ["user-rsvp", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data } = await supabase
+        .from("rsvps")
+        .select("id, status")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && !isMock,
   });
 
   const loading = !isMock && isLoading;
@@ -111,11 +129,29 @@ const EventDetail = () => {
     if (!user) { navigate("/auth"); return; }
     if (!id) return;
 
+    setRsvpLoading(true);
     try {
       await rsvpApi.join(id);
+      queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       toast({ title: "RSVP Submitted!", description: "You're going to this event!" });
     } catch {
-      toast({ title: "RSVP Submitted!", description: "Waiting for host approval..." });
+      toast({ title: "RSVP Failed", description: "Something went wrong, please try again.", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  const handleLeaveRSVP = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      await rsvpApi.leave(id);
+      queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
+      toast({ title: "RSVP Cancelled", description: "You've been removed from the guest list." });
+    } catch {
+      toast({ title: "Error", description: "Could not cancel RSVP.", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
     }
   };
 
@@ -292,10 +328,20 @@ const EventDetail = () => {
             <div className="w-full text-center py-2">
               <p className="font-semibold text-muted-foreground">This event has ended</p>
             </div>
+          ) : userRsvp ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">You're {userRsvp.status === 'going' ? 'Going' : 'Interested'}! 🎉</p>
+                <p className="text-sm text-muted-foreground">You're on the guest list</p>
+              </div>
+              <Button variant="secondary" size="lg" onClick={handleLeaveRSVP} disabled={rsvpLoading}>
+                {rsvpLoading ? "..." : "Cancel RSVP"}
+              </Button>
+            </>
           ) : isFreeEvent ? (
             <>
               <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
-              <Button size="lg" onClick={handleRSVP}>RSVP</Button>
+              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
             </>
           ) : (
             <>
