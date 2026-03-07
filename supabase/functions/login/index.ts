@@ -75,8 +75,7 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Use signInWithPassword for fast session creation (single call)
-    const internalEmail = phoneToInternalEmail(phone);
+    // Use signInWithPassword via phone (phone provider is enabled)
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -89,7 +88,7 @@ Deno.serve(async (req) => {
     }
 
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      email: user.email || internalEmail,
+      phone: user.phone || phone.replace(/[^0-9]/g, ''),
       password,
     });
 
