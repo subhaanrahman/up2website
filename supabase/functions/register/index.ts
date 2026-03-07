@@ -87,7 +87,7 @@ Deno.serve(async (req) => {
       return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
     }
 
-    // ── Create user ──
+    // ── Create user with real password for signInWithPassword ──
     const internalEmail = phoneToInternalEmail(phone);
     const passwordHash = await hashPassword(password);
 
@@ -96,13 +96,13 @@ Deno.serve(async (req) => {
       phone_confirm: true,
       email: internalEmail,
       email_confirm: true,
-      password,
+      password, // Sets actual Supabase auth password for signInWithPassword
       user_metadata: {
         display_name: `${firstName.trim()} ${lastName.trim()}`,
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         username: username.toLowerCase(),
-        password_hash: passwordHash,
+        password_hash: passwordHash, // Keep for backward compat
       },
     });
 
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       await supabaseAdmin.from('profiles').insert({ user_id: userId, ...profileData });
     }
 
-    // ── Generate initials avatar ──
+    // ── Generate initials avatar (non-blocking) ──
     try {
       const avatarUrl = await generateAndUploadInitialsAvatar(
         supabaseAdmin,
@@ -153,29 +153,19 @@ Deno.serve(async (req) => {
       console.error('Initials avatar generation failed (non-fatal):', avatarErr);
     }
 
-    // ── Create session via magic link ──
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: internalEmail,
-    });
-
-    if (linkError || !linkData?.properties?.hashed_token) {
-      console.error('Generate link error:', JSON.stringify(linkError));
-      return errorResponse('Account created but session generation failed.', 500);
-    }
-
+    // ── Create session via signInWithPassword (single fast call) ──
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
-      token_hash: linkData.properties.hashed_token,
-      type: 'magiclink',
+    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
+      email: internalEmail,
+      password,
     });
 
-    if (verifyError || !verifyData?.session) {
-      console.error('Verify OTP error:', JSON.stringify(verifyError));
+    if (signInError || !signInData?.session) {
+      console.error('signInWithPassword error:', JSON.stringify(signInError));
       return errorResponse('Account created but sign-in failed. Please log in manually.', 500);
     }
 
@@ -184,8 +174,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: verifyData.session.access_token,
-        refresh_token: verifyData.session.refresh_token,
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
         user_id: userId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

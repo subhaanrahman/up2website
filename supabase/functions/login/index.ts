@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Get the auth user to verify password
+    // Get the auth user to verify password hash
     const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
 
     if (getUserError || !userData?.user) {
@@ -75,30 +75,24 @@ Deno.serve(async (req) => {
       return errorResponse('Invalid phone number or password', 401);
     }
 
-    // Generate session via magic link
+    // Use signInWithPassword for fast session creation (single call)
     const internalEmail = phoneToInternalEmail(phone);
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email || internalEmail,
-    });
-
-    if (linkError || !linkData?.properties?.hashed_token) {
-      console.error('Generate link error:', JSON.stringify(linkError));
-      return errorResponse('Login failed', 500);
-    }
-
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
-      token_hash: linkData.properties.hashed_token,
-      type: 'magiclink',
+    // Ensure auth user has the real password set (lazy migration)
+    // This updates the actual Supabase auth password to match the custom hash
+    await supabaseAdmin.auth.admin.updateUser(user.id, { password });
+
+    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
+      email: user.email || internalEmail,
+      password,
     });
 
-    if (verifyError || !verifyData?.session) {
-      console.error('Verify OTP error:', JSON.stringify(verifyError));
+    if (signInError || !signInData?.session) {
+      console.error('signInWithPassword error:', JSON.stringify(signInError));
       return errorResponse('Login failed', 500);
     }
 
@@ -107,8 +101,8 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        access_token: verifyData.session.access_token,
-        refresh_token: verifyData.session.refresh_token,
+        access_token: signInData.session.access_token,
+        refresh_token: signInData.session.refresh_token,
         user_id: user.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
