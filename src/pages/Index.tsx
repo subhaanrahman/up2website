@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bell, Plus, Calendar, DollarSign } from "lucide-react";
+import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
 import BottomNav from "@/components/BottomNav";
@@ -27,6 +28,7 @@ const Index = () => {
   const { data: profile } = useProfile(user?.id);
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const nearbyEvents = events.slice(0, 2);
+  const unreadCount = useUnreadCount();
   const queryClient = useQueryClient();
 
   const [suggestedProfiles, setSuggestedProfiles] = useState<ProfileResult[]>([]);
@@ -63,10 +65,15 @@ const Index = () => {
         <div className="flex items-center justify-center px-4 h-14 relative">
           <img src={logoImg} alt="Up2" className="h-8 w-auto animate-snakeSlide" />
           <div className="absolute right-4">
-            <Link to="/notifications">
+            <Link to="/notifications" className="relative">
               <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full bg-secondary">
                 <Bell className="h-5 w-5 text-foreground" />
               </Button>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           </div>
         </div>

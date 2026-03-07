@@ -453,6 +453,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          event_image: string | null
+          expires_at: string
+          id: string
+          link: string | null
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          event_image?: string | null
+          expires_at?: string
+          id?: string
+          link?: string | null
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          event_image?: string | null
+          expires_at?: string
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount_cents: number
@@ -1078,6 +1120,7 @@ export type Database = {
         Returns: boolean
       }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
+      purge_expired_notifications: { Args: never; Returns: undefined }
       rsvp_join: {
         Args: { p_event_id: string; p_status?: string }
         Returns: Json

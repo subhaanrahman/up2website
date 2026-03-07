@@ -1,5 +1,17 @@
 # Dylan — Handover Notes
 
+## 8 March 2026
+
+### Summary of Changes
+
+- **Notifications backend system**: Created `notifications` table with RLS policies, realtime, 10-day auto-expiry, and `purge_expired_notifications` DB function with daily cron job
+- **Notifications UI rewrite**: Replaced mock data with real DB queries; extracted `NotificationItem` component; added "Mark all read" button
+- **Unread notification badge**: Home page bell icon now shows live unread count badge from DB with realtime updates
+- **Notifications hooks**: New `useNotificationsQuery.ts` with `useNotifications`, `useUnreadCount`, `useMarkNotificationRead`, `useMarkAllRead` hooks
+- **Organiser Dashboard tabs**: Added Upcoming/Past tabs to event list in organiser dashboard with correct chronological sorting
+- **Tickets page scroll-to-today**: Tickets page now anchors at "Today" divider on load — upcoming events below, past events above (scrollable)
+- **RSVP population**: Assigned Dylan's account as "going" to all 7 existing events to populate tickets list
+
 ## 7 March 2026
 
 ### Summary of Changes
