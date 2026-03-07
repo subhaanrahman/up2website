@@ -8,6 +8,15 @@
 
 There are several ways of editing your application.
 
+MOST IMPORTANTLY FOLLOW THE BELOW SETUP 
+**Branches
+	•	main
+	•	develop
+
+Environments
+	•	development
+	•	production**
+
 **Use Lovable**
 
 Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
