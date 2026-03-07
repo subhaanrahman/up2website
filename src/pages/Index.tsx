@@ -17,13 +17,6 @@ import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/se
 import logoImg from "@/assets/logo.png";
 import logoImg from "@/assets/logo.png";
 
-interface ProfileResult {
-  user_id: string;
-  display_name: string | null;
-  username: string | null;
-  avatar_url: string | null;
-}
-
 const Index = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
