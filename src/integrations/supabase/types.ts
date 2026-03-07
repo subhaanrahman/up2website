@@ -453,6 +453,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          event_image: string | null
+          expires_at: string
+          id: string
+          link: string | null
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          event_image?: string | null
+          expires_at?: string
+          id?: string
+          link?: string | null
+          message: string
+          read?: boolean
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          event_image?: string | null
+          expires_at?: string
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount_cents: number
