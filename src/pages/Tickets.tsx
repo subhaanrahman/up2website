@@ -45,9 +45,23 @@ const Tickets = () => {
     enabled: !!user?.id,
   });
 
-  const filteredEvents = rsvpEvents?.filter((rsvp) =>
-    rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredEvents = rsvpEvents
+    ?.filter((rsvp) =>
+      rsvp.events?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      const now = new Date();
+      const dateA = a.events?.event_date ? new Date(a.events.event_date) : now;
+      const dateB = b.events?.event_date ? new Date(b.events.event_date) : now;
+      const aIsUpcoming = dateA >= now;
+      const bIsUpcoming = dateB >= now;
+      // Upcoming first, then past
+      if (aIsUpcoming && !bIsUpcoming) return -1;
+      if (!aIsUpcoming && bIsUpcoming) return 1;
+      // Within upcoming: soonest first; within past: most recent first
+      if (aIsUpcoming) return dateA.getTime() - dateB.getTime();
+      return dateB.getTime() - dateA.getTime();
+    });
 
   if (isOrganiser) {
     return (
