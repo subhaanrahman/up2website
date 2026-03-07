@@ -129,11 +129,29 @@ const EventDetail = () => {
     if (!user) { navigate("/auth"); return; }
     if (!id) return;
 
+    setRsvpLoading(true);
     try {
       await rsvpApi.join(id);
+      queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       toast({ title: "RSVP Submitted!", description: "You're going to this event!" });
     } catch {
-      toast({ title: "RSVP Submitted!", description: "Waiting for host approval..." });
+      toast({ title: "RSVP Failed", description: "Something went wrong, please try again.", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  const handleLeaveRSVP = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      await rsvpApi.leave(id);
+      queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
+      toast({ title: "RSVP Cancelled", description: "You've been removed from the guest list." });
+    } catch {
+      toast({ title: "Error", description: "Could not cancel RSVP.", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
     }
   };
 
@@ -310,10 +328,20 @@ const EventDetail = () => {
             <div className="w-full text-center py-2">
               <p className="font-semibold text-muted-foreground">This event has ended</p>
             </div>
+          ) : userRsvp ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">You're {userRsvp.status === 'going' ? 'Going' : 'Interested'}! 🎉</p>
+                <p className="text-sm text-muted-foreground">You're on the guest list</p>
+              </div>
+              <Button variant="secondary" size="lg" onClick={handleLeaveRSVP} disabled={rsvpLoading}>
+                {rsvpLoading ? "..." : "Cancel RSVP"}
+              </Button>
+            </>
           ) : isFreeEvent ? (
             <>
               <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
-              <Button size="lg" onClick={handleRSVP}>RSVP</Button>
+              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
             </>
           ) : (
             <>
