@@ -89,7 +89,13 @@ const OrganiserDashboard = () => {
     })
     .filter((e) =>
       e.title.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    )
+    .sort((a, b) => {
+      const dateA = new Date(a.event_date).getTime();
+      const dateB = new Date(b.event_date).getTime();
+      // Upcoming: ascending (soonest first), Past: descending (most recent first)
+      return eventTab === "upcoming" ? dateA - dateB : dateB - dateA;
+    });
 
   return (
     <div className="md:hidden">
