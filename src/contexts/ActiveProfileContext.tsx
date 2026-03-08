@@ -12,6 +12,8 @@ export interface OrganiserProfile {
   city: string | null;
   instagramHandle: string | null;
   category: string;
+  openingHours: Record<string, string> | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
