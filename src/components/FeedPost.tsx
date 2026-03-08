@@ -25,7 +25,7 @@ interface FeedPostProps {
     location: string | null;
     cover_image: string | null;
   } | null;
-  collaborators?: { display_name: string; avatar_url: string | null }[];
+  collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
 }
 
 const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
