@@ -87,14 +87,8 @@ const EventDetail = () => {
 
   const loading = !isMock && isLoading;
 
-  const handleShare = async () => {
-    const title = foundMockEvent?.title || dbEvent?.title;
-    if (navigator.share) {
-      await navigator.share({ title, text: `Join me at ${title}!`, url: window.location.href });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link copied!", description: "Event link has been copied to clipboard" });
-    }
+  const handleShare = () => {
+    setShowShareSheet(true);
   };
 
   const handleInterested = () => {
