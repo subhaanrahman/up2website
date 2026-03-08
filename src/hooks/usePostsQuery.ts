@@ -98,7 +98,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
         const prof = collabProfileMap.get(c.user_id);
         if (!prof) continue;
         const existing = collabMap.get(c.post_id) || [];
-        existing.push({ display_name: prof.display_name || "User", avatar_url: prof.avatar_url });
+        existing.push({ user_id: c.user_id, display_name: prof.display_name || "User", avatar_url: prof.avatar_url });
         collabMap.set(c.post_id, existing);
       }
     }
