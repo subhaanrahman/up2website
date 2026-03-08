@@ -163,17 +163,17 @@ const Events = () => {
           {activeTab === "events" && (
             <>
               <div className="flex gap-2 overflow-x-auto py-3 -mx-4 px-4 no-scrollbar">
-                {categories.map(cat => (
+                {filters.map(f => (
                   <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategory(cat.value)}
+                    key={f.value}
+                    onClick={() => setSelectedFilter(f.value)}
                     className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                      selectedCategory === cat.value
+                      selectedFilter === f.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-foreground hover:bg-secondary/80"
                     }`}
                   >
-                    {cat.label}
+                    {f.label}
                   </button>
                 ))}
               </div>
