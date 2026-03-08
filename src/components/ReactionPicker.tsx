@@ -9,6 +9,7 @@ interface ReactionPickerProps {
   onUnreact: () => void;
   likeCount: number;
   isLiked: boolean;
+  reactionBreakdown?: Record<string, number>;
 }
 
 const REACTIONS: { type: ReactionType; emoji: string; label: string }[] = [
@@ -31,12 +32,25 @@ export function getReactionEmoji(type: ReactionType): string {
   return REACTION_EMOJI_MAP[type] || "❤️";
 }
 
+/** Returns top emojis sorted by count (max 3) */
+function getTopReactions(breakdown: Record<string, number>): { emoji: string; count: number }[] {
+  return Object.entries(breakdown)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type, count]) => ({
+      emoji: REACTION_EMOJI_MAP[type as ReactionType] || "❤️",
+      count,
+    }));
+}
+
 const ReactionPicker = ({
   currentReaction,
   onReact,
   onUnreact,
   likeCount,
   isLiked,
+  reactionBreakdown,
 }: ReactionPickerProps) => {
   const [showPicker, setShowPicker] = useState(false);
   const [animatingReaction, setAnimatingReaction] = useState<ReactionType | null>(null);
@@ -54,7 +68,6 @@ const ReactionPicker = ({
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    // If picker isn't showing, it was a quick tap — toggle default heart
     if (!showPicker) {
       if (isLiked) {
         onUnreact();
@@ -87,7 +100,6 @@ const ReactionPicker = ({
     [currentReaction, onReact, onUnreact]
   );
 
-  // Close picker on outside click
   useEffect(() => {
     if (!showPicker) return;
     const handler = (e: PointerEvent) => {
@@ -100,6 +112,8 @@ const ReactionPicker = ({
   }, [showPicker]);
 
   const displayEmoji = currentReaction ? getReactionEmoji(currentReaction) : null;
+  const topReactions = reactionBreakdown ? getTopReactions(reactionBreakdown) : [];
+  const hasMultipleTypes = topReactions.length > 1;
 
   return (
     <div ref={containerRef} className="relative">
@@ -130,20 +144,37 @@ const ReactionPicker = ({
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         className={cn(
-          "flex items-center gap-1.5 transition-colors group select-none touch-none",
+          "flex items-center gap-1 transition-colors group select-none touch-none",
           isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"
         )}
       >
-        <span
-          className={cn(
-            "text-[18px] leading-none",
-            animatingReaction && "animate-bounce"
-          )}
-        >
-          {isLiked && displayEmoji ? displayEmoji : "🤍"}
-        </span>
+        {/* Show stacked emoji breakdown or single emoji */}
+        {hasMultipleTypes && likeCount > 0 ? (
+          <span className="flex items-center -space-x-0.5">
+            {topReactions.map((r, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "text-[15px] leading-none",
+                  animatingReaction && i === 0 && "animate-bounce"
+                )}
+              >
+                {r.emoji}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "text-[18px] leading-none",
+              animatingReaction && "animate-bounce"
+            )}
+          >
+            {isLiked && displayEmoji ? displayEmoji : "🤍"}
+          </span>
+        )}
         {likeCount > 0 && (
-          <span className="text-[13px] tabular-nums">{likeCount}</span>
+          <span className="text-[13px] tabular-nums ml-0.5">{likeCount}</span>
         )}
       </button>
     </div>
