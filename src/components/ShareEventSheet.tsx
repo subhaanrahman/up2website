@@ -225,20 +225,6 @@ const ShareEventSheet = ({
           </div>
         </div>
 
-        {/* Theme color dots */}
-        <div className="flex justify-center gap-3 pb-4">
-          {CARD_THEMES.map((theme, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveTheme(i)}
-              className={`h-8 w-8 rounded-full transition-all ${theme.dot} ${
-                activeTheme === i
-                  ? "ring-2 ring-offset-2 ring-offset-background ring-foreground scale-110"
-                  : "opacity-60 hover:opacity-100"
-              }`}
-            />
-          ))}
-        </div>
 
         {/* Share to Friends section */}
         {user && (
