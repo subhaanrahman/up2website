@@ -32,6 +32,13 @@
 - [x] QR code generation for event URL
 - [ ] Track link clicks / conversions
 
+## Direct Messaging (Organiser DMs)
+- [ ] Design DM schema (conversations table, messages table, participants)
+- [ ] Any user can message an organiser profile (contact form → DM)
+- [ ] Organiser profiles can also create group chats like personal users
+- [ ] Real-time messaging support
+- [ ] Notification integration for new messages
+
 ## Analytics (Future)
 - [ ] Per-event view tracking
 - [ ] Sales & revenue dashboard

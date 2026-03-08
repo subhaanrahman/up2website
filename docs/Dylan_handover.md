@@ -1,5 +1,16 @@
 # Dylan — Handover Notes
 
+## 8 March 2026 (Session 3 — for Haan's review)
+
+- **Opening hours field**: Added `opening_hours` JSONB column to `organiser_profiles`; editing UI shown only for Venue category profiles
+- **Tags (genre/crowd/features)**: Added `tags` JSONB array to `organiser_profiles` with tag picker UI featuring suggestions and custom input
+- **Terms of Service page**: Created `/terms` with sample ToS content
+- **Privacy Policy page**: Created `/privacy` with sample privacy policy content; both linked from auth page and About page
+- **Email verification (optional MFA)**: Built OTP-based email verification at `/settings/email-verification` with send → verify → verified states; added `email_verified` column to profiles; edge functions `email-verify-send` and `email-verify-confirm` deployed
+- **DM system deferred**: Organiser DM/contact feature skipped for now — added to `docs/BACKEND_TODO.md` for future implementation
+
+---
+
 ## 8 March 2026 (Session 2)
 
 ### Summary of Changes
