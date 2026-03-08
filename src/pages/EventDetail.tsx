@@ -247,8 +247,8 @@ const EventDetail = () => {
     <div className="min-h-screen bg-background pb-40">
 
       {/* Title */}
-      <div className="px-4 pb-3">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight font-sans uppercase leading-tight">{eventTitle}</h1>
+      <div className="px-4 pt-6 pb-3">
+        <h1 className="text-2xl font-black text-foreground tracking-[0.05em] uppercase leading-tight" style={{ fontFamily: "'Akira Expanded', sans-serif", fontStretch: 'expanded' }}>{eventTitle}</h1>
       </div>
 
       {/* Cover image */}
