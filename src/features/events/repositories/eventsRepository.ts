@@ -1,7 +1,10 @@
 // Events repository — DB access (reads only on client, writes via Edge Functions)
 
 import { supabase } from '@/infrastructure/supabase';
+import { startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import type { EventEntity, Rsvp } from '../domain/types';
+
+export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
 function mapEventRow(row: Record<string, unknown>): EventEntity {
   return {
