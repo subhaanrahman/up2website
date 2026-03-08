@@ -198,12 +198,13 @@ const ShareEventSheet = ({
         {/* Drag handle is built into DrawerContent */}
 
         {/* Story card preview - scaled down for display, full size for export */}
-        <div className="flex justify-center pt-2 pb-2 px-4">
+        <div className="flex justify-center pt-2 pb-1 px-4" style={{
+          height: `${(1920 / 3) * 0.5 + 16}px`,
+        }}>
           <div className="rounded-xl overflow-hidden" style={{
             boxShadow: `0 6px 30px ${themeColors[activeTheme]?.accent || "#a855f7"}44`,
-            transform: "scale(0.55)",
+            transform: "scale(0.5)",
             transformOrigin: "top center",
-            height: `${(1920 / 3) * 0.55}px`,
           }}>
             <StoryCardPreview
               ref={storyRef}
