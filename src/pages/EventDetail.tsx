@@ -337,6 +337,17 @@ const EventDetail = () => {
             <Tag className="h-4 w-4 mr-2" />Add Code
           </Button>
         </div>
+
+        {/* Venue / Map */}
+        <div className="bg-card rounded-xl p-4">
+          <h3 className="font-semibold text-foreground mb-3">Venue</h3>
+          <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
+            <MapPin className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground ml-2">Map Preview</span>
+          </div>
+          <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
+          <p className="text-sm text-muted-foreground">{eventAddress || "Full address"}</p>
+        </div>
       </div>
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-40">
