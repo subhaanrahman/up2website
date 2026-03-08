@@ -1,4 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -213,7 +214,7 @@ const EventDetail = () => {
   }
 
   const eventTitle = foundMockEvent?.title || dbEvent?.title || "";
-  const eventImage = foundMockEvent?.image || dbEvent?.coverImage;
+  const eventImage = foundMockEvent?.image || dbEvent?.coverImage || (id ? getEventFlyer(id) : undefined);
   
   // Format dates — use UTC-aware formatting to avoid timezone shift issues
   const startDate = dbEvent ? new Date(dbEvent.eventDate) : null;
