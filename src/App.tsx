@@ -38,6 +38,8 @@ import OrganiserTeam from "./pages/OrganiserTeam";
 import FriendsFollowing from "./pages/FriendsFollowing";
 import ManageEvent from "./pages/ManageEvent";
 import EventCheckIn from "./pages/EventCheckIn";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
