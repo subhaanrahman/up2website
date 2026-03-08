@@ -36,6 +36,7 @@ import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
 import EditOrganiserProfile from "./pages/EditOrganiserProfile";
 import OrganiserTeam from "./pages/OrganiserTeam";
 import FriendsFollowing from "./pages/FriendsFollowing";
+import ManageEvent from "./pages/ManageEvent";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
               <Route path="/events/:id" element={<EventDetail />} />
               <Route path="/events/:id/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
               <Route path="/events/:id/guests" element={<EventGuests />} />
+              <Route path="/events/:id/manage" element={<ProtectedRoute><ManageEvent /></ProtectedRoute>} />
 
               {/* Protected routes */}
               <Route path="/messages" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
