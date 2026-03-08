@@ -166,6 +166,11 @@ export function usePostInteractions(postId: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
     },
+    onSuccess: (_data, vars) => {
+      if (user && !vars.wasLiked) {
+        sendPostNotification('post_reaction', postId, user.id, vars.reactionType);
+      }
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
