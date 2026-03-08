@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
+import ShareEventSheet from "@/components/ShareEventSheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
