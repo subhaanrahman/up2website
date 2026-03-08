@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import FeedPost from "@/components/FeedPost";
-import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
+import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import ShareProfileSheet from "@/components/ShareProfileSheet";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
@@ -632,7 +632,7 @@ const UserProfile = () => {
 };
 
 const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganiser: boolean }) => {
-  const { data: userPosts = [], isLoading: userLoading } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: userPosts = [], isLoading: userLoading } = useUserFeedWithReposts(isOrganiser ? undefined : userId);
   const { data: orgPosts = [], isLoading: orgLoading } = useOrganiserPosts(isOrganiser ? userId : undefined);
   const posts = isOrganiser ? orgPosts : userPosts;
   const isLoading = isOrganiser ? orgLoading : userLoading;
@@ -651,10 +651,10 @@ const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganis
 
   return (
     <div className="-mx-4">
-      {posts.map((post) => (
+      {posts.map((post, idx) => (
         <FeedPost
+          key={post.reposted_by_name ? `repost-${post.id}-${idx}` : post.id}
           postId={post.id}
-          key={post.id}
           authorId={post.author_id}
           organiserProfileId={post.organiser_profile_id}
           displayName={post.author_display_name || "User"}
@@ -664,6 +664,7 @@ const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganis
           createdAt={post.created_at}
           imageUrl={post.image_url}
           gifUrl={post.gif_url}
+          repostedBy={post.reposted_by_name}
           eventData={post.event_data}
           collaborators={post.collaborators}
         />
