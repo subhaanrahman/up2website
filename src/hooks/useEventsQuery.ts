@@ -21,7 +21,7 @@ export function useEvents(options?: { category?: string; limit?: number }) {
   });
 }
 
-export function useSearchEvents(options: { query?: string; filter?: string; limit?: number }) {
+export function useSearchEvents(options: { query?: string; filter?: EventFilter; limit?: number }) {
   return useQuery({
     queryKey: eventKeys.search(options),
     queryFn: () => eventsService.searchEvents(options),
