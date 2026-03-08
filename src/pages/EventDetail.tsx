@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil
+  X, Share2, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
@@ -285,12 +285,10 @@ const EventDetail = () => {
             <p className="text-sm text-muted-foreground">{eventAddress.split(',').slice(1).join(',').trim() || "Venue address"}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            {(foundMockEvent?.category || dbEvent?.category) && (
-              <div className="flex items-center gap-1">
-                <span className="font-bold text-foreground text-sm">{foundMockEvent?.category || dbEvent?.category}</span>
-                <CheckCircle2 className="h-4 w-4 text-primary fill-primary" />
-              </div>
-            )}
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-foreground text-lg">{displayHostName}</span>
+              <BadgeCheck className="h-5 w-5 text-primary fill-primary" />
+            </div>
             <button className="h-10 w-10 rounded-full flex items-center justify-center">
               <MapPin className="h-5 w-5 text-foreground" />
             </button>
