@@ -19,11 +19,9 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
   };
 
   const items = [
-    { icon: ClipboardList, label: "Orders", description: "View all ticket orders", action: () => goToManage("orders") },
-    { icon: Users, label: "Guestlist", description: "Manage RSVPs & guest list", action: () => goToManage("guestlist") },
-    { icon: RotateCcw, label: "Refunds", description: "Process and view refunds", action: () => goToManage("refunds") },
+    { icon: ClipboardList, label: "Orders, Guestlists & Refunds", description: "View all ticket orders, guest lists, and refunds", action: () => goToManage() },
     { icon: Image, label: "Upload Media", description: "Add event photo gallery", action: () => goToManage("media") },
-    { icon: Crown, label: "VIP Tables", description: "Manage VIP table bookings — Coming Soon", action: () => {} },
+    { icon: Crown, label: "VIP Tables — Coming Soon", description: "Manage VIP table bookings", action: () => {}, disabled: true },
   ];
 
   return (
