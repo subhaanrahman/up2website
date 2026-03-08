@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface FeedPostProps {
   postId: string;
   authorId: string;
+  organiserProfileId?: string | null;
   displayName: string;
   username: string;
   avatarUrl: string | null;
@@ -27,7 +28,8 @@ interface FeedPostProps {
   collaborators?: { display_name: string; avatar_url: string | null }[];
 }
 
-const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+  const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
