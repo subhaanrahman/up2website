@@ -38,7 +38,7 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
               variant="ghost"
               className="w-full justify-start h-auto py-3 px-3"
               onClick={action}
-              disabled={label === "VIP Tables"}
+              disabled={item.disabled}
             >
               <Icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
               <div className="text-left">
