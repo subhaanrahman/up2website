@@ -32,18 +32,18 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
           <p className="text-sm text-muted-foreground capitalize">{eventTitle}</p>
         </DialogHeader>
         <div className="space-y-2 pt-2">
-          {items.map(({ icon: Icon, label, description, action }) => (
+          {items.map((item) => (
             <Button
-              key={label}
+              key={item.label}
               variant="ghost"
               className="w-full justify-start h-auto py-3 px-3"
-              onClick={action}
+              onClick={item.action}
               disabled={item.disabled}
             >
-              <Icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+              <item.icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
               <div className="text-left">
-                <p className="font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground">{description}</p>
+                <p className="font-medium text-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
               </div>
             </Button>
           ))}
