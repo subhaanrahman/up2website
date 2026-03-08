@@ -25,6 +25,8 @@ const sendSchema = z.object({
     'shared_event',
     'shared_post',
     'shared_account',
+    'post_reaction',
+    'post_repost',
     'post_from_following',
     'friend_request',
     'gamification_levelup',
