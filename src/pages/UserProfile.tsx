@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import FeedPost from "@/components/FeedPost";
-import { useUserPosts, useOrganiserPosts } from "@/hooks/usePostsQuery";
+import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import ShareProfileSheet from "@/components/ShareProfileSheet";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
