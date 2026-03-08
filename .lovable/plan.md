@@ -1,63 +1,36 @@
 
 
-## Diagnosis
+## Plan: Like counters, filled heart, and repost-to-feed functionality
 
-### Issue 1: Likes and reposts don't persist
-The RLS policies on `post_likes` and `post_reposts` are all **RESTRICTIVE** (`Permissive: No`). In Postgres, restrictive policies require at least one **PERMISSIVE** policy to also exist and pass. Since there are zero permissive policies on these tables, all operations (SELECT, INSERT, DELETE) are silently denied, even though the policy expressions themselves look correct.
+### 1. Update FeedPost component
+- Add `postId` prop and optional `repostedBy` prop (string, the display name of the reposter)
+- Wire up `usePostInteractions(postId)` hook to get `likeCount`, `repostCount`, `isLiked`, `isReposted`, `toggleLike`, `toggleRepost`
+- Show like count next to the heart icon; show repost count next to the repost icon
+- When `isLiked` is true, render the Heart with `fill="currentColor"` and color it red/primary
+- When `isReposted` is true, color the repost icon green (Twitter-style)
+- When `repostedBy` is provided, show a small header above the post: "🔁 {name} reposted" in muted text with a Repeat2 icon
 
-The optimistic UI update in `usePostInteractions` makes it look like the action worked, but the actual database write fails silently (the Supabase client returns an error that isn't being checked), and `onSettled` re-fetches the real state, reverting the UI.
+### 2. Update feed query to include reposts
+- Modify `useFeedPosts` to also fetch `post_reposts` for the current user, join with the original post data, and merge them into the feed sorted by time
+- Reposted items appear in the feed with the `repostedBy` label showing the current user's display name
+- Deduplicate: if a post already appears as an original, the repost still shows separately (Twitter behavior)
 
-**Fix:** Drop the restrictive policies and recreate them as permissive (the default).
-
-### Issue 2: Reposts don't appear in the feed immediately
-When a user reposts, `toggleRepost` only invalidates `["post-interactions", postId]` but does not invalidate the feed query `["feed-posts"]`. The realtime subscription should catch it eventually, but there's also a code issue: `usePostInteractions` doesn't check for Supabase errors on insert/delete, so failures are swallowed.
-
-**Fix:** After a successful repost toggle, also invalidate `["feed-posts"]` so the reposted content appears in the home feed immediately.
-
----
-
-## Plan
-
-### 1. Fix RLS policies on `post_likes` and `post_reposts`
-Run a migration to drop the 6 restrictive policies and recreate them as **permissive** policies with the same expressions:
-
-- `post_likes`: SELECT (true), INSERT (auth.uid() = user_id), DELETE (auth.uid() = user_id)
-- `post_reposts`: SELECT (true), INSERT (auth.uid() = user_id), DELETE (auth.uid() = user_id)
-
-### 2. Add error handling to `usePostInteractions`
-In the `mutationFn` for both `toggleLike` and `toggleRepost`, check the Supabase response for errors and throw if present. This ensures `onError` properly rolls back optimistic updates.
-
-### 3. Invalidate feed on repost toggle
-In `toggleRepost.onSettled`, also invalidate `["feed-posts"]` so the reposted post appears on the home feed immediately without waiting for the realtime subscription.
+### 3. Pass `postId` from Index.tsx
+- Add `id={post.id}` as `postId` prop to `<FeedPost>` in the feed rendering loop
 
 ### Technical details
 
-**Migration SQL:**
-```sql
--- Fix post_likes: drop restrictive, create permissive
-DROP POLICY "Authenticated can view likes" ON post_likes;
-DROP POLICY "Users can like posts" ON post_likes;
-DROP POLICY "Users can unlike posts" ON post_likes;
+**FeedPost.tsx changes:**
+- New props: `postId: string`, `repostedBy?: string`
+- Import and call `usePostInteractions(postId)`
+- Render repostedBy banner above the post content
+- Like button: `className` toggles red color + `fill="currentColor"` when liked
+- Display `likeCount` and `repostCount` as small text next to icons (only when > 0)
 
-CREATE POLICY "Authenticated can view likes" ON post_likes FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can like posts" ON post_likes FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can unlike posts" ON post_likes FOR DELETE TO authenticated USING (auth.uid() = user_id);
+**usePostsQuery.ts changes:**
+- In `fetchPosts()`, after fetching posts, also fetch `post_reposts` joined with posts to get reposted content
+- Return merged + sorted array with a `reposted_by_name` field on reposted entries
 
--- Fix post_reposts: drop restrictive, create permissive
-DROP POLICY "Authenticated can view reposts" ON post_reposts;
-DROP POLICY "Users can repost" ON post_reposts;
-DROP POLICY "Users can unrepost" ON post_reposts;
-
-CREATE POLICY "Authenticated can view reposts" ON post_reposts FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Users can repost" ON post_reposts FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can unrepost" ON post_reposts FOR DELETE TO authenticated USING (auth.uid() = user_id);
-```
-
-**usePostInteractions.ts changes:**
-- Add `.throwOnError()` or check `error` on insert/delete calls
-- In `toggleRepost.onSettled`, add `queryClient.invalidateQueries({ queryKey: ["feed-posts"] })`
-
-### Files to modify
-- Database migration (RLS policy fix)
-- `src/hooks/usePostInteractions.ts` (error handling + feed invalidation)
+**Index.tsx changes:**
+- Pass `postId={post.id}` and `repostedBy={post.reposted_by_name}` to each `<FeedPost>`
 
