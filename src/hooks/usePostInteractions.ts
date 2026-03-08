@@ -44,9 +44,11 @@ export function usePostInteractions(postId: string) {
       if (!user) throw new Error("Not authenticated");
       const current = queryClient.getQueryData<PostCounts>(key);
       if (current?.isLiked) {
-        await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+        const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+        if (error) throw error;
       } else {
-        await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+        const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+        if (error) throw error;
       }
     },
     onMutate: async () => {
