@@ -222,58 +222,78 @@ const EventDetail = () => {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      <div className="relative">
-        <div className="aspect-[4/5] w-full">
+      {/* Back button row */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-2">
+        <button onClick={() => navigate(-1)} className="h-10 w-10 rounded-full flex items-center justify-center">
+          <X className="h-5 w-5 text-foreground" />
+        </button>
+        <div className="flex gap-2">
+          <button onClick={handleShare} className="h-10 w-10 rounded-full flex items-center justify-center">
+            <Share2 className="h-5 w-5 text-foreground" />
+          </button>
+          <button onClick={handleInterested} className="h-10 w-10 rounded-full flex items-center justify-center">
+            <Heart className={`h-5 w-5 ${isInterested ? "fill-primary text-primary" : "text-foreground"}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Title */}
+      <div className="px-4 pb-3">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight font-sans uppercase leading-tight">{eventTitle}</h1>
+      </div>
+
+      {/* Cover image */}
+      <div className="px-4 pb-4">
+        <div className="rounded-2xl overflow-hidden">
           {eventImage ? (
-            <img src={eventImage} alt={eventTitle} className="w-full h-full object-cover" />
+            <img src={eventImage} alt={eventTitle} className="w-full aspect-[4/5] object-cover" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center">
+            <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-2xl">
               <span className="text-6xl">🎉</span>
             </div>
           )}
         </div>
-        <button onClick={() => navigate(-1)} className="absolute top-4 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
-          <X className="h-5 w-5 text-foreground" />
-        </button>
-        {isHost && (
-          <button onClick={() => navigate(`/events/${id}/edit`)} className="absolute top-4 left-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
-            <Pencil className="h-5 w-5 text-foreground" />
-          </button>
-        )}
-        <button onClick={handleShare} className="absolute top-16 right-4 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
-          <Share2 className="h-5 w-5 text-foreground" />
-        </button>
-        <button onClick={handleInterested} className="absolute bottom-4 right-4 h-12 w-12 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center">
-          <Heart className={`h-6 w-6 ${isInterested ? "fill-primary text-primary" : "text-foreground"}`} />
-        </button>
       </div>
 
-      <div className="px-4 pt-4 space-y-4">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight font-sans" style={{ textTransform: 'capitalize' }}>{eventTitle}</h1>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-foreground">{eventDate}</span>
-          <span className="text-muted-foreground">•</span>
-          <span className="text-foreground">{eventTime}</span>
+      {/* Host manage/edit buttons */}
+      {isHost && (
+        <div className="px-4 pb-4 flex gap-3">
+          <Button variant="secondary" className="flex-1" onClick={() => navigate(`/events/${id}/manage`)}>
+            Manage
+          </Button>
+          <Button variant="secondary" className="flex-1" onClick={() => navigate(`/events/${id}/edit`)}>
+            Edit
+          </Button>
         </div>
-        <div className="flex items-start gap-2">
-          <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+      )}
+
+      <div className="px-4 space-y-4">
+        {/* Date & Venue row */}
+        <div className="flex items-start justify-between">
           <div>
-            <div className="flex items-center gap-1">
-              <span className="font-semibold text-foreground">{eventAddress.split(',')[0] || eventLocation}</span>
-              <CheckCircle2 className="h-4 w-4 text-primary fill-primary" />
-            </div>
+            <p className="font-bold text-foreground text-lg">{eventDate}</p>
+            <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
             <p className="text-sm text-muted-foreground">{eventAddress.split(',').slice(1).join(',').trim() || "Venue address"}</p>
           </div>
+          <div className="flex flex-col items-end gap-1">
+            {(foundMockEvent?.category || dbEvent?.category) && (
+              <div className="flex items-center gap-1">
+                <span className="font-bold text-foreground text-sm">{foundMockEvent?.category || dbEvent?.category}</span>
+                <CheckCircle2 className="h-4 w-4 text-primary fill-primary" />
+              </div>
+            )}
+            <button className="h-10 w-10 rounded-full flex items-center justify-center">
+              <MapPin className="h-5 w-5 text-foreground" />
+            </button>
+          </div>
         </div>
 
-        {(foundMockEvent?.category || dbEvent?.category) && (
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-secondary rounded-full text-sm text-foreground">{foundMockEvent?.category || dbEvent?.category}</span>
-            <span className="px-3 py-1 bg-secondary rounded-full text-sm text-foreground">21+</span>
-          </div>
-        )}
+        {/* Description */}
+        <div>
+          <p className="text-muted-foreground text-sm leading-relaxed">{eventDescription}</p>
+        </div>
 
+        {/* Hosted by */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
           <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -285,6 +305,7 @@ const EventDetail = () => {
           </Link>
         </div>
 
+        {/* Guests / Attending */}
         {guests.length > 0 && (
           <div className="flex items-center gap-3">
             <div className="flex -space-x-2">
@@ -314,30 +335,6 @@ const EventDetail = () => {
           </Button>
           <Button variant="secondary" className="flex-1">
             <Tag className="h-4 w-4 mr-2" />Add Code
-          </Button>
-        </div>
-
-        <div>
-          <h3 className="font-semibold text-foreground mb-2">About this event</h3>
-          <p className="text-muted-foreground text-sm leading-relaxed">{eventDescription}</p>
-        </div>
-
-        <div className="bg-card rounded-xl p-4">
-          <h3 className="font-semibold text-foreground mb-3">Venue</h3>
-          <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
-            <MapPin className="h-8 w-8 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground ml-2">Map Preview</span>
-          </div>
-          <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
-          <p className="text-sm text-muted-foreground">{eventAddress || "Full address"}</p>
-        </div>
-
-        <div className="flex gap-3">
-          <Button variant="ghost" className="flex-1 text-muted-foreground">
-            <HelpCircle className="h-4 w-4 mr-2" />Need Help?
-          </Button>
-          <Button variant="ghost" className="flex-1 text-muted-foreground" disabled>
-            <CalendarPlus className="h-4 w-4 mr-2" />Add to Calendar<span className="text-xs ml-1">(Soon)</span>
           </Button>
         </div>
       </div>
