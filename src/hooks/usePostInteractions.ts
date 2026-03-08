@@ -12,8 +12,8 @@ interface PostCounts {
 
 async function fetchPostInteractions(postId: string, userId?: string): Promise<PostCounts> {
   const [likesRes, repostsRes, myLikeRes, myRepostRes] = await Promise.all([
-    supabase.from("post_likes").select("id", { count: "exact", head: true }).eq("post_id", postId),
-    supabase.from("post_reposts").select("id", { count: "exact", head: true }).eq("post_id", postId),
+    supabase.from("post_likes").select("id", { count: "exact" }).eq("post_id", postId),
+    supabase.from("post_reposts").select("id", { count: "exact" }).eq("post_id", postId),
     userId
       ? supabase.from("post_likes").select("id").eq("post_id", postId).eq("user_id", userId).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -41,10 +41,9 @@ export function usePostInteractions(postId: string) {
   });
 
   const toggleLike = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wasLiked: boolean) => {
       if (!user) { toast.error("Sign in to like posts"); throw new Error("Not authenticated"); }
-      const current = queryClient.getQueryData<PostCounts>(key);
-      if (current?.isLiked) {
+      if (wasLiked) {
         const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
         if (error) throw error;
       } else {
@@ -71,10 +70,9 @@ export function usePostInteractions(postId: string) {
   });
 
   const toggleRepost = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wasReposted: boolean) => {
       if (!user) { toast.error("Sign in to repost"); throw new Error("Not authenticated"); }
-      const current = queryClient.getQueryData<PostCounts>(key);
-      if (current?.isReposted) {
+      if (wasReposted) {
         const { error } = await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", user.id);
         if (error) throw error;
       } else {
@@ -106,7 +104,13 @@ export function usePostInteractions(postId: string) {
   return {
     ...query.data,
     isLoading: query.isLoading,
-    toggleLike: () => toggleLike.mutate(),
-    toggleRepost: () => toggleRepost.mutate(),
+    toggleLike: () => {
+      const current = queryClient.getQueryData<PostCounts>(key);
+      toggleLike.mutate(!!current?.isLiked);
+    },
+    toggleRepost: () => {
+      const current = queryClient.getQueryData<PostCounts>(key);
+      toggleRepost.mutate(!!current?.isReposted);
+    },
   };
 }
