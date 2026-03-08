@@ -43,7 +43,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
         </div>
       )}
       <div className="flex gap-3">
-        <Link to={`/user/${authorId}`}>
+        <Link to={profileLink}>
           <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={avatarUrl || ""} />
             <AvatarFallback className="bg-card text-foreground font-bold text-sm">
@@ -54,7 +54,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-              <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
+              <Link to={profileLink} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
                 {firstName}
               </Link>
               <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />
