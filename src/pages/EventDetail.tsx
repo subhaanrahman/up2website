@@ -258,7 +258,7 @@ const EventDetail = () => {
       </div>
 
       {/* Title */}
-      <div className="px-4 pt-6 pb-3">
+      <div className="px-4 pt-3 pb-3">
         <h1 className="text-2xl font-black text-foreground tracking-[0.05em] uppercase leading-tight text-center" style={{ fontFamily: "'Akira Expanded', sans-serif", fontStretch: 'expanded' }}>{eventTitle}</h1>
       </div>
 
