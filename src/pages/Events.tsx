@@ -116,7 +116,7 @@ const Events = () => {
   );
 
   const renderEventItem = (event: any) => (
-    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors mb-3">
+    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors">
       <div className="w-28 h-28 flex-shrink-0">
         {event.coverImage || event.cover_image ? (
           <img src={event.coverImage || event.cover_image} alt={event.title} className="w-full h-full object-cover" />
