@@ -12,8 +12,8 @@ interface PostCounts {
 
 async function fetchPostInteractions(postId: string, userId?: string): Promise<PostCounts> {
   const [likesRes, repostsRes, myLikeRes, myRepostRes] = await Promise.all([
-    supabase.from("post_likes").select("id", { count: "exact", head: true }).eq("post_id", postId),
-    supabase.from("post_reposts").select("id", { count: "exact", head: true }).eq("post_id", postId),
+    supabase.from("post_likes").select("id", { count: "exact" }).eq("post_id", postId),
+    supabase.from("post_reposts").select("id", { count: "exact" }).eq("post_id", postId),
     userId
       ? supabase.from("post_likes").select("id").eq("post_id", postId).eq("user_id", userId).maybeSingle()
       : Promise.resolve({ data: null }),
