@@ -392,6 +392,13 @@ const EventDetail = () => {
         onCheckout={handleCheckout}
       />
 
+      <ShareEventSheet
+        open={showShareSheet}
+        onOpenChange={setShowShareSheet}
+        eventUrl={window.location.href}
+        eventTitle={eventTitle}
+      />
+
       <BottomNav />
     </div>
   );
