@@ -1,13 +1,19 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, TrendingUp, TrendingDown, Clock, Pencil, Settings, ScanLine } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { format, isPast } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import ManageEventModal from "@/components/ManageEventModal";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 interface StatCardProps {
   label: string;
@@ -35,41 +41,75 @@ const StatCard = ({ label, value, trend }: StatCardProps) => {
   );
 };
 
-const EventRow = ({ event, rsvpCount }: { event: any; rsvpCount: number }) => {
-  const past = isPast(new Date(event.event_date));
+const EventRow = ({ event, rsvpCount, onManage }: { event: any; rsvpCount: number; onManage: () => void }) => {
+  const navigate = useNavigate();
+  const isDraft = event.status === 'draft';
+
   return (
-    <Link
-      key={event.id}
-      to={`/events/${event.id}`}
-      className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors"
-    >
-      <div className="w-28 h-28 flex-shrink-0">
-        <img
-          src={getEventFlyer(event.id)}
-          alt={event.title}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="flex-1 px-4 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
-          {event.title}
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-            {format(new Date(event.event_date), "EEE M/d - ha")}
-          </span>
-          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-            {rsvpCount} going
-          </span>
+    <div className="flex items-center bg-card rounded-2xl overflow-hidden">
+      <Link to={`/events/${event.id}`} className="flex items-center flex-1 min-w-0 hover:bg-card/80 transition-colors">
+        <div className="w-24 h-24 flex-shrink-0 relative">
+          <img
+            src={event.cover_image || getEventFlyer(event.id)}
+            alt={event.title}
+            className="w-full h-full object-cover"
+          />
+          {isDraft && (
+            <Badge variant="secondary" className="absolute top-1 left-1 text-[10px] px-1.5 py-0.5">
+              Draft
+            </Badge>
+          )}
         </div>
+        <div className="flex-1 px-3 py-2 min-w-0">
+          <h3 className="font-bold text-sm text-foreground line-clamp-1 capitalize leading-tight">
+            {event.title}
+          </h3>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-[11px] bg-secondary px-2 py-1 rounded-full text-muted-foreground font-medium">
+              {format(new Date(event.event_date), "EEE M/d")}
+            </span>
+            <span className="text-[11px] bg-secondary px-2 py-1 rounded-full text-muted-foreground font-medium">
+              {rsvpCount} going
+            </span>
+          </div>
+        </div>
+      </Link>
+      <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={(e) => { e.preventDefault(); navigate(`/events/${event.id}/edit`); }}
+          title="Edit"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={(e) => { e.preventDefault(); onManage(); }}
+          title="Manage"
+        >
+          <Settings className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={(e) => { e.preventDefault(); /* TODO: check-in page */ }}
+          title="Check In"
+        >
+          <ScanLine className="h-4 w-4" />
+        </Button>
       </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-    </Link>
+    </div>
   );
 };
 
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [manageEvent, setManageEvent] = useState<{ id: string; title: string } | null>(null);
   const { activeProfile } = useActiveProfile();
 
   const { data: events, isLoading } = useQuery({
@@ -119,11 +159,13 @@ const OrganiserDashboard = () => {
     e.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const upcomingEvents = filtered
-    ?.filter((e) => new Date(e.event_date) >= now)
+    ?.filter((e) => new Date(e.event_date) >= now && e.status !== 'draft')
     .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
   const pastEvents = filtered
-    ?.filter((e) => new Date(e.event_date) < now)
+    ?.filter((e) => new Date(e.event_date) < now && e.status !== 'draft')
     .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+  const draftEvents = filtered
+    ?.filter((e) => e.status === 'draft');
 
   const renderEventList = (list: typeof events) => {
     if (!list || list.length === 0) {
@@ -136,7 +178,12 @@ const OrganiserDashboard = () => {
     return (
       <div className="space-y-3">
         {list.map((event) => (
-          <EventRow key={event.id} event={event} rsvpCount={rsvpCounts?.[event.id] || 0} />
+          <EventRow
+            key={event.id}
+            event={event}
+            rsvpCount={rsvpCounts?.[event.id] || 0}
+            onManage={() => setManageEvent({ id: event.id, title: event.title })}
+          />
         ))}
       </div>
     );
@@ -187,7 +234,7 @@ const OrganiserDashboard = () => {
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-2xl animate-pulse">
-                <div className="w-28 h-28 bg-secondary rounded-lg" />
+                <div className="w-24 h-24 bg-secondary rounded-lg" />
                 <div className="flex-1 space-y-2">
                   <div className="h-5 w-3/4 bg-secondary rounded" />
                   <div className="h-4 w-1/2 bg-secondary rounded" />
@@ -204,6 +251,9 @@ const OrganiserDashboard = () => {
               <TabsTrigger value="past" className="flex-1">
                 Past{pastEvents?.length ? ` (${pastEvents.length})` : ""}
               </TabsTrigger>
+              <TabsTrigger value="draft" className="flex-1">
+                Draft{draftEvents?.length ? ` (${draftEvents.length})` : ""}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="upcoming">
               {renderEventList(upcomingEvents)}
@@ -211,9 +261,21 @@ const OrganiserDashboard = () => {
             <TabsContent value="past">
               {renderEventList(pastEvents)}
             </TabsContent>
+            <TabsContent value="draft">
+              {renderEventList(draftEvents)}
+            </TabsContent>
           </Tabs>
         )}
       </div>
+
+      {manageEvent && (
+        <ManageEventModal
+          open={!!manageEvent}
+          onOpenChange={(open) => { if (!open) setManageEvent(null); }}
+          eventId={manageEvent.id}
+          eventTitle={manageEvent.title}
+        />
+      )}
     </div>
   );
 };

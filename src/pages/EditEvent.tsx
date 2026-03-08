@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -47,13 +49,34 @@ const EditEvent = () => {
     }
   }, [event]);
 
+  // Check if user is organiser owner of this event
+  const { data: isOrganiserOwner } = useQuery({
+    queryKey: ["event-organiser-check", id, user?.id],
+    queryFn: async () => {
+      if (!event || !user) return false;
+      const { data } = await supabase
+        .from("events")
+        .select("organiser_profile_id")
+        .eq("id", event.id)
+        .single();
+      if (!data?.organiser_profile_id) return false;
+      const { data: org } = await supabase
+        .from("organiser_profiles")
+        .select("owner_id")
+        .eq("id", data.organiser_profile_id)
+        .single();
+      return org?.owner_id === user.id;
+    },
+    enabled: !!event && !!user,
+  });
+
   useEffect(() => {
     if (!authLoading && !user) { navigate("/auth"); return; }
-    if (event && user && event.hostId !== user.id) {
+    if (event && user && event.hostId !== user.id && isOrganiserOwner === false) {
       toast({ title: "Not authorized", description: "You can only edit your own events", variant: "destructive" });
       navigate(`/events/${id}`);
     }
-  }, [event, user, authLoading]);
+  }, [event, user, authLoading, isOrganiserOwner]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -168,7 +168,11 @@ const EventDetail = () => {
 
   const event = foundMockEvent || dbEvent;
   const isFreeEvent = !foundMockEvent;
-  const isHost = user && dbEvent && dbEvent.hostId === user.id;
+  // Host = direct host_id match OR owner of the organiser profile
+  const isHost = user && dbEvent && (
+    dbEvent.hostId === user.id ||
+    (organiserHost && organiserHost.owner_id === user.id)
+  );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
   // Determine display host: organiser profile takes priority
@@ -348,6 +352,16 @@ const EventDetail = () => {
             <div className="w-full text-center py-2">
               <p className="font-semibold text-muted-foreground">This event has ended</p>
             </div>
+          ) : isHost ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">Your Event</p>
+                <p className="text-sm text-muted-foreground">You're hosting this event</p>
+              </div>
+              <Button size="lg" onClick={() => navigate(`/events/${id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" />Edit Event
+              </Button>
+            </>
           ) : userRsvp ? (
             <>
               <div>
