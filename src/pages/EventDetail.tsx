@@ -397,6 +397,9 @@ const EventDetail = () => {
         onOpenChange={setShowShareSheet}
         eventUrl={window.location.href}
         eventTitle={eventTitle}
+        eventDate={`${eventDate} • ${eventTime}`}
+        eventLocation={eventAddress || eventLocation}
+        eventImage={eventImage}
       />
 
       <BottomNav />
