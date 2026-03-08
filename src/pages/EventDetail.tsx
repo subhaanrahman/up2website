@@ -361,15 +361,6 @@ const EventDetail = () => {
           </Link>
         )}
 
-        <div className="flex gap-3">
-          <Button variant="secondary" className="flex-1" onClick={handleShare}>
-            <Share2 className="h-4 w-4 mr-2" />Share / Invite
-          </Button>
-          <Button variant="secondary" className="flex-1">
-            <Tag className="h-4 w-4 mr-2" />Add Code
-          </Button>
-        </div>
-
         {/* Venue / Map */}
         <div className="bg-card rounded-xl p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
