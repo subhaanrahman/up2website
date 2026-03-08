@@ -61,8 +61,14 @@ Deno.serve(async (req) => {
 
     const { action, event_id, ...fields } = parsed.data;
 
-    // Verify ownership (direct host or organiser profile owner)
-    const { data: event, error: fetchErr } = await supabase
+    // Use service role to bypass RLS for ownership check and mutations
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+    // Verify ownership (direct host or organiser profile owner/member)
+    const { data: event, error: fetchErr } = await serviceClient
       .from('events')
       .select('id, host_id, organiser_profile_id')
       .eq('id', event_id)
@@ -76,14 +82,24 @@ Deno.serve(async (req) => {
 
     let isAuthorized = event.host_id === user.id;
 
-    // Also check if user owns the organiser profile linked to this event
     if (!isAuthorized && event.organiser_profile_id) {
-      const { data: org } = await supabase
-        .from('organiser_profiles')
-        .select('owner_id')
-        .eq('id', event.organiser_profile_id)
-        .maybeSingle();
-      if (org?.owner_id === user.id) isAuthorized = true;
+      const [orgResult, memberResult] = await Promise.all([
+        serviceClient
+          .from('organiser_profiles')
+          .select('owner_id')
+          .eq('id', event.organiser_profile_id)
+          .maybeSingle(),
+        serviceClient
+          .from('organiser_members')
+          .select('id')
+          .eq('organiser_profile_id', event.organiser_profile_id)
+          .eq('user_id', user.id)
+          .eq('status', 'accepted')
+          .maybeSingle(),
+      ]);
+      if (orgResult.data?.owner_id === user.id || memberResult.data) {
+        isAuthorized = true;
+      }
     }
 
     if (!isAuthorized) {
@@ -93,7 +109,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'delete') {
-      const { error: delErr } = await supabase.from('events').delete().eq('id', event_id);
+      const { error: delErr } = await serviceClient.from('events').delete().eq('id', event_id);
       if (delErr) {
         return new Response(JSON.stringify({ error: delErr.message }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -122,7 +138,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: updated, error: updErr } = await supabase
+    const { data: updated, error: updErr } = await serviceClient
       .from('events')
       .update(updateData)
       .eq('id', event_id)
