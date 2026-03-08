@@ -201,10 +201,19 @@ const OrganiserDashboard = () => {
         </h1>
         <div className="flex items-center justify-between mt-1">
           <p className="text-sm text-muted-foreground">Performance and Analytics</p>
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground bg-secondary px-3 py-1.5 rounded-full">
-            <Clock className="h-3 w-3" />
-            Past Month
-          </span>
+           <Select value={timeframe} onValueChange={setTimeframe}>
+             <SelectTrigger className="h-auto w-auto gap-1.5 border-0 bg-secondary px-3 py-1.5 rounded-full text-xs text-muted-foreground shadow-none focus:ring-0">
+               <Clock className="h-3 w-3" />
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="past_week">Past Week</SelectItem>
+               <SelectItem value="past_month">Past Month</SelectItem>
+               <SelectItem value="past_3_months">Past 3 Months</SelectItem>
+               <SelectItem value="past_year">Past Year</SelectItem>
+               <SelectItem value="all_time">All Time</SelectItem>
+             </SelectContent>
+           </Select>
         </div>
       </header>
 
