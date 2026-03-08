@@ -181,7 +181,7 @@ const Profile = () => {
             <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
           </div>
 
-          <p className="text-muted-foreground text-sm mb-4 tracking-[0.05em] mt-1 font-medium" style={{ fontFamily: "'Akira Expanded', sans-serif", fontStretch: 'expanded' }}>
+          <p className="text-muted-foreground text-sm mb-4 tracking-normal mt-1 font-medium lowercase">
             @{isOrganiser && activeOrg ? activeOrg.username : (profile?.username || username.toLowerCase().replace(/\s+/g, ""))}
           </p>
 
