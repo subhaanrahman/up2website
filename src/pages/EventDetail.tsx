@@ -352,6 +352,16 @@ const EventDetail = () => {
             <div className="w-full text-center py-2">
               <p className="font-semibold text-muted-foreground">This event has ended</p>
             </div>
+          ) : isHost ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">Your Event</p>
+                <p className="text-sm text-muted-foreground">You're hosting this event</p>
+              </div>
+              <Button size="lg" onClick={() => navigate(`/events/${id}/edit`)}>
+                <Pencil className="h-4 w-4 mr-2" />Edit Event
+              </Button>
+            </>
           ) : userRsvp ? (
             <>
               <div>
