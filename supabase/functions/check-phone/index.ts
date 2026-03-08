@@ -1,16 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/[^0-9]/g, '');
-  return digits.startsWith('0') ? digits : `+${digits}`;
-}
+// Module-level client (reused across warm invocations)
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -18,10 +18,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const ip = getClientIp(req);
-    const allowed = await checkRateLimit('check-phone', null, ip);
-    if (!allowed) return rateLimitResponse(corsHeaders);
-
     const { phone } = await req.json();
 
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
@@ -31,23 +27,35 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-
-    // Fast indexed lookup on profiles.phone — single column check
     const digits = phone.replace(/[^0-9]/g, '');
 
-    const { data } = await supabaseAdmin
-      .from('profiles')
-      .select('id')
-      .or(`phone.eq.${digits},phone.eq.+${digits}`)
-      .limit(1)
-      .maybeSingle();
+    // Rate limit + phone lookup in PARALLEL
+    const [rateLimitResult, profileResult] = await Promise.all([
+      supabaseAdmin.rpc('check_rate_limit', {
+        p_endpoint: 'check-phone',
+        p_user_id: null,
+        p_ip_address: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+          ?? req.headers.get('x-real-ip') ?? null,
+        p_max_requests: 10,
+        p_window_seconds: 60,
+      }),
+      supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .or(`phone.eq.${digits},phone.eq.+${digits}`)
+        .limit(1)
+        .maybeSingle(),
+    ]);
+
+    if (rateLimitResult.data === false) {
+      return new Response(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
+    }
 
     return new Response(
-      JSON.stringify({ exists: !!data }),
+      JSON.stringify({ exists: !!profileResult.data }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (err) {
