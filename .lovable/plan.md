@@ -1,56 +1,36 @@
 
 
-## Manage Event Flow — Full Plan
+## Plan: Like counters, filled heart, and repost-to-feed functionality
 
-### Current State
-The manage event flow currently has:
-- **ManageEventModal** (gear icon popup): 3 items — "Orders, Guestlists & Refunds" (→ tabbed page), "Upload Media" (→ media section), "VIP Tables — Coming Soon" (disabled)
-- **ManageEvent page** (`/events/:id/manage`): Tabs for Orders, Guestlist, Refunds + media upload section + VIP placeholder
-- **EventCheckIn page** (`/events/:id/checkin`): Searchable attendee list with manual check-in toggles
-- All accessible from OrganiserDashboard via pencil (edit), gear (manage), scan (check-in) icons
+### 1. Update FeedPost component
+- Add `postId` prop and optional `repostedBy` prop (string, the display name of the reposter)
+- Wire up `usePostInteractions(postId)` hook to get `likeCount`, `repostCount`, `isLiked`, `isReposted`, `toggleLike`, `toggleRepost`
+- Show like count next to the heart icon; show repost count next to the repost icon
+- When `isLiked` is true, render the Heart with `fill="currentColor"` and color it red/primary
+- When `isReposted` is true, color the repost icon green (Twitter-style)
+- When `repostedBy` is provided, show a small header above the post: "🔁 {name} reposted" in muted text with a Repeat2 icon
 
-### What's Missing / Requested
-The user wants a comprehensive manage event plan covering all subpages an event manager needs, including managing RSVP and ticket links. Here's what needs to be added or improved:
+### 2. Update feed query to include reposts
+- Modify `useFeedPosts` to also fetch `post_reposts` for the current user, join with the original post data, and merge them into the feed sorted by time
+- Reposted items appear in the feed with the `repostedBy` label showing the current user's display name
+- Deduplicate: if a post already appears as an original, the repost still shows separately (Twitter behavior)
 
-### Plan
-
-#### 1. Expand ManageEventModal as the central hub
-Add missing management actions to the modal popup:
-- **Check-In** — link to existing `/events/:id/checkin` page (currently only accessible via scan icon, not from the modal)
-- **Event Settings** — link to edit event page (`/events/:id/edit`)
-- **Share / Ticket Links** — new item to copy shareable event link and ticket purchase link
-- **Analytics** — placeholder/coming soon for per-event analytics
-
-Updated modal items:
-1. Orders, Guestlists & Refunds → `/events/:id/manage`
-2. Check-In → `/events/:id/checkin`
-3. Share & Ticket Links → inline action (copy link / show QR)
-4. Upload Media → `/events/:id/manage` (media section)
-5. Event Settings → `/events/:id/edit`
-6. VIP Tables — Coming Soon (disabled)
-
-#### 2. Add "Share & Ticket Links" functionality
-New modal or bottom sheet triggered from the manage modal:
-- Display the event's shareable URL (`/events/:id`)
-- "Copy Link" button
-- "Copy RSVP Link" button (direct link that auto-opens RSVP/purchase flow)
-- QR code rendering of the event link using existing `qrcode.react` dependency
-- No new backend needed — purely frontend
-
-#### 3. Wire Check-In into the modal
-Simply add a new item in `ManageEventModal` that navigates to `/events/:id/checkin`. No new pages needed since EventCheckIn already exists.
-
-#### 4. Update BACKEND_TODO.md
-Mark completed items (`event_media` table, `orders-list` edge function) and add new items for ticket link tracking / analytics.
-
-### Files to modify
-- `src/components/ManageEventModal.tsx` — add Check-In, Share & Ticket Links, Event Settings items
-- Create `src/components/ShareEventLinksModal.tsx` — new component for copy link + QR code display
-- `docs/BACKEND_TODO.md` — update completed items, add share/analytics todos
+### 3. Pass `postId` from Index.tsx
+- Add `id={post.id}` as `postId` prop to `<FeedPost>` in the feed rendering loop
 
 ### Technical details
-- Share links component uses `qrcode.react` (already installed) and `navigator.clipboard.writeText` for copy
-- Event URL format: `${window.location.origin}/events/${eventId}`
-- No database changes required
-- No new edge functions required
+
+**FeedPost.tsx changes:**
+- New props: `postId: string`, `repostedBy?: string`
+- Import and call `usePostInteractions(postId)`
+- Render repostedBy banner above the post content
+- Like button: `className` toggles red color + `fill="currentColor"` when liked
+- Display `likeCount` and `repostCount` as small text next to icons (only when > 0)
+
+**usePostsQuery.ts changes:**
+- In `fetchPosts()`, after fetching posts, also fetch `post_reposts` joined with posts to get reposted content
+- Return merged + sorted array with a `reposted_by_name` field on reposted entries
+
+**Index.tsx changes:**
+- Pass `postId={post.id}` and `repostedBy={post.reposted_by_name}` to each `<FeedPost>`
 
