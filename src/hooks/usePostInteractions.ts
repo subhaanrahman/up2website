@@ -243,6 +243,11 @@ export function usePostInteractions(postId: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
     },
+    onSuccess: (_data, wasReposted) => {
+      if (user && !wasReposted) {
+        sendPostNotification('post_repost', postId, user.id);
+      }
+    },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
