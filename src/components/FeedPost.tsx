@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Heart, Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin } from "lucide-react";
+import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
+import ReactionPicker from "@/components/ReactionPicker";
 
 interface FeedPostProps {
   postId: string;
@@ -32,7 +33,16 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
   const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
-  const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
+  const {
+    likeCount = 0,
+    repostCount = 0,
+    isLiked,
+    isReposted,
+    reactionType,
+    handleReact,
+    handleUnreact,
+    toggleRepost,
+  } = usePostInteractions(postId);
 
   return (
     <div className="px-4 py-3 border-b border-border">
@@ -128,17 +138,16 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <img src={gifUrl} alt="GIF" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
+
+          {/* Interactions row */}
           <div className="flex items-center gap-5 mt-2.5">
-            <button
-              onClick={toggleLike}
-              className={cn(
-                "flex items-center gap-1.5 transition-colors group",
-                isLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"
-              )}
-            >
-              <Heart className={cn("h-[18px] w-[18px]", isLiked && "fill-current")} />
-              {likeCount > 0 && <span className="text-[13px] tabular-nums">{likeCount}</span>}
-            </button>
+            <ReactionPicker
+              currentReaction={reactionType}
+              onReact={handleReact}
+              onUnreact={handleUnreact}
+              likeCount={likeCount}
+              isLiked={!!isLiked}
+            />
             <button
               onClick={toggleRepost}
               className={cn(
