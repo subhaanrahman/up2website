@@ -19,11 +19,9 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
   };
 
   const items = [
-    { icon: ClipboardList, label: "Orders", description: "View all ticket orders", action: () => goToManage("orders") },
-    { icon: Users, label: "Guestlist", description: "Manage RSVPs & guest list", action: () => goToManage("guestlist") },
-    { icon: RotateCcw, label: "Refunds", description: "Process and view refunds", action: () => goToManage("refunds") },
+    { icon: ClipboardList, label: "Orders, Guestlists & Refunds", description: "View all ticket orders, guest lists, and refunds", action: () => goToManage() },
     { icon: Image, label: "Upload Media", description: "Add event photo gallery", action: () => goToManage("media") },
-    { icon: Crown, label: "VIP Tables", description: "Manage VIP table bookings — Coming Soon", action: () => {} },
+    { icon: Crown, label: "VIP Tables — Coming Soon", description: "Manage VIP table bookings", action: () => {}, disabled: true },
   ];
 
   return (
@@ -34,18 +32,18 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
           <p className="text-sm text-muted-foreground capitalize">{eventTitle}</p>
         </DialogHeader>
         <div className="space-y-2 pt-2">
-          {items.map(({ icon: Icon, label, description, action }) => (
+          {items.map((item) => (
             <Button
-              key={label}
+              key={item.label}
               variant="ghost"
               className="w-full justify-start h-auto py-3 px-3"
-              onClick={action}
-              disabled={label === "VIP Tables"}
+              onClick={item.action}
+              disabled={item.disabled}
             >
-              <Icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+              <item.icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
               <div className="text-left">
-                <p className="font-medium text-foreground">{label}</p>
-                <p className="text-xs text-muted-foreground">{description}</p>
+                <p className="font-medium text-foreground">{item.label}</p>
+                <p className="text-xs text-muted-foreground">{item.description}</p>
               </div>
             </Button>
           ))}
