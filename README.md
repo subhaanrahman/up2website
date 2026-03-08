@@ -8,14 +8,14 @@
 
 There are several ways of editing your application.
 
-MOST IMPORTANTLY FOLLOW THE BELOW SETUP 
-**Branches
-	•	main
-	•	develop
+**MOST IMPORTANTLY FOLLOW THE BELOW SETUP **
+**Branches**
+- main
+- develop
 
-Environments
-	•	development
-	•	production**
+**Environments**
+- development
+- production
 
 **Use Lovable**
 
