@@ -8,13 +8,15 @@ import {
   Mail, 
   Info,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  ShieldCheck
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 
 const settingsItems = [
   { icon: SettingsIcon, label: "Manage Account", path: "/settings/account", description: "Account settings and preferences" },
   { icon: Bell, label: "Notifications", path: "/settings/notifications", description: "Manage notification preferences" },
+  { icon: ShieldCheck, label: "Email Verification", path: "/settings/email-verification", description: "Verify your email for extra security" },
   { icon: Music, label: "Connect Music Apps", path: "/settings/music", description: "Link your music streaming services" },
   { icon: Shield, label: "Privacy Options", path: "/settings/privacy", description: "Control your privacy settings" },
   { icon: HelpCircle, label: "Help Center", path: "/settings/help", description: "FAQs and support resources" },

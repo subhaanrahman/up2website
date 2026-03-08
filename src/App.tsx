@@ -88,6 +88,7 @@ const App = () => (
               <Route path="/settings/account" element={<ProtectedRoute><ManageAccount /></ProtectedRoute>} />
               <Route path="/settings/music" element={<ProtectedRoute><ConnectMusic /></ProtectedRoute>} />
               <Route path="/settings/contact" element={<ProtectedRoute><ContactUs /></ProtectedRoute>} />
+              <Route path="/settings/email-verification" element={<ProtectedRoute><EmailVerification /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 
