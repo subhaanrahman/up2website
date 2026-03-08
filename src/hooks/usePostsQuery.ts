@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface PostCollaborator {
+  user_id: string;
   display_name: string;
   avatar_url: string | null;
 }
