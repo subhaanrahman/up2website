@@ -221,7 +221,7 @@ const EventDetail = () => {
   const guests = foundMockEvent?.guests || [];
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-40">
       {/* Back button row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <button onClick={() => navigate(-1)} className="h-10 w-10 rounded-full flex items-center justify-center">
@@ -336,6 +336,17 @@ const EventDetail = () => {
           <Button variant="secondary" className="flex-1">
             <Tag className="h-4 w-4 mr-2" />Add Code
           </Button>
+        </div>
+
+        {/* Venue / Map */}
+        <div className="bg-card rounded-xl p-4">
+          <h3 className="font-semibold text-foreground mb-3">Venue</h3>
+          <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
+            <MapPin className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground ml-2">Map Preview</span>
+          </div>
+          <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
+          <p className="text-sm text-muted-foreground">{eventAddress || "Full address"}</p>
         </div>
       </div>
 
