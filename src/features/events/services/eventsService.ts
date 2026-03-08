@@ -12,7 +12,7 @@ export const eventsService = {
     return eventsRepository.list(options);
   },
 
-  async searchEvents(options: { query?: string; category?: string; limit?: number }): Promise<EventEntity[]> {
+  async searchEvents(options: { query?: string; filter?: EventFilter; limit?: number }): Promise<EventEntity[]> {
     return eventsRepository.search(options);
   },
 

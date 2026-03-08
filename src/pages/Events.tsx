@@ -243,17 +243,17 @@ const Events = () => {
 
             <TabsContent value="events">
               <div className="flex gap-2 flex-wrap mb-6">
-                {categories.map(cat => (
+                {filters.map(f => (
                   <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategory(cat.value)}
+                    key={f.value}
+                    onClick={() => setSelectedFilter(f.value)}
                     className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      selectedCategory === cat.value
+                      selectedFilter === f.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-foreground hover:bg-secondary/80"
                     }`}
                   >
-                    {cat.label}
+                    {f.label}
                   </button>
                 ))}
               </div>
