@@ -85,6 +85,28 @@ const EventDetail = () => {
     enabled: !!id && !!user && !isMock,
   });
 
+  // Fetch attendees (profiles of people who RSVP'd) for this event
+  const { data: attendeeProfiles } = useQuery({
+    queryKey: ["event-attendees", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data: rsvps } = await supabase
+        .from("rsvps")
+        .select("user_id")
+        .eq("event_id", id)
+        .eq("status", "going")
+        .limit(10);
+      if (!rsvps || rsvps.length === 0) return [];
+      const userIds = rsvps.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+      return profiles || [];
+    },
+    enabled: !!id && !isMock,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = () => {
@@ -324,8 +346,22 @@ const EventDetail = () => {
 
         {dbEvent && (
           <Link to={`/events/${id}/guests`} className="flex items-center gap-2 py-2 text-primary hover:underline transition-colors">
+            {attendeeProfiles && attendeeProfiles.length > 0 && (
+              <div className="flex -space-x-2 mr-1">
+                {attendeeProfiles.slice(0, 5).map((p) => (
+                  <Avatar key={p.user_id} className="h-7 w-7 border-2 border-background">
+                    <AvatarImage src={p.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs">{(p.display_name || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+            )}
             <Users className="h-4 w-4" />
-            <span className="text-sm font-medium">See who's going</span>
+            <span className="text-sm font-medium">
+              {attendeeProfiles && attendeeProfiles.length > 0
+                ? `${attendeeProfiles.length}${attendeeProfiles.length >= 10 ? '+' : ''} going`
+                : "See who's going"}
+            </span>
           </Link>
         )}
 
