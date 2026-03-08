@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 interface PostCounts {
   likeCount: number;
@@ -41,7 +42,7 @@ export function usePostInteractions(postId: string) {
 
   const toggleLike = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user) { toast.error("Sign in to like posts"); throw new Error("Not authenticated"); }
       const current = queryClient.getQueryData<PostCounts>(key);
       if (current?.isLiked) {
         const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
@@ -71,7 +72,7 @@ export function usePostInteractions(postId: string) {
 
   const toggleRepost = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user) { toast.error("Sign in to repost"); throw new Error("Not authenticated"); }
       const current = queryClient.getQueryData<PostCounts>(key);
       if (current?.isReposted) {
         const { error } = await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", user.id);
