@@ -193,7 +193,7 @@ const Events = () => {
               ) : eventResults.length === 0 ? (
                 <p className="text-center text-muted-foreground py-12">No upcoming events found</p>
               ) : (
-                <div className="space-y-0">{eventResults.map(renderEventItem)}</div>
+                <div className="space-y-3 pt-1">{eventResults.map(renderEventItem)}</div>
               )}
             </>
           )}
