@@ -52,39 +52,60 @@ Deno.serve(async (req) => {
     const { code } = parsed.data;
     const meta = user.user_metadata || {};
 
-    if (!meta.email_otp || !meta.email_otp_expires || !meta.email_otp_target) {
-      return new Response(JSON.stringify({ error: 'No pending verification' }), {
+    if (!meta.email_otp_target) {
+      return new Response(JSON.stringify({ error: 'No pending verification. Please request a new code.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check expiry
-    if (new Date(meta.email_otp_expires) < new Date()) {
-      return new Response(JSON.stringify({ error: 'Code expired. Please request a new one.' }), {
+    const targetEmail = meta.email_otp_target;
+
+    // Verify OTP via Twilio Verify
+    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
+    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
+    const serviceSid = Deno.env.get('TWILIO_VERIFY_SERVICE_SID');
+
+    if (!accountSid || !authToken || !serviceSid) {
+      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const twilioUrl = `https://verify.twilio.com/v2/Services/${serviceSid}/VerificationCheck`;
+    const credentials = btoa(`${accountSid}:${authToken}`);
+
+    const twilioRes = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        To: targetEmail,
+        Code: code,
+      }),
+    });
+
+    const twilioData = await twilioRes.json();
+
+    if (!twilioRes.ok || twilioData.status !== 'approved') {
+      console.error('Twilio verify check error:', twilioData);
+      const msg = twilioData.status === 'pending' ? 'Invalid code. Please try again.' : (twilioData.message || 'Verification failed');
+      return new Response(JSON.stringify({ error: msg }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Check code
-    if (meta.email_otp !== code) {
-      return new Response(JSON.stringify({ error: 'Invalid code' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const verifiedEmail = meta.email_otp_target;
-
+    // Verification successful — update profile
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Clear OTP from metadata and mark email verified
+    // Clear the target email from metadata
     await serviceClient.auth.admin.updateUserById(user.id, {
       user_metadata: {
         ...meta,
-        email_otp: null,
-        email_otp_expires: null,
         email_otp_target: null,
       },
     });
@@ -92,13 +113,14 @@ Deno.serve(async (req) => {
     // Update profile with verified email
     await serviceClient
       .from('profiles')
-      .update({ email: verifiedEmail, email_verified: true })
+      .update({ email: targetEmail, email_verified: true })
       .eq('user_id', user.id);
 
-    return new Response(JSON.stringify({ success: true, email: verifiedEmail }), {
+    return new Response(JSON.stringify({ success: true, email: targetEmail }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error('email-verify-confirm error:', err);
     return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
