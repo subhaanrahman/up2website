@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchEvents } from "@/hooks/useEventsQuery";
+import type { EventFilter } from "@/features/events";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
