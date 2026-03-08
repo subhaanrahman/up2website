@@ -306,7 +306,7 @@ const Profile = () => {
 };
 
 const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: {userId: string;isOrganiser: boolean;organiserProfileId?: string;}) => {
-  const { data: userPosts = [], isLoading: userLoading } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: userPosts = [], isLoading: userLoading } = useUserFeedWithReposts(isOrganiser ? undefined : userId);
   const { data: orgPosts = [], isLoading: orgLoading } = useOrganiserPosts(isOrganiser ? organiserProfileId : undefined);
   const posts = isOrganiser ? orgPosts : userPosts;
   const isLoading = isOrganiser ? orgLoading : userLoading;

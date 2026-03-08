@@ -632,7 +632,7 @@ const UserProfile = () => {
 };
 
 const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganiser: boolean }) => {
-  const { data: userPosts = [], isLoading: userLoading } = useUserPosts(isOrganiser ? undefined : userId);
+  const { data: userPosts = [], isLoading: userLoading } = useUserFeedWithReposts(isOrganiser ? undefined : userId);
   const { data: orgPosts = [], isLoading: orgLoading } = useOrganiserPosts(isOrganiser ? userId : undefined);
   const posts = isOrganiser ? orgPosts : userPosts;
   const isLoading = isOrganiser ? orgLoading : userLoading;
