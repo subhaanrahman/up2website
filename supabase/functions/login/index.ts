@@ -90,46 +90,26 @@ Deno.serve(async (req) => {
         return errorResponse('Invalid phone number or password', 401);
       }
 
-      // Migrate password to native Supabase auth (fire-and-forget, non-blocking)
-      supabaseAdmin.auth.admin.updateUserById(user.id, {
+      // Migrate password to native Supabase auth — MUST complete before signIn
+      const { error: updateErr } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
         password,
         user_metadata: { ...user.user_metadata, password_migrated: true },
-      }).then(({ error: updateErr }) => {
-        if (updateErr) console.error('Password migration failed:', updateErr.message);
       });
+      if (updateErr) {
+        console.error('Password migration failed:', updateErr.message);
+        return errorResponse('Login failed', 500);
+      }
     }
 
-    // Sign in via native Supabase auth (handles password verification for migrated users)
+    // Sign in via native Supabase auth
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
       phone: user.phone || phoneDigits,
       password,
     });
 
     if (signInError || !signInData?.session) {
-      // If sign-in fails for a non-migrated user, the migration might not have completed yet
-      if (!isMigrated) {
-        // Wait briefly for migration to complete, then retry
-        await new Promise(r => setTimeout(r, 300));
-        const { data: retryData, error: retryError } = await supabaseAnon.auth.signInWithPassword({
-          phone: user.phone || phoneDigits,
-          password,
-        });
-        if (retryError || !retryData?.session) {
-          console.error('signInWithPassword retry error:', JSON.stringify(retryError));
-          return errorResponse('Login failed', 500);
-        }
-        return new Response(
-          JSON.stringify({
-            success: true,
-            access_token: retryData.session.access_token,
-            refresh_token: retryData.session.refresh_token,
-            user_id: user.id,
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
       console.error('signInWithPassword error:', JSON.stringify(signInError));
-      return errorResponse('Login failed', 500);
+      return errorResponse('Invalid phone number or password', 401);
     }
 
     return new Response(
