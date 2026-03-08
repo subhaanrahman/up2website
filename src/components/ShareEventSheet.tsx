@@ -199,7 +199,8 @@ const ShareEventSheet = ({
 
         {/* Story card preview - scaled down for display, full size for export */}
         <div className="flex justify-center pt-2 pb-1 px-4" style={{
-          height: `${(1920 / 3) * 0.5 + 16}px`,
+          height: 320,
+          overflow: "hidden",
         }}>
           <div className="rounded-xl overflow-hidden" style={{
             boxShadow: `0 6px 30px ${themeColors[activeTheme]?.accent || "#a855f7"}44`,
