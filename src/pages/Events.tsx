@@ -247,7 +247,7 @@ const Events = () => {
                 {filters.map(f => (
                   <button
                     key={f.value}
-                    onClick={() => setSelectedFilter(f.value)}
+                    onClick={() => setSelectedFilter(f.value as EventFilter | "")}
                     className={`px-4 py-2 rounded-full text-sm transition-colors ${
                       selectedFilter === f.value
                         ? "bg-primary text-primary-foreground"
