@@ -194,12 +194,14 @@ const EventDetail = () => {
   );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
-  // Determine display host: organiser profile takes priority
-  const displayHostName = organiserHost?.display_name || host?.displayName || "Event Host";
-  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || undefined;
+  // Determine display host: organiser profile takes priority, then DB host, then mock host
+  const displayHostName = organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
+  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
   const displayHostLink = organiserHost
     ? `/user/${organiserHost.owner_id}`
-    : `/user/${dbEvent?.hostId || ""}`;
+    : dbEvent?.hostId
+      ? `/user/${dbEvent.hostId}`
+      : "#";
 
   if (!event) {
     return (
@@ -285,10 +287,10 @@ const EventDetail = () => {
             <p className="text-sm text-muted-foreground">{eventAddress.split(',').slice(1).join(',').trim() || "Venue address"}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <div className="flex items-center gap-1">
+            <Link to={displayHostLink} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
               <span className="font-bold text-foreground text-lg">{displayHostName}</span>
               <BadgeCheck className="h-5 w-5 text-primary fill-primary" />
-            </div>
+            </Link>
             <button className="h-10 w-10 rounded-full flex items-center justify-center">
               <MapPin className="h-5 w-5 text-foreground" />
             </button>
