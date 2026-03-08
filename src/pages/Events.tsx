@@ -263,7 +263,7 @@ const Events = () => {
               ) : eventResults.length === 0 ? (
                 <p className="text-muted-foreground py-12 text-center">No upcoming events found</p>
               ) : (
-                <div className="space-y-0 max-w-lg">{eventResults.map(renderEventItem)}</div>
+                <div className="space-y-3 max-w-lg">{eventResults.map(renderEventItem)}</div>
               )}
             </TabsContent>
 
