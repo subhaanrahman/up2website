@@ -148,6 +148,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               onUnreact={handleUnreact}
               likeCount={likeCount}
               isLiked={!!isLiked}
+              reactionBreakdown={reactionBreakdown}
             />
             <button
               onClick={toggleRepost}
