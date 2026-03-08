@@ -40,13 +40,12 @@ function mapOrganisers(rows: any[]): SearchResult[] {
   }));
 }
 
-const categories = [
+const filters = [
   { value: "", label: "All" },
-  { value: "party", label: "🎉 Party" },
-  { value: "birthday", label: "🎂 Birthday" },
-  { value: "dinner", label: "🍽️ Dinner" },
-  { value: "wedding", label: "💒 Wedding" },
-  { value: "social", label: "🍸 Social" },
+  { value: "tonight", label: "🌙 Tonight" },
+  { value: "thisWeek", label: "📅 This Week" },
+  { value: "thisMonth", label: "🗓️ This Month" },
+  { value: "free", label: "🎟️ Free" },
 ];
 
 const Events = () => {
