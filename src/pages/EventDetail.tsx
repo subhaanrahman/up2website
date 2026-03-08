@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
+import ShareEventSheet from "@/components/ShareEventSheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
@@ -33,6 +34,7 @@ const EventDetail = () => {
   const [isInterested, setIsInterested] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
@@ -85,14 +87,8 @@ const EventDetail = () => {
 
   const loading = !isMock && isLoading;
 
-  const handleShare = async () => {
-    const title = foundMockEvent?.title || dbEvent?.title;
-    if (navigator.share) {
-      await navigator.share({ title, text: `Join me at ${title}!`, url: window.location.href });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-      toast({ title: "Link copied!", description: "Event link has been copied to clipboard" });
-    }
+  const handleShare = () => {
+    setShowShareSheet(true);
   };
 
   const handleInterested = () => {
@@ -394,6 +390,13 @@ const EventDetail = () => {
         eventLocation={eventAddress || eventLocation}
         ticketTiers={mockTicketTiers}
         onCheckout={handleCheckout}
+      />
+
+      <ShareEventSheet
+        open={showShareSheet}
+        onOpenChange={setShowShareSheet}
+        eventUrl={window.location.href}
+        eventTitle={eventTitle}
       />
 
       <BottomNav />
