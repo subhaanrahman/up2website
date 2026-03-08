@@ -247,6 +247,15 @@ const EventDetail = () => {
 
   return (
     <div className="min-h-screen bg-background pb-40">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 pt-4 pb-1">
+        <button onClick={() => navigate(-1)} className="h-10 w-10 rounded-full flex items-center justify-center">
+          <X className="h-5 w-5 text-foreground" />
+        </button>
+        <button onClick={handleShare} className="h-10 w-10 rounded-full flex items-center justify-center">
+          <Share2 className="h-5 w-5 text-foreground" />
+        </button>
+      </div>
 
       {/* Title */}
       <div className="px-4 pt-6 pb-3">
