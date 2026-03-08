@@ -197,18 +197,31 @@ const ShareEventSheet = ({
       <DrawerContent className="max-h-[85vh] pb-safe">
         {/* Drag handle is built into DrawerContent */}
 
-        {/* Story card preview */}
-        <div className="flex justify-center pt-2 pb-3 px-4">
-          <div className="rounded-2xl overflow-hidden shadow-2xl" style={{
-            boxShadow: `0 8px 40px ${themeColors[activeTheme]?.accent || "#a855f7"}44`,
+        {/* Story card preview - scaled down for display, full size for export */}
+        <div className="flex justify-center pt-2 pb-1 px-4">
+          <div style={{
+            width: Math.round((1080 / 3) * 0.42),
+            height: Math.round((1920 / 3) * 0.42),
+            boxShadow: `0 6px 30px ${themeColors[activeTheme]?.accent || "#a855f7"}44`,
+            borderRadius: 10,
+            overflow: "hidden",
+            position: "relative",
           }}>
-            <StoryCardPreview
-              ref={storyRef}
-              eventTitle={eventTitle}
-              eventDate={eventDate}
-              eventLocation={eventLocation}
-              eventImage={eventImage}
-            />
+            <div style={{
+              transform: "scale(0.42)",
+              transformOrigin: "top left",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}>
+              <StoryCardPreview
+                ref={storyRef}
+                eventTitle={eventTitle}
+                eventDate={eventDate}
+                eventLocation={eventLocation}
+                eventImage={eventImage}
+              />
+            </div>
           </div>
         </div>
 
