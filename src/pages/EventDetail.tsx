@@ -34,6 +34,7 @@ const EventDetail = () => {
   const [isInterested, setIsInterested] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [showShareSheet, setShowShareSheet] = useState(false);
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
