@@ -109,6 +109,7 @@ const EventRow = ({ event, rsvpCount, onManage }: { event: any; rsvpCount: numbe
 
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [timeframe, setTimeframe] = useState("past_month");
   const [manageEvent, setManageEvent] = useState<{ id: string; title: string } | null>(null);
   const { activeProfile } = useActiveProfile();
 
