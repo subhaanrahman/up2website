@@ -1,5 +1,20 @@
 # Dylan — Handover Notes
 
+## 9 March 2026
+
+- **Multi-reaction system**: Added `reaction_type` column to `post_likes` with 5 emoji options (❤️ 🔥 👀 🙏 🩷); long-press picker UI with stacked emoji breakdown on feed
+- **Reaction picker component**: Built `ReactionPicker.tsx` with 500ms long-press trigger, optimistic UI updates, and per-post breakdown display
+- **Post interactions hook refactor**: Rewrote `usePostInteractions.ts` to support react/unreact/change-reaction with deduplication via unique constraint
+- **Notifications service backend**: Created `notifications-process` edge function (hourly cron) handling event reminders, saved-event nudges, friend activity, and suggested accounts
+- **Notifications send endpoint**: Created `notifications-send` edge function for real-time triggers (shares, friend requests, new organiser posts)
+- **Notification deduplication**: 24-hour window for cron notifications, 1-hour for send — prevents duplicate alerts
+- **Notification settings respect**: All notification generation checks user `notification_settings` preferences before inserting
+- **NotificationItem UI update**: Added icon/color mapping for all new notification types (friend_request, event_reminder, saved_event_nudge, etc.)
+- **Cron scheduling**: Configured `pg_cron` + `pg_net` to trigger `notifications-process` hourly via HTTP POST
+- **Gamification options doc**: Created `docs/GAMIFICATION_OPTIONS.md` with full roadmap — streaks, badges, leaderboards, referrals, nightlife-specific mechanics, and organiser tiers
+
+---
+
 ## 8 March 2026 (Session 3 — for Haan's review)
 
 - **Opening hours field**: Added `opening_hours` JSONB column to `organiser_profiles`; editing UI shown only for Venue category profiles
