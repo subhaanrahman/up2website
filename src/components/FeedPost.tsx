@@ -69,18 +69,25 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Collaborators line */}
           {collaborators && collaborators.length > 0 && (
-            <div className="flex items-center gap-1 mt-0.5">
+            <div className="flex items-center gap-1 mt-0.5 flex-wrap">
               <span className="text-[12px] text-muted-foreground">with</span>
               <div className="flex items-center -space-x-1">
                 {collaborators.slice(0, 3).map((c, i) => (
-                  <Avatar key={i} className="h-4 w-4 border border-background">
-                    <AvatarImage src={c.avatar_url || undefined} />
-                    <AvatarFallback className="text-[7px] bg-muted">{c.display_name[0]}</AvatarFallback>
-                  </Avatar>
+                  <Link key={i} to={`/user/${c.user_id}`}>
+                    <Avatar className="h-4 w-4 border border-background">
+                      <AvatarImage src={c.avatar_url || undefined} />
+                      <AvatarFallback className="text-[7px] bg-muted">{c.display_name[0]}</AvatarFallback>
+                    </Avatar>
+                  </Link>
                 ))}
               </div>
               <span className="text-[12px] text-foreground font-medium">
-                {collaborators.map(c => c.display_name.split(" ")[0]).join(", ")}
+                {collaborators.map((c, i) => (
+                  <span key={c.user_id}>
+                    {i > 0 && ", "}
+                    <Link to={`/user/${c.user_id}`} className="hover:underline">{c.display_name.split(" ")[0]}</Link>
+                  </span>
+                ))}
               </span>
             </div>
           )}
