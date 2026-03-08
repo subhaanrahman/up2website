@@ -325,10 +325,10 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: {userId: st
 
   return (
     <div className="-mx-4">
-      {posts.map((post) =>
+      {posts.map((post, idx) =>
       <FeedPost
+        key={post.reposted_by_name ? `repost-${post.id}-${idx}` : post.id}
         postId={post.id}
-        key={post.id}
         authorId={post.author_id}
         organiserProfileId={post.organiser_profile_id}
         displayName={post.author_display_name || "User"}
@@ -338,6 +338,7 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: {userId: st
         createdAt={post.created_at}
         imageUrl={post.image_url}
         gifUrl={post.gif_url}
+        repostedBy={post.reposted_by_name}
         eventData={post.event_data}
         collaborators={post.collaborators} />
 
