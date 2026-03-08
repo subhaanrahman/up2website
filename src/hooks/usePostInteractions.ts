@@ -41,10 +41,9 @@ export function usePostInteractions(postId: string) {
   });
 
   const toggleLike = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wasLiked: boolean) => {
       if (!user) { toast.error("Sign in to like posts"); throw new Error("Not authenticated"); }
-      const current = queryClient.getQueryData<PostCounts>(key);
-      if (current?.isLiked) {
+      if (wasLiked) {
         const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
         if (error) throw error;
       } else {
