@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,16 +6,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, Search, Upload, Crown, X } from "lucide-react";
+import { ArrowLeft, Search, Upload, Crown, X, Download, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 
 const ManageEvent = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeSection, setActiveSection] = useState<"main" | "orders" | "media">("main");
+  const [activeSection, setActiveSection] = useState<"main" | "media">("main");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch event details
   const { data: event } = useQuery({
@@ -32,32 +37,29 @@ const ManageEvent = () => {
     enabled: !!id,
   });
 
-  // Fetch orders for this event (via service — host needs to see all orders)
-  const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["event-orders", id],
+  // Fetch orders + rsvps via edge function (host-only, bypasses RLS)
+  const { data: manageData, isLoading } = useQuery({
+    queryKey: ["event-manage-data", id],
     queryFn: async () => {
-      // Orders table RLS only allows users to see their own orders.
-      // For now we show what's available; full host-view requires an edge function.
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, profiles:user_id(display_name, email, first_name, last_name)")
-        .eq("event_id", id!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return callEdgeFunction<{ orders: any[]; rsvps: any[] }>("orders-list", {
+        body: { event_id: id },
+      });
     },
     enabled: !!id,
   });
 
-  // Fetch RSVPs/guestlist
-  const { data: rsvps, isLoading: rsvpsLoading } = useQuery({
-    queryKey: ["event-rsvps-manage", id],
+  const orders = manageData?.orders || [];
+  const rsvps = manageData?.rsvps || [];
+
+  // Fetch event media
+  const { data: media, refetch: refetchMedia } = useQuery({
+    queryKey: ["event-media", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("rsvps")
-        .select("*, profiles:user_id(display_name, email, first_name, last_name)")
+        .from("event_media")
+        .select("*")
         .eq("event_id", id!)
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true });
       if (error) throw error;
       return data || [];
     },
@@ -66,22 +68,103 @@ const ManageEvent = () => {
 
   const eventEnded = event ? new Date(event.event_date) < new Date() : false;
 
-  const filteredOrders = orders?.filter((o: any) => {
-    if (!searchQuery) return true;
+  // Search filter
+  const filterBySearch = (items: any[]) => {
+    if (!searchQuery) return items;
     const q = searchQuery.toLowerCase();
-    const name = o.profiles?.display_name || o.profiles?.first_name || "";
-    const email = o.profiles?.email || "";
-    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || o.id.includes(q);
-  });
+    return items.filter((item) => {
+      const name = item.profile?.display_name || item.profile?.first_name || "";
+      const email = item.profile?.email || "";
+      const phone = item.profile?.phone || "";
+      const orderId = item.id || "";
+      return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || phone.toLowerCase().includes(q) || orderId.includes(q);
+    });
+  };
 
-  const filteredRsvps = rsvps?.filter((r: any) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    const name = r.profiles?.display_name || r.profiles?.first_name || "";
-    const email = r.profiles?.email || "";
-    return name.toLowerCase().includes(q) || email.toLowerCase().includes(q);
-  });
+  const filteredOrders = filterBySearch(orders);
+  const filteredRsvps = filterBySearch(rsvps);
 
+  // CSV export for guestlist
+  const exportCsv = () => {
+    if (!rsvps.length) return;
+    const headers = ["Name", "Email", "Phone", "Status", "Date"];
+    const rows = rsvps.map((r: any) => {
+      const name = r.profile?.display_name || [r.profile?.first_name, r.profile?.last_name].filter(Boolean).join(" ") || "Unknown";
+      return [
+        name,
+        r.profile?.email || "",
+        r.profile?.phone || "",
+        r.status,
+        format(new Date(r.created_at), "d/M/yyyy"),
+      ].map((v) => `"${v}"`).join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `guestlist-${event?.title || id}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Media upload
+  const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !files.length || !user || !id) return;
+
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${id}/${Date.now()}-${i}.${ext}`;
+
+        const { error: uploadErr } = await supabase.storage
+          .from("event-media")
+          .upload(path, file);
+
+        if (uploadErr) throw uploadErr;
+
+        const { data: urlData } = supabase.storage
+          .from("event-media")
+          .getPublicUrl(path);
+
+        await supabase.from("event_media").insert({
+          event_id: id,
+          url: urlData.publicUrl,
+          uploaded_by: user.id,
+          sort_order: (media?.length || 0) + i,
+        });
+      }
+      toast({ title: "Uploaded!", description: `${files.length} photo(s) added to gallery.` });
+      refetchMedia();
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteMedia = async (mediaId: string, url: string) => {
+    try {
+      // Extract path from URL for storage deletion
+      const urlObj = new URL(url);
+      const pathMatch = urlObj.pathname.match(/event-media\/(.+)$/);
+
+      await supabase.from("event_media").delete().eq("id", mediaId);
+      if (pathMatch) {
+        await supabase.storage.from("event-media").remove([pathMatch[1]]);
+      }
+      refetchMedia();
+      toast({ title: "Deleted", description: "Photo removed from gallery." });
+    } catch {
+      toast({ title: "Error", description: "Failed to delete photo.", variant: "destructive" });
+    }
+  };
+
+  // ---- MEDIA SECTION ----
   if (activeSection === "media") {
     return (
       <div className="min-h-screen bg-background pb-20">
@@ -91,27 +174,59 @@ const ManageEvent = () => {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="text-center">
-              <h1 className="text-sm font-semibold capitalize">{event?.title}</h1>
+              <h1 className="text-sm font-semibold capitalize line-clamp-1">{event?.title}</h1>
               <p className="text-[11px] opacity-80">Upload Media</p>
             </div>
             <div className="w-9" />
           </div>
         </header>
         <main className="p-4">
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-foreground mb-1">Event Photo Gallery</h3>
-            <p className="text-sm text-muted-foreground mb-6">Upload photos from your event for attendees to view</p>
-            <Button variant="outline" disabled>
-              <Upload className="h-4 w-4 mr-2" /> Upload Photos (Coming Soon)
-            </Button>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleMediaUpload}
+          />
+
+          <Button
+            className="w-full mb-4 h-12"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+          >
+            <Upload className="h-5 w-5 mr-2" />
+            {uploading ? "Uploading..." : "Upload Photos"}
+          </Button>
+
+          {(!media || media.length === 0) ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-foreground mb-1">Event Photo Gallery</h3>
+              <p className="text-sm text-muted-foreground">Upload photos from your event for attendees to view</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {media.map((item: any) => (
+                <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden group">
+                  <img src={item.url} alt="" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handleDeleteMedia(item.id, item.url)}
+                    className="absolute top-1 right-1 bg-background/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </main>
         <BottomNav />
       </div>
     );
   }
 
+  // ---- MAIN SECTION (Orders/Guestlist/Refunds) ----
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -128,7 +243,7 @@ const ManageEvent = () => {
         </div>
       </header>
 
-      {/* Tabs: Orders | Guestlist | Refunds */}
+      {/* Tabs */}
       <Tabs defaultValue="orders" className="w-full">
         <TabsList className="w-full rounded-none border-b border-border bg-background h-11">
           <TabsTrigger value="orders" className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary">
@@ -142,7 +257,7 @@ const ManageEvent = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* Search bar */}
+        {/* Search */}
         <div className="px-4 pt-3 pb-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -155,9 +270,9 @@ const ManageEvent = () => {
           </div>
         </div>
 
-        {/* Orders Tab */}
+        {/* ORDERS TAB */}
         <TabsContent value="orders" className="px-4 mt-0">
-          {ordersLoading ? (
+          {isLoading ? (
             <div className="space-y-4 py-4">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="animate-pulse space-y-2 py-3 border-b border-border">
@@ -166,7 +281,7 @@ const ManageEvent = () => {
                 </div>
               ))}
             </div>
-          ) : !filteredOrders?.length ? (
+          ) : !filteredOrders.length ? (
             <div className="text-center py-12">
               <X className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-muted-foreground">No orders found</p>
@@ -174,18 +289,16 @@ const ManageEvent = () => {
           ) : (
             <div className="divide-y divide-border">
               {filteredOrders.map((order: any) => {
-                const name = order.profiles?.display_name
-                  || [order.profiles?.first_name, order.profiles?.last_name].filter(Boolean).join(" ")
+                const name = order.profile?.display_name
+                  || [order.profile?.first_name, order.profile?.last_name].filter(Boolean).join(" ")
                   || "Unknown";
-                const email = order.profiles?.email || "";
+                const email = order.profile?.email || "";
+                const paymentType = order.stripe_payment_intent_id ? "Card" : "—";
                 return (
                   <button
                     key={order.id}
                     className="w-full text-left py-4 hover:bg-secondary/50 transition-colors"
-                    onClick={() => {
-                      // Navigate to user profile if available
-                      if (order.user_id) navigate(`/user/${order.user_id}`);
-                    }}
+                    onClick={() => { if (order.user_id) navigate(`/user/${order.user_id}`); }}
                   >
                     <div className="flex justify-between items-start">
                       <div className="min-w-0">
@@ -196,8 +309,10 @@ const ManageEvent = () => {
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
-                        <p className="text-sm text-foreground">{format(new Date(order.created_at), "d/M/yyyy")}</p>
-                        <p className="text-sm text-muted-foreground capitalize">{order.status}</p>
+                        <p className="text-sm text-foreground">
+                          {format(new Date(order.created_at), "d/M/yyyy")}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{paymentType}</p>
                       </div>
                     </div>
                   </button>
@@ -207,55 +322,67 @@ const ManageEvent = () => {
           )}
         </TabsContent>
 
-        {/* Guestlist Tab */}
-        <TabsContent value="guestlist" className="px-4 mt-0">
-          {rsvpsLoading ? (
-            <div className="space-y-4 py-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="animate-pulse space-y-2 py-3 border-b border-border">
-                  <div className="h-5 w-2/3 bg-secondary rounded" />
-                  <div className="h-4 w-1/2 bg-secondary rounded" />
-                </div>
-              ))}
-            </div>
-          ) : !filteredRsvps?.length ? (
-            <div className="text-center py-12">
-              <X className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">No guests found</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-border">
-              {filteredRsvps.map((rsvp: any) => {
-                const name = rsvp.profiles?.display_name
-                  || [rsvp.profiles?.first_name, rsvp.profiles?.last_name].filter(Boolean).join(" ")
-                  || "Unknown";
-                const email = rsvp.profiles?.email || "";
-                return (
-                  <button
-                    key={rsvp.id}
-                    className="w-full text-left py-4 hover:bg-secondary/50 transition-colors"
-                    onClick={() => {
-                      if (rsvp.user_id) navigate(`/user/${rsvp.user_id}`);
-                    }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-foreground">{name}</p>
-                        <p className="text-sm text-muted-foreground truncate">{email}</p>
+        {/* GUESTLIST TAB */}
+        <TabsContent value="guestlist" className="mt-0">
+          {/* CSV Export + count header */}
+          <div className="flex items-center justify-between px-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              {rsvps.length} guest{rsvps.length !== 1 ? "s" : ""}
+            </p>
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={!rsvps.length}>
+              <Download className="h-4 w-4 mr-1.5" /> Export CSV
+            </Button>
+          </div>
+
+          <div className="px-4">
+            {isLoading ? (
+              <div className="space-y-4 py-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="animate-pulse space-y-2 py-3 border-b border-border">
+                    <div className="h-5 w-2/3 bg-secondary rounded" />
+                    <div className="h-4 w-1/2 bg-secondary rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : !filteredRsvps.length ? (
+              <div className="text-center py-12">
+                <X className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-muted-foreground">No guests found</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {filteredRsvps.map((rsvp: any) => {
+                  const name = rsvp.profile?.display_name
+                    || [rsvp.profile?.first_name, rsvp.profile?.last_name].filter(Boolean).join(" ")
+                    || "Unknown";
+                  const email = rsvp.profile?.email || "";
+                  return (
+                    <button
+                      key={rsvp.id}
+                      className="w-full text-left py-4 hover:bg-secondary/50 transition-colors"
+                      onClick={() => { if (rsvp.user_id) navigate(`/user/${rsvp.user_id}`); }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">{name}</p>
+                          <p className="text-sm text-muted-foreground truncate">{email}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <p className="text-sm text-foreground">
+                            {format(new Date(rsvp.created_at), "d/M/yyyy")}
+                          </p>
+                          <p className="text-sm text-muted-foreground capitalize">{rsvp.status}</p>
+                        </div>
                       </div>
-                      <div className="text-right flex-shrink-0 ml-3">
-                        <p className="text-sm text-foreground">{format(new Date(rsvp.created_at), "d/M/yyyy")}</p>
-                        <p className="text-sm text-muted-foreground capitalize">{rsvp.status}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </TabsContent>
 
-        {/* Refunds Tab */}
+        {/* REFUNDS TAB */}
         <TabsContent value="refunds" className="px-4 mt-0">
           <div className="py-6">
             <h3 className="font-semibold text-foreground mb-3">Refund Requests</h3>
@@ -274,7 +401,7 @@ const ManageEvent = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Bottom action buttons for Upload Media & VIP */}
+      {/* Bottom actions */}
       <div className="px-4 pt-4 space-y-2">
         <Button variant="outline" className="w-full justify-start h-12" onClick={() => setActiveSection("media")}>
           <Upload className="h-5 w-5 mr-3 text-primary" />
