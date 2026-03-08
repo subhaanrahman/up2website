@@ -103,6 +103,8 @@ Deno.serve(async (req) => {
         (type === 'shared_event' && settings.friend_activity === false) ||
         (type === 'shared_post' && settings.friend_activity === false) ||
         (type === 'shared_account' && settings.friend_activity === false) ||
+        (type === 'post_reaction' && settings.friend_activity === false) ||
+        (type === 'post_repost' && settings.friend_activity === false) ||
         (type === 'post_from_following' && settings.new_events === false);
 
       if (blocked) {
