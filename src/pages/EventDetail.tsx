@@ -221,7 +221,7 @@ const EventDetail = () => {
   const guests = foundMockEvent?.guests || [];
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-40">
       {/* Back button row */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <button onClick={() => navigate(-1)} className="h-10 w-10 rounded-full flex items-center justify-center">
