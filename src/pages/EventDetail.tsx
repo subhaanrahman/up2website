@@ -194,12 +194,14 @@ const EventDetail = () => {
   );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
-  // Determine display host: organiser profile takes priority
-  const displayHostName = organiserHost?.display_name || host?.displayName || "Event Host";
-  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || undefined;
+  // Determine display host: organiser profile takes priority, then DB host, then mock host
+  const displayHostName = organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
+  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
   const displayHostLink = organiserHost
     ? `/user/${organiserHost.owner_id}`
-    : `/user/${dbEvent?.hostId || ""}`;
+    : dbEvent?.hostId
+      ? `/user/${dbEvent.hostId}`
+      : "#";
 
   if (!event) {
     return (
