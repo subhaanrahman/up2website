@@ -1,0 +1,56 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, Users, RotateCcw, Image, Crown } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface ManageEventModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  eventId: string;
+  eventTitle: string;
+}
+
+const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEventModalProps) => {
+  const { toast } = useToast();
+
+  const comingSoon = (label: string) => {
+    toast({ title: "Coming Soon", description: `${label} will be available in a future update.` });
+  };
+
+  const items = [
+    { icon: ClipboardList, label: "Orders", description: "View all ticket orders", action: () => comingSoon("Orders") },
+    { icon: Users, label: "Guestlist", description: "Manage RSVPs & guest list", action: () => comingSoon("Guestlist") },
+    { icon: RotateCcw, label: "Refunds", description: "Process and view refunds", action: () => comingSoon("Refunds") },
+    { icon: Image, label: "Upload Media", description: "Add event photo gallery", action: () => comingSoon("Upload Media") },
+    { icon: Crown, label: "VIP Tables", description: "Manage VIP table bookings", action: () => comingSoon("VIP Tables") },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-lg">Manage Event</DialogTitle>
+          <p className="text-sm text-muted-foreground capitalize">{eventTitle}</p>
+        </DialogHeader>
+        <div className="space-y-2 pt-2">
+          {items.map(({ icon: Icon, label, description, action }) => (
+            <Button
+              key={label}
+              variant="ghost"
+              className="w-full justify-start h-auto py-3 px-3"
+              onClick={action}
+            >
+              <Icon className="h-5 w-5 mr-3 text-primary flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-medium text-foreground">{label}</p>
+                <p className="text-xs text-muted-foreground">{description}</p>
+              </div>
+            </Button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default ManageEventModal;
