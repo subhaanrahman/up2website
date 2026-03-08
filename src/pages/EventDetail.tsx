@@ -168,7 +168,11 @@ const EventDetail = () => {
 
   const event = foundMockEvent || dbEvent;
   const isFreeEvent = !foundMockEvent;
-  const isHost = user && dbEvent && dbEvent.hostId === user.id;
+  // Host = direct host_id match OR owner of the organiser profile
+  const isHost = user && dbEvent && (
+    dbEvent.hostId === user.id ||
+    (organiserHost && organiserHost.owner_id === user.id)
+  );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
   // Determine display host: organiser profile takes priority
