@@ -8,7 +8,8 @@
 
 There are several ways of editing your application.
 
-**MOST IMPORTANTLY FOLLOW THE BELOW SETUP **
+**MOST IMPORTANTLY FOLLOW THE BELOW SETUP**
+
 **Branches**
 - main
 - develop
