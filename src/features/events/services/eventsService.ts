@@ -2,6 +2,7 @@
 
 import { eventsRepository } from '../repositories/eventsRepository';
 import type { EventEntity, Rsvp } from '../domain/types';
+import type { EventFilter } from '../repositories/eventsRepository';
 import { createLogger } from '@/infrastructure/logger';
 
 const logger = createLogger('events.service');
