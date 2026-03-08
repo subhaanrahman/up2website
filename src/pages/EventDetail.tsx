@@ -346,8 +346,22 @@ const EventDetail = () => {
 
         {dbEvent && (
           <Link to={`/events/${id}/guests`} className="flex items-center gap-2 py-2 text-primary hover:underline transition-colors">
+            {attendeeProfiles && attendeeProfiles.length > 0 && (
+              <div className="flex -space-x-2 mr-1">
+                {attendeeProfiles.slice(0, 5).map((p) => (
+                  <Avatar key={p.user_id} className="h-7 w-7 border-2 border-background">
+                    <AvatarImage src={p.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs">{(p.display_name || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+            )}
             <Users className="h-4 w-4" />
-            <span className="text-sm font-medium">See who's going</span>
+            <span className="text-sm font-medium">
+              {attendeeProfiles && attendeeProfiles.length > 0
+                ? `${attendeeProfiles.length}${attendeeProfiles.length >= 10 ? '+' : ''} going`
+                : "See who's going"}
+            </span>
           </Link>
         )}
 
