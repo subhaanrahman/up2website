@@ -61,10 +61,10 @@ Deno.serve(async (req) => {
 
     const { action, event_id, ...fields } = parsed.data;
 
-    // Verify ownership
+    // Verify ownership (direct host or organiser profile owner)
     const { data: event, error: fetchErr } = await supabase
       .from('events')
-      .select('id, host_id')
+      .select('id, host_id, organiser_profile_id')
       .eq('id', event_id)
       .maybeSingle();
 
@@ -74,7 +74,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (event.host_id !== user.id) {
+    let isAuthorized = event.host_id === user.id;
+
+    // Also check if user owns the organiser profile linked to this event
+    if (!isAuthorized && event.organiser_profile_id) {
+      const { data: org } = await supabase
+        .from('organiser_profiles')
+        .select('owner_id')
+        .eq('id', event.organiser_profile_id)
+        .maybeSingle();
+      if (org?.owner_id === user.id) isAuthorized = true;
+    }
+
+    if (!isAuthorized) {
       return new Response(JSON.stringify({ error: 'Not authorized' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
