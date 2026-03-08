@@ -98,7 +98,10 @@ const Auth = () => {
           )}
 
           <p className="text-center text-sm text-muted-foreground mt-8">
-            By signing in, you agree to our Terms of Service and Privacy Policy.
+            By signing in, you agree to our{" "}
+            <a href="/terms" className="underline text-primary">Terms of Service</a>{" "}
+            and{" "}
+            <a href="/privacy" className="underline text-primary">Privacy Policy</a>.
           </p>
 
           {/* Dev Login Buttons */}

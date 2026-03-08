@@ -38,6 +38,9 @@ import OrganiserTeam from "./pages/OrganiserTeam";
 import FriendsFollowing from "./pages/FriendsFollowing";
 import ManageEvent from "./pages/ManageEvent";
 import EventCheckIn from "./pages/EventCheckIn";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import EmailVerification from "./pages/EmailVerification";
 
 const queryClient = new QueryClient();
 
@@ -58,6 +61,8 @@ const App = () => (
               <Route path="/search" element={<Events />} />
               <Route path="/search/:id" element={<EventDetail />} />
               <Route path="/user/:userId" element={<UserProfile />} />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/events/:id" element={<EventDetail />} />
               <Route path="/events/:id/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
               <Route path="/events/:id/guests" element={<EventGuests />} />
@@ -83,6 +88,7 @@ const App = () => (
               <Route path="/settings/account" element={<ProtectedRoute><ManageAccount /></ProtectedRoute>} />
               <Route path="/settings/music" element={<ProtectedRoute><ConnectMusic /></ProtectedRoute>} />
               <Route path="/settings/contact" element={<ProtectedRoute><ContactUs /></ProtectedRoute>} />
+              <Route path="/settings/email-verification" element={<ProtectedRoute><EmailVerification /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
 

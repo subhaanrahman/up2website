@@ -26,17 +26,26 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { CITIES } from "@/data/cities";
-import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 const CATEGORIES = ["Venue", "Event"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const TAG_SUGGESTIONS = {
+  genre: ["House", "Techno", "Hip Hop", "R&B", "Afrobeats", "Amapiano", "Deep House", "Jazz", "Indie", "Pop", "Rock", "Latin", "Reggaeton", "Drum & Bass"],
+  crowd: ["Young Professionals", "Students", "Over 25s", "Mixed", "LGBTQ+ Friendly", "Upscale", "Underground", "Casual"],
+  features: ["Outdoor Area", "Rooftop", "Dance Floor", "VIP Section", "Smoking Area", "Free Parking", "Pool", "Live Music", "DJ Booth", "Food Menu", "Cocktail Bar", "Bottle Service"],
+};
 
 const EditOrganiserProfile = () => {
   const navigate = useNavigate();
   const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles } = useActiveProfile();
   const [saving, setSaving] = useState(false);
+  const [newTag, setNewTag] = useState("");
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
@@ -49,6 +58,8 @@ const EditOrganiserProfile = () => {
     city: "",
     instagram_handle: "",
     category: "Venue",
+    opening_hours: {} as Record<string, string>,
+    tags: [] as string[],
   });
 
   useEffect(() => {
@@ -64,6 +75,8 @@ const EditOrganiserProfile = () => {
         city: activeOrg.city || "",
         instagram_handle: activeOrg.instagramHandle || "",
         category: activeOrg.category || "Venue",
+        opening_hours: (activeOrg as any).openingHours || {},
+        tags: (activeOrg as any).tags || [],
       });
     }
   }, [activeOrg, isOrganiser, navigate]);
@@ -78,7 +91,11 @@ const EditOrganiserProfile = () => {
     setSaving(true);
     try {
       await callEdgeFunction("organiser-profile-update", {
-        body: { profile_id: activeOrg.id, ...formData },
+        body: {
+          profile_id: activeOrg.id,
+          ...formData,
+          opening_hours: formData.category === "Venue" ? formData.opening_hours : null,
+        },
       });
       await refetchOrganiserProfiles();
       toast({ title: "Profile updated", description: "Your organiser profile has been saved." });
@@ -89,6 +106,25 @@ const EditOrganiserProfile = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (trimmed && !formData.tags.includes(trimmed) && formData.tags.length < 20) {
+      setFormData({ ...formData, tags: [...formData.tags, trimmed] });
+    }
+    setNewTag("");
+  };
+
+  const removeTag = (tag: string) => {
+    setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) });
+  };
+
+  const updateOpeningHours = (day: string, value: string) => {
+    setFormData({
+      ...formData,
+      opening_hours: { ...formData.opening_hours, [day]: value },
+    });
   };
 
   if (!activeOrg) return null;
@@ -199,6 +235,81 @@ const EditOrganiserProfile = () => {
             />
           </div>
         </div>
+
+        {/* Tags Section - Genre, Crowd, Features */}
+        <div className="space-y-3">
+          <Label>Tags (Genre, Crowd, Features)</Label>
+          <p className="text-xs text-muted-foreground">Add tags to describe your vibe, crowd, and features. Max 20.</p>
+
+          {/* Current tags */}
+          {formData.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {formData.tags.map((tag) => (
+                <Badge key={tag} variant="secondary" className="gap-1 pr-1">
+                  {tag}
+                  <button onClick={() => removeTag(tag)} className="ml-1 hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Add custom tag */}
+          <div className="flex gap-2">
+            <Input
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(newTag); } }}
+              placeholder="Add a custom tag..."
+              className="flex-1"
+            />
+            <Button variant="outline" size="icon" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Suggestions */}
+          {Object.entries(TAG_SUGGESTIONS).map(([category, suggestions]) => (
+            <div key={category}>
+              <p className="text-xs font-medium text-muted-foreground capitalize mb-1.5">{category}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions
+                  .filter((s) => !formData.tags.includes(s))
+                  .map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => addTag(suggestion)}
+                      className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    >
+                      + {suggestion}
+                    </button>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Opening Hours - Venue only */}
+        {formData.category === "Venue" && (
+          <div className="space-y-3">
+            <Label>Opening Hours</Label>
+            <p className="text-xs text-muted-foreground">Set your venue's opening hours for each day.</p>
+            <div className="space-y-2">
+              {DAYS.map((day) => (
+                <div key={day} className="flex items-center gap-3">
+                  <span className="text-sm text-foreground w-24 shrink-0">{day}</span>
+                  <Input
+                    value={formData.opening_hours[day] || ""}
+                    onChange={(e) => updateOpeningHours(day, e.target.value)}
+                    placeholder="e.g. 10:00 - 02:00 or Closed"
+                    className="flex-1"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

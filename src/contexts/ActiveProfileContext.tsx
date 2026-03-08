@@ -12,6 +12,8 @@ export interface OrganiserProfile {
   city: string | null;
   instagramHandle: string | null;
   category: string;
+  openingHours: Record<string, string> | null;
+  tags: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -65,6 +67,8 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       city: r.city,
       instagramHandle: r.instagram_handle,
       category: r.category,
+      openingHours: r.opening_hours || null,
+      tags: Array.isArray(r.tags) ? r.tags : [],
       createdAt: r.created_at,
       updatedAt: r.updated_at,
     }));
@@ -98,6 +102,8 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
           city: r.city,
           instagramHandle: r.instagram_handle,
           category: r.category,
+          openingHours: r.opening_hours || null,
+          tags: Array.isArray(r.tags) ? r.tags : [],
           createdAt: r.created_at,
           updatedAt: r.updated_at,
         }));

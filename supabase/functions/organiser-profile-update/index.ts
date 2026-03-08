@@ -18,6 +18,8 @@ const updateSchema = z.object({
   city: z.string().trim().max(100).optional().nullable(),
   instagram_handle: z.string().trim().max(30).regex(/^[a-zA-Z0-9._]*$/, 'Invalid Instagram handle').optional().nullable(),
   category: z.enum(CATEGORIES).optional(),
+  opening_hours: z.record(z.string(), z.string()).optional().nullable(),
+  tags: z.array(z.string().trim().max(50)).max(20).optional(),
 });
 
 Deno.serve(async (req) => {
@@ -92,6 +94,8 @@ Deno.serve(async (req) => {
     if (updates.city !== undefined) updateData.city = updates.city || null;
     if (updates.instagram_handle !== undefined) updateData.instagram_handle = updates.instagram_handle || null;
     if (updates.category !== undefined) updateData.category = updates.category;
+    if (updates.opening_hours !== undefined) updateData.opening_hours = updates.opening_hours;
+    if (updates.tags !== undefined) updateData.tags = updates.tags;
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await serviceClient

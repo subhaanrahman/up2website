@@ -707,7 +707,9 @@ export type Database = {
           display_name: string
           id: string
           instagram_handle: string | null
+          opening_hours: Json | null
           owner_id: string
+          tags: Json | null
           updated_at: string
           username: string
         }
@@ -720,7 +722,9 @@ export type Database = {
           display_name: string
           id?: string
           instagram_handle?: string | null
+          opening_hours?: Json | null
           owner_id: string
+          tags?: Json | null
           updated_at?: string
           username: string
         }
@@ -733,7 +737,9 @@ export type Database = {
           display_name?: string
           id?: string
           instagram_handle?: string | null
+          opening_hours?: Json | null
           owner_id?: string
+          tags?: Json | null
           updated_at?: string
           username?: string
         }
@@ -942,6 +948,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           email: string | null
+          email_verified: boolean | null
           first_name: string | null
           id: string
           instagram_handle: string | null
@@ -959,6 +966,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          email_verified?: boolean | null
           first_name?: string | null
           id?: string
           instagram_handle?: string | null
@@ -976,6 +984,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email?: string | null
+          email_verified?: boolean | null
           first_name?: string | null
           id?: string
           instagram_handle?: string | null
