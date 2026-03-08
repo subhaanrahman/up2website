@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      check_ins: {
+        Row: {
+          checked_in_at: string
+          checked_in_by: string
+          created_at: string
+          event_id: string
+          id: string
+          method: string
+          user_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          checked_in_by: string
+          created_at?: string
+          event_id: string
+          id?: string
+          method?: string
+          user_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          checked_in_by?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          method?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       connections: {
         Row: {
           accepted_at: string | null
