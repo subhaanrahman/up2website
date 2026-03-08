@@ -199,13 +199,15 @@ const ShareEventSheet = ({
 
         {/* Story card preview - scaled down for display, full size for export */}
         <div className="flex justify-center pt-2 pb-1 px-4" style={{
-          height: 320,
+          height: Math.round((1920 / 3) * 0.42) + 8,
           overflow: "hidden",
         }}>
-          <div className="rounded-xl overflow-hidden" style={{
+          <div style={{
             boxShadow: `0 6px 30px ${themeColors[activeTheme]?.accent || "#a855f7"}44`,
-            transform: "scale(0.5)",
+            transform: "scale(0.42)",
             transformOrigin: "top center",
+            borderRadius: 24,
+            overflow: "hidden",
           }}>
             <StoryCardPreview
               ref={storyRef}
