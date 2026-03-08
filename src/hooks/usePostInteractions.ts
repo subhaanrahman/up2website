@@ -2,31 +2,59 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { ReactionType } from "@/components/ReactionPicker";
 
 interface PostCounts {
   likeCount: number;
   repostCount: number;
   isLiked: boolean;
   isReposted: boolean;
+  reactionType: ReactionType | null;
+  reactionBreakdown: Record<string, number>;
 }
 
 async function fetchPostInteractions(postId: string, userId?: string): Promise<PostCounts> {
   const [likesRes, repostsRes, myLikeRes, myRepostRes] = await Promise.all([
-    supabase.from("post_likes").select("id", { count: "exact" }).eq("post_id", postId),
-    supabase.from("post_reposts").select("id", { count: "exact" }).eq("post_id", postId),
+    supabase
+      .from("post_likes")
+      .select("id, reaction_type")
+      .eq("post_id", postId),
+    supabase
+      .from("post_reposts")
+      .select("id", { count: "exact" })
+      .eq("post_id", postId),
     userId
-      ? supabase.from("post_likes").select("id").eq("post_id", postId).eq("user_id", userId).maybeSingle()
+      ? supabase
+          .from("post_likes")
+          .select("id, reaction_type")
+          .eq("post_id", postId)
+          .eq("user_id", userId)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
     userId
-      ? supabase.from("post_reposts").select("id").eq("post_id", postId).eq("user_id", userId).maybeSingle()
+      ? supabase
+          .from("post_reposts")
+          .select("id")
+          .eq("post_id", postId)
+          .eq("user_id", userId)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
+  // Build reaction breakdown
+  const breakdown: Record<string, number> = {};
+  (likesRes.data || []).forEach((l: any) => {
+    const rt = l.reaction_type || "heart";
+    breakdown[rt] = (breakdown[rt] || 0) + 1;
+  });
+
   return {
-    likeCount: likesRes.count ?? 0,
+    likeCount: likesRes.data?.length ?? 0,
     repostCount: repostsRes.count ?? 0,
     isLiked: !!myLikeRes.data,
     isReposted: !!myRepostRes.data,
+    reactionType: (myLikeRes.data as any)?.reaction_type || null,
+    reactionBreakdown: breakdown,
   };
 }
 
@@ -40,16 +68,69 @@ export function usePostInteractions(postId: string) {
     queryFn: () => fetchPostInteractions(postId, user?.id),
   });
 
-  const toggleLike = useMutation({
-    mutationFn: async (wasLiked: boolean) => {
-      if (!user) { toast.error("Sign in to like posts"); throw new Error("Not authenticated"); }
+  const react = useMutation({
+    mutationFn: async ({
+      reactionType,
+      wasLiked,
+    }: {
+      reactionType: ReactionType;
+      wasLiked: boolean;
+    }) => {
+      if (!user) {
+        toast.error("Sign in to react to posts");
+        throw new Error("Not authenticated");
+      }
       if (wasLiked) {
-        const { error } = await supabase.from("post_likes").delete().eq("post_id", postId).eq("user_id", user.id);
+        // Update existing reaction to new type
+        const { error } = await supabase
+          .from("post_likes")
+          .update({ reaction_type: reactionType })
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("post_likes").insert({ post_id: postId, user_id: user.id });
+        // Insert new reaction
+        const { error } = await supabase
+          .from("post_likes")
+          .insert({
+            post_id: postId,
+            user_id: user.id,
+            reaction_type: reactionType,
+          });
         if (error) throw error;
       }
+    },
+    onMutate: async ({ reactionType, wasLiked }) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<PostCounts>(key);
+      if (prev) {
+        queryClient.setQueryData<PostCounts>(key, {
+          ...prev,
+          isLiked: true,
+          likeCount: wasLiked ? prev.likeCount : prev.likeCount + 1,
+          reactionType: reactionType,
+        });
+      }
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
+  });
+
+  const unreact = useMutation({
+    mutationFn: async () => {
+      if (!user) {
+        toast.error("Sign in to react to posts");
+        throw new Error("Not authenticated");
+      }
+      const { error } = await supabase
+        .from("post_likes")
+        .delete()
+        .eq("post_id", postId)
+        .eq("user_id", user.id);
+      if (error) throw error;
     },
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: key });
@@ -57,8 +138,9 @@ export function usePostInteractions(postId: string) {
       if (prev) {
         queryClient.setQueryData<PostCounts>(key, {
           ...prev,
-          isLiked: !prev.isLiked,
-          likeCount: prev.isLiked ? prev.likeCount - 1 : prev.likeCount + 1,
+          isLiked: false,
+          likeCount: Math.max(0, prev.likeCount - 1),
+          reactionType: null,
         });
       }
       return { prev };
@@ -71,12 +153,21 @@ export function usePostInteractions(postId: string) {
 
   const toggleRepost = useMutation({
     mutationFn: async (wasReposted: boolean) => {
-      if (!user) { toast.error("Sign in to repost"); throw new Error("Not authenticated"); }
+      if (!user) {
+        toast.error("Sign in to repost");
+        throw new Error("Not authenticated");
+      }
       if (wasReposted) {
-        const { error } = await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", user.id);
+        const { error } = await supabase
+          .from("post_reposts")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("post_reposts").insert({ post_id: postId, user_id: user.id });
+        const { error } = await supabase
+          .from("post_reposts")
+          .insert({ post_id: postId, user_id: user.id });
         if (error) throw error;
       }
     },
@@ -87,7 +178,9 @@ export function usePostInteractions(postId: string) {
         queryClient.setQueryData<PostCounts>(key, {
           ...prev,
           isReposted: !prev.isReposted,
-          repostCount: prev.isReposted ? prev.repostCount - 1 : prev.repostCount + 1,
+          repostCount: prev.isReposted
+            ? prev.repostCount - 1
+            : prev.repostCount + 1,
         });
       }
       return { prev };
@@ -104,9 +197,12 @@ export function usePostInteractions(postId: string) {
   return {
     ...query.data,
     isLoading: query.isLoading,
-    toggleLike: () => {
+    handleReact: (type: ReactionType) => {
       const current = queryClient.getQueryData<PostCounts>(key);
-      toggleLike.mutate(!!current?.isLiked);
+      react.mutate({ reactionType: type, wasLiked: !!current?.isLiked });
+    },
+    handleUnreact: () => {
+      unreact.mutate();
     },
     toggleRepost: () => {
       const current = queryClient.getQueryData<PostCounts>(key);
