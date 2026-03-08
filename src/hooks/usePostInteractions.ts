@@ -72,7 +72,7 @@ export function usePostInteractions(postId: string) {
 
   const toggleRepost = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("Not authenticated");
+      if (!user) { toast.error("Sign in to repost"); throw new Error("Not authenticated"); }
       const current = queryClient.getQueryData<PostCounts>(key);
       if (current?.isReposted) {
         const { error } = await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", user.id);
