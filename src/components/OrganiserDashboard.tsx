@@ -97,7 +97,7 @@ const EventRow = ({ event, rsvpCount, onManage }: { event: any; rsvpCount: numbe
           variant="ghost"
           size="icon"
           className="h-8 w-8"
-          onClick={(e) => { e.preventDefault(); /* TODO: check-in page */ }}
+          onClick={(e) => { e.preventDefault(); navigate(`/events/${event.id}/checkin`); }}
           title="Check In"
         >
           <ScanLine className="h-4 w-4" />
