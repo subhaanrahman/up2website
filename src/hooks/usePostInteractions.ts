@@ -70,10 +70,9 @@ export function usePostInteractions(postId: string) {
   });
 
   const toggleRepost = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (wasReposted: boolean) => {
       if (!user) { toast.error("Sign in to repost"); throw new Error("Not authenticated"); }
-      const current = queryClient.getQueryData<PostCounts>(key);
-      if (current?.isReposted) {
+      if (wasReposted) {
         const { error } = await supabase.from("post_reposts").delete().eq("post_id", postId).eq("user_id", user.id);
         if (error) throw error;
       } else {
@@ -105,7 +104,13 @@ export function usePostInteractions(postId: string) {
   return {
     ...query.data,
     isLoading: query.isLoading,
-    toggleLike: () => toggleLike.mutate(),
-    toggleRepost: () => toggleRepost.mutate(),
+    toggleLike: () => {
+      const current = queryClient.getQueryData<PostCounts>(key);
+      toggleLike.mutate(!!current?.isLiked);
+    },
+    toggleRepost: () => {
+      const current = queryClient.getQueryData<PostCounts>(key);
+      toggleRepost.mutate(!!current?.isReposted);
+    },
   };
 }
