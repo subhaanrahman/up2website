@@ -1,11 +1,12 @@
 # Backend TODO
 
 ## Check-In System
-- [ ] Create `check_ins` table (event_id, user_id, checked_in_at, checked_in_by, method: 'manual' | 'qr')
-- [ ] Edge function: `checkin-toggle` — mark/unmark a guest as checked in
+- [x] Create `check_ins` table (event_id, user_id, checked_in_at, checked_in_by, method: 'manual' | 'qr')
+- [x] Edge function: `checkin-toggle` — mark/unmark a guest as checked in
 - [ ] Edge function: `checkin-qr` — validate QR code and check in guest
-- [ ] Check-in page UI: searchable attendee list with manual toggle + QR scan mode
-- [ ] RLS: only event host / organiser owner / members can check in guests
+- [x] Check-in page UI: searchable attendee list with manual toggle + QR scan mode (placeholder)
+- [x] RLS: only event host / organiser owner / members can check in guests
+- [ ] QR code generation for ticket holders (link to checkin-qr)
 
 ## Orders Management
 - [x] `orders` table exists
