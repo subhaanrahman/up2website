@@ -51,7 +51,7 @@ const filters = [
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
