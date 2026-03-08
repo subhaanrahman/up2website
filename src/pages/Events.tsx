@@ -58,7 +58,7 @@ const Events = () => {
 
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
-    category: selectedCategory || undefined,
+    filter: selectedFilter || undefined,
     limit: 30,
   });
 
