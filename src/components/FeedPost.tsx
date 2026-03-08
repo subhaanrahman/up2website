@@ -70,7 +70,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
           {/* Collaborators line */}
           {collaborators && collaborators.length > 0 && (
             <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-              <span className="text-[12px] text-muted-foreground">with</span>
+              <span className="text-[15px] text-muted-foreground">with</span>
               <div className="flex items-center -space-x-1">
                 {collaborators.slice(0, 3).map((c, i) => (
                   <Link key={i} to={`/user/${c.user_id}`}>
@@ -81,7 +81,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
                   </Link>
                 ))}
               </div>
-              <span className="text-[12px] text-foreground font-medium">
+              <span className="text-[15px] text-foreground font-medium">
                 {collaborators.map((c, i) => (
                   <span key={c.user_id}>
                     {i > 0 && ", "}
