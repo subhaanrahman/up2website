@@ -4,6 +4,56 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { ReactionType } from "@/components/ReactionPicker";
 
+const REACTION_EMOJI: Record<string, string> = {
+  heart: '❤️', fire: '🔥', eyes: '👀', pray: '🙏', pink_heart: '🩷',
+};
+
+async function sendPostNotification(
+  type: 'post_reaction' | 'post_repost',
+  postId: string,
+  senderUserId: string,
+  reactionType?: ReactionType,
+) {
+  try {
+    // Get post author info
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
+    if (!post || post.author_id === senderUserId) return; // don't notify self
+
+    const { data: sender } = await supabase
+      .from('profiles')
+      .select('display_name, avatar_url')
+      .eq('user_id', senderUserId)
+      .single();
+
+    const senderName = sender?.display_name || 'Someone';
+    const emoji = reactionType ? (REACTION_EMOJI[reactionType] || '❤️') : '';
+
+    const title = type === 'post_reaction'
+      ? `${senderName} reacted ${emoji}`
+      : `${senderName} reposted your post`;
+    const message = type === 'post_reaction'
+      ? `${senderName} reacted ${emoji} to your post`
+      : `${senderName} reposted your post`;
+
+    await supabase.functions.invoke('notifications-send', {
+      body: {
+        type,
+        recipient_user_id: post.author_id,
+        title,
+        message,
+        avatar_url: sender?.avatar_url || null,
+        link: `/post/${postId}`,
+      },
+    });
+  } catch (e) {
+    console.error('Failed to send post notification:', e);
+  }
+}
+
 interface PostCounts {
   likeCount: number;
   repostCount: number;
@@ -116,6 +166,11 @@ export function usePostInteractions(postId: string) {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
     },
+    onSuccess: (_data, vars) => {
+      if (user && !vars.wasLiked) {
+        sendPostNotification('post_reaction', postId, user.id, vars.reactionType);
+      }
+    },
     onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   });
 
@@ -187,6 +242,11 @@ export function usePostInteractions(postId: string) {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+    },
+    onSuccess: (_data, wasReposted) => {
+      if (user && !wasReposted) {
+        sendPostNotification('post_repost', postId, user.id);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key });

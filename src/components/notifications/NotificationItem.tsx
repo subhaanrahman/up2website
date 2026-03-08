@@ -9,6 +9,8 @@ const iconMap: Record<string, typeof Bell> = {
   shared_post: Share2,
   shared_account: Share2,
   post_from_following: Repeat2,
+  post_reaction: Heart,
+  post_repost: Repeat2,
   post: Bell,
   upcoming_event: Calendar,
   saved_reminder: Ticket,
