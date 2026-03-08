@@ -85,6 +85,28 @@ const EventDetail = () => {
     enabled: !!id && !!user && !isMock,
   });
 
+  // Fetch attendees (profiles of people who RSVP'd) for this event
+  const { data: attendeeProfiles } = useQuery({
+    queryKey: ["event-attendees", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data: rsvps } = await supabase
+        .from("rsvps")
+        .select("user_id")
+        .eq("event_id", id)
+        .eq("status", "going")
+        .limit(10);
+      if (!rsvps || rsvps.length === 0) return [];
+      const userIds = rsvps.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", userIds);
+      return profiles || [];
+    },
+    enabled: !!id && !isMock,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = () => {
