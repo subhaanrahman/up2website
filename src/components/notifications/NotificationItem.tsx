@@ -1,24 +1,34 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Calendar, Users, Ticket, Heart, UserPlus, Star } from "lucide-react";
+import { Bell, Calendar, Users, Ticket, Heart, UserPlus, Star, Share2, Repeat2, Trophy } from "lucide-react";
 import { useMarkNotificationRead, type AppNotification } from "@/hooks/useNotificationsQuery";
+import { useNavigate } from "react-router-dom";
 
 const iconMap: Record<string, typeof Bell> = {
-  shared_event: Heart,
+  shared_event: Share2,
+  shared_post: Share2,
+  shared_account: Share2,
+  post_from_following: Repeat2,
   post: Bell,
   upcoming_event: Calendar,
   saved_reminder: Ticket,
   friend_activity: Users,
   friend_request: UserPlus,
   suggested_account: Star,
+  gamification_levelup: Trophy,
+  general: Bell,
 };
 
 const NotificationItem = ({ notification }: { notification: AppNotification }) => {
   const markRead = useMarkNotificationRead();
+  const navigate = useNavigate();
   const Icon = iconMap[notification.type] || Bell;
 
   const handleClick = () => {
     if (!notification.read) markRead.mutate(notification.id);
+    if (notification.link) {
+      navigate(notification.link);
+    }
   };
 
   return (
