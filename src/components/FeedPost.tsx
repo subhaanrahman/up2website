@@ -81,7 +81,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
                   </Link>
                 ))}
               </div>
-              <span className="text-[12px] text-foreground font-medium">
+              <span className="text-[15px] text-foreground font-medium">
                 {collaborators.map((c, i) => (
                   <span key={c.user_id}>
                     {i > 0 && ", "}
