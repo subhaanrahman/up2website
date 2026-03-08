@@ -23,9 +23,19 @@
 - [ ] Stripe refund integration via webhook
 
 ## Media Gallery
-- [ ] Create `event_media` table (event_id, url, sort_order, uploaded_by, created_at)
+- [x] Create `event_media` table (event_id, url, sort_order, uploaded_by, created_at)
 - [ ] Edge function or direct storage upload for event media
 - [ ] RLS: host/organiser can upload, public can view
+
+## Share & Ticket Links
+- [x] Share event link & RSVP link with copy-to-clipboard
+- [x] QR code generation for event URL
+- [ ] Track link clicks / conversions
+
+## Analytics (Future)
+- [ ] Per-event view tracking
+- [ ] Sales & revenue dashboard
+- [ ] Attendee demographics
 
 ## VIP Tables (Future)
 - [ ] Design table booking schema
