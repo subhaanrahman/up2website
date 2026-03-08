@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '@/features/events';
 import { eventsApi, rsvpApi } from '@/api';
-import type { CreateEventInput, UpdateEventInput } from '@/features/events';
+import type { CreateEventInput, UpdateEventInput, EventFilter } from '@/features/events';
+
+
 
 export const eventKeys = {
   all: ['events'] as const,
@@ -19,7 +21,7 @@ export function useEvents(options?: { category?: string; limit?: number }) {
   });
 }
 
-export function useSearchEvents(options: { query?: string; category?: string; limit?: number }) {
+export function useSearchEvents(options: { query?: string; filter?: EventFilter; limit?: number }) {
   return useQuery({
     queryKey: eventKeys.search(options),
     queryFn: () => eventsService.searchEvents(options),

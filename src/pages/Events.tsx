@@ -9,6 +9,7 @@ import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchEvents } from "@/hooks/useEventsQuery";
+import type { EventFilter } from "@/features/events";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
@@ -40,26 +41,25 @@ function mapOrganisers(rows: any[]): SearchResult[] {
   }));
 }
 
-const categories = [
+const filters = [
   { value: "", label: "All" },
-  { value: "party", label: "🎉 Party" },
-  { value: "birthday", label: "🎂 Birthday" },
-  { value: "dinner", label: "🍽️ Dinner" },
-  { value: "wedding", label: "💒 Wedding" },
-  { value: "social", label: "🍸 Social" },
+  { value: "tonight", label: "🌙 Tonight" },
+  { value: "thisWeek", label: "📅 This Week" },
+  { value: "thisMonth", label: "🗓️ This Month" },
+  { value: "free", label: "🎟️ Free" },
 ];
 
 const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedFilter, setSelectedFilter] = useState<EventFilter | "">("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
 
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
-    category: selectedCategory || undefined,
+    filter: selectedFilter || undefined,
     limit: 30,
   });
 
@@ -164,17 +164,17 @@ const Events = () => {
           {activeTab === "events" && (
             <>
               <div className="flex gap-2 overflow-x-auto py-3 -mx-4 px-4 no-scrollbar">
-                {categories.map(cat => (
+                {filters.map(f => (
                   <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategory(cat.value)}
+                    key={f.value}
+                    onClick={() => setSelectedFilter(f.value as EventFilter | "")}
                     className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                      selectedCategory === cat.value
+                      selectedFilter === f.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-foreground hover:bg-secondary/80"
                     }`}
                   >
-                    {cat.label}
+                    {f.label}
                   </button>
                 ))}
               </div>
@@ -244,17 +244,17 @@ const Events = () => {
 
             <TabsContent value="events">
               <div className="flex gap-2 flex-wrap mb-6">
-                {categories.map(cat => (
+                {filters.map(f => (
                   <button
-                    key={cat.value}
-                    onClick={() => setSelectedCategory(cat.value)}
+                    key={f.value}
+                    onClick={() => setSelectedFilter(f.value as EventFilter | "")}
                     className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      selectedCategory === cat.value
+                      selectedFilter === f.value
                         ? "bg-primary text-primary-foreground"
                         : "bg-secondary text-foreground hover:bg-secondary/80"
                     }`}
                   >
-                    {cat.label}
+                    {f.label}
                   </button>
                 ))}
               </div>
