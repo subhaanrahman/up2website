@@ -40,6 +40,7 @@ import ManageEvent from "./pages/ManageEvent";
 import EventCheckIn from "./pages/EventCheckIn";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import EmailVerification from "./pages/EmailVerification";
 
 const queryClient = new QueryClient();
 
