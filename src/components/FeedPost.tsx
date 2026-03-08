@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface FeedPostProps {
   postId: string;
   authorId: string;
+  organiserProfileId?: string | null;
   displayName: string;
   username: string;
   avatarUrl: string | null;
@@ -27,7 +28,8 @@ interface FeedPostProps {
   collaborators?: { display_name: string; avatar_url: string | null }[];
 }
 
-const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+  const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
   const { likeCount = 0, repostCount = 0, isLiked, isReposted, toggleLike, toggleRepost } = usePostInteractions(postId);
@@ -41,7 +43,7 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
         </div>
       )}
       <div className="flex gap-3">
-        <Link to={`/user/${authorId}`}>
+        <Link to={profileLink}>
           <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={avatarUrl || ""} />
             <AvatarFallback className="bg-card text-foreground font-bold text-sm">
@@ -52,7 +54,7 @@ const FeedPost = ({ postId, authorId, displayName, username, avatarUrl, content,
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 min-w-0 overflow-hidden">
-              <Link to={`/user/${authorId}`} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
+              <Link to={profileLink} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
                 {firstName}
               </Link>
               <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />

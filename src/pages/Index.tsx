@@ -104,6 +104,7 @@ const Index = () => {
             key={post.reposted_by_name ? `repost-${post.id}-${idx}` : post.id}
             postId={post.id}
             authorId={post.author_id}
+            organiserProfileId={post.organiser_profile_id}
             displayName={post.author_display_name || "User"}
             username={post.author_username || "user"}
             avatarUrl={post.author_avatar_url}
