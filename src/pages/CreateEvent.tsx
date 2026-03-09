@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Ticket, ClipboardList, Bell } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { X, Ticket, ClipboardList, Bell, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -34,6 +36,7 @@ const CreateEvent = () => {
 
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [publishAt, setPublishAt] = useState("");
 
   // Details state
   const [title, setTitle] = useState("");
@@ -147,9 +150,13 @@ const CreateEvent = () => {
         category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
         organiserProfileId: orgProfileId,
+        publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
       });
 
-      toast({ title: "Event created!", description: "Your event has been created successfully." });
+      toast({
+        title: publishAt ? "Event scheduled!" : "Event created!",
+        description: publishAt ? "Your event will publish at the scheduled time." : "Your event has been created successfully.",
+      });
       navigate(`/events/${(data as any).id}`);
     } catch {
       toast({ title: "Error", description: "Failed to create event. Please try again.", variant: "destructive" });
@@ -232,9 +239,27 @@ const CreateEvent = () => {
             <NotificationsPanel reminders={reminders} setReminders={setReminders} />
           )}
 
-          {/* Create button only on details tab */}
+          {/* Create + Schedule buttons on details tab */}
           {activeTab === "details" && (
-            <div className="pt-6">
+            <div className="pt-6 space-y-3">
+              {/* Schedule option */}
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" /> Schedule Publishing (optional)
+                </Label>
+                <Input
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                  className="h-12 bg-card border-border"
+                  placeholder="Leave empty to publish immediately"
+                />
+                {publishAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Event will auto-publish at the selected time
+                  </p>
+                )}
+              </div>
               <Button
                 type="button"
                 size="lg"
@@ -242,7 +267,7 @@ const CreateEvent = () => {
                 disabled={createEventMutation.isPending}
                 onClick={handleSubmit}
               >
-                {createEventMutation.isPending ? "Creating..." : "Create Event"}
+                {createEventMutation.isPending ? "Creating..." : publishAt ? "Schedule Event" : "Create Event"}
               </Button>
             </div>
           )}

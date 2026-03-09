@@ -27,6 +27,7 @@ export interface CreateEventInput {
   isPublic?: boolean;
   coverImage?: string;
   organiserProfileId?: string;
+  publishAt?: string;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {

@@ -340,6 +340,7 @@ export type Database = {
           location: string | null
           max_guests: number | null
           organiser_profile_id: string | null
+          publish_at: string | null
           show_tickets_remaining: boolean | null
           sold_out_message: string | null
           status: string
@@ -366,6 +367,7 @@ export type Database = {
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          publish_at?: string | null
           show_tickets_remaining?: boolean | null
           sold_out_message?: string | null
           status?: string
@@ -392,6 +394,7 @@ export type Database = {
           location?: string | null
           max_guests?: number | null
           organiser_profile_id?: string | null
+          publish_at?: string | null
           show_tickets_remaining?: boolean | null
           sold_out_message?: string | null
           status?: string

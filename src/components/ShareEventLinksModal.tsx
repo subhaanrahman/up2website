@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Link, UserPlus } from "lucide-react";
+import { Copy, Check, Link, UserPlus, Code } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,8 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
 
   const eventUrl = `${window.location.origin}/events/${eventId}`;
   const rsvpUrl = `${eventUrl}?action=rsvp`;
+  const embedUrl = `${window.location.origin}/embed/${eventId}`;
+  const embedCode = `<iframe src="${embedUrl}" width="400" height="520" frameborder="0" style="border-radius:16px;overflow:hidden;"></iframe>`;
 
   const copyToClipboard = async (url: string, label: string) => {
     await navigator.clipboard.writeText(url);
@@ -72,6 +74,24 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
               </div>
             </span>
             {copiedLink === rsvpUrl ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-between h-auto py-3 px-4"
+            onClick={() => copyToClipboard(embedCode, "Embed code")}
+          >
+            <span className="flex items-center gap-2 text-left">
+              <Code className="h-4 w-4 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground text-sm">Embed Widget</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">Copy iframe code for your website</p>
+              </div>
+            </span>
+            {copiedLink === embedCode ? (
               <Check className="h-4 w-4 text-green-500" />
             ) : (
               <Copy className="h-4 w-4 text-muted-foreground" />

@@ -14,6 +14,7 @@ import StatCard from "@/components/organiser-dashboard/StatCard";
 import EventRow from "@/components/organiser-dashboard/EventRow";
 import FollowersPromotionTab from "@/components/organiser-dashboard/FollowersPromotionTab";
 import ActivityTab from "@/components/organiser-dashboard/ActivityTab";
+import RevenueChart from "@/components/organiser-dashboard/RevenueChart";
 import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 
 const OrganiserDashboard = () => {
@@ -200,6 +201,13 @@ const OrganiserDashboard = () => {
           subtitle="Orders ÷ Views"
         />
       </div>
+
+      {/* Revenue Chart */}
+      {activeProfile?.id && (
+        <div className="px-4 mb-6">
+          <RevenueChart organiserProfileId={activeProfile.id} />
+        </div>
+      )}
 
       {/* Main Tabs: Events / Followers / Activity */}
       <div className="px-4">

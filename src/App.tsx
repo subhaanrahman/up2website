@@ -44,6 +44,7 @@ import EmailVerification from "./pages/EmailVerification";
 import EventAnalytics from "./pages/EventAnalytics";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import PaymentMethods from "./pages/PaymentMethods";
+import EventEmbed from "./pages/EventEmbed";
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/events/:id" element={<EventDetail />} />
+              <Route path="/embed/:id" element={<EventEmbed />} />
               <Route path="/events/:id/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
               <Route path="/events/:id/guests" element={<EventGuests />} />
               <Route path="/events/:id/manage" element={<ProtectedRoute><ManageEvent /></ProtectedRoute>} />
