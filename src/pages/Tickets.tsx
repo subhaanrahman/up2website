@@ -28,11 +28,16 @@ interface TicketEvent {
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
+  const [ticketDetailOpen, setTicketDetailOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [transferLoading, setTransferLoading] = useState(false);
   const { user } = useAuth();
   const { isOrganiser } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const dividerRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch RSVPs + orders in parallel
   const { data: ticketEvents, isLoading } = useQuery({
