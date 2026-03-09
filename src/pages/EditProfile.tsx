@@ -280,16 +280,6 @@ const EditProfile = () => {
           </Popover>
         </div>
 
-        {/* Public/Private Toggle */}
-        <div className="flex items-center justify-between py-2">
-          <div className="space-y-0.5">
-            <Label>Public Profile</Label>
-            <p className="text-xs text-muted-foreground">
-              When enabled, anyone can follow you without approval
-            </p>
-          </div>
-          <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-        </div>
       </main>
     </div>
   );

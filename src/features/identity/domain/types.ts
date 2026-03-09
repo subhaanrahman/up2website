@@ -14,6 +14,7 @@ export interface UserProfile {
   pageClassification: string | null;
   instagramHandle: string | null;
   isVerified: boolean;
+  profileTier: 'personal' | 'professional';
   createdAt: string;
   updatedAt: string;
 }

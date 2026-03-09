@@ -7,7 +7,6 @@ import BottomNav from "@/components/BottomNav";
 import { usePrivacySettings } from "@/hooks/usePrivacySettings";
 
 const settingsConfig = [
-  { id: "go_public", label: "Go Public", description: "Make your profile visible to everyone" },
   { id: "share_saved_events", label: "Share Saved Events", description: "Let others see events you've saved" },
   { id: "share_going_events", label: "Share Going Events", description: "Let others see events you're attending" },
 ] as const;
@@ -35,7 +34,7 @@ const PrivacySettings = () => {
 
         <div className="space-y-4">
           {loading ? (
-            Array.from({ length: 3 }).map((_, i) => (
+            Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="flex items-center justify-between p-4 bg-card rounded-xl">
                 <div className="flex-1 mr-4">
                   <Skeleton className="h-5 w-32 mb-2" />

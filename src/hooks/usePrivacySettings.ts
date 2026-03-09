@@ -5,13 +5,11 @@ import { supabase } from "@/infrastructure/supabase";
 import { settingsApi } from "@/api";
 
 interface PrivacySettings {
-  go_public: boolean;
   share_saved_events: boolean;
   share_going_events: boolean;
 }
 
 const defaultSettings: PrivacySettings = {
-  go_public: true,
   share_saved_events: false,
   share_going_events: true,
 };
@@ -41,9 +39,8 @@ export const usePrivacySettings = () => {
 
       if (data) {
         setSettings({
-          go_public: data.go_public,
-          share_saved_events: data.share_saved_events,
-          share_going_events: data.share_going_events,
+          share_saved_events: data.share_saved_events ?? false,
+          share_going_events: data.share_going_events ?? true,
         });
       }
       setLoading(false);
@@ -65,9 +62,8 @@ export const usePrivacySettings = () => {
           if (payload.new && typeof payload.new === "object") {
             const newData = payload.new as PrivacySettings & { user_id: string };
             setSettings({
-              go_public: newData.go_public,
-              share_saved_events: newData.share_saved_events,
-              share_going_events: newData.share_going_events,
+              share_saved_events: newData.share_saved_events ?? false,
+              share_going_events: newData.share_going_events ?? true,
             });
           }
         }
