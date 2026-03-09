@@ -21,6 +21,7 @@ import {
   Clock,
   Users,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
