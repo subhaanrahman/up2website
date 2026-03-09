@@ -53,26 +53,12 @@ const EditProfile = () => {
     instagram_handle: "",
   });
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
-
-  // Load privacy settings
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("privacy_settings")
-      .select("go_public")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setIsPublic(data?.go_public ?? true);
-      });
-  }, [user]);
 
   useEffect(() => {
     if (profile) {
