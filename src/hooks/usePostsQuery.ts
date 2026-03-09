@@ -283,7 +283,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
   const repostAuthorIds = [...new Set(repostedPosts.map((p) => p.author_id))];
   const { data: repostAuthorProfiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", repostAuthorIds);
   const repostAuthorMap = new Map((repostAuthorProfiles || []).map((p) => [p.user_id, p]));
 
