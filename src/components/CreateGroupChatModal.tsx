@@ -95,7 +95,7 @@ const CreateGroupChatModal = ({ open, onOpenChange }: CreateGroupChatModalProps)
   });
 
   const handleCreate = async () => {
-    if (!user || !name.trim()) return;
+    if (!user || !name.trim() || selectedIds.size < 2) return;
     setCreating(true);
     try {
       const totalMembers = 1 + selectedIds.size;
