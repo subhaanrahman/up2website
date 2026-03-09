@@ -280,31 +280,7 @@ const Events = () => {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2 flex-wrap mb-6">
-                <button
-                  onClick={() => setSelectedCategory("")}
-                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                    !selectedCategory
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {EVENT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
-                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {categoryLabels[cat] || cat}
-                  </button>
-                ))}
-              </div>
+
 
               {showForYou && <p className="text-sm font-semibold text-muted-foreground mb-3">For You</p>}
 
