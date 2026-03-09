@@ -36,15 +36,20 @@ const useGroupChats = () => {
 
       if (error) throw error;
 
-      // Fetch latest message per chat
+      // Fetch latest message + member avatars per chat
       const enriched = await Promise.all(
         (chats ?? []).map(async (chat) => {
-          const { data: msgs } = await supabase
-            .from("group_chat_messages")
-            .select("sender_name, content, created_at")
-            .eq("group_chat_id", chat.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
+          const [{ data: msgs }, { data: memberProfiles }] = await Promise.all([
+            supabase
+              .from("group_chat_messages")
+              .select("sender_name, content, created_at")
+              .eq("group_chat_id", chat.id)
+              .order("created_at", { ascending: false })
+              .limit(1),
+            supabase.rpc("get_group_chat_member_profiles", {
+              p_group_chat_id: chat.id,
+            }),
+          ]);
 
           const lastMsg = msgs?.[0];
           const timeDiff = lastMsg
@@ -59,7 +64,8 @@ const useGroupChats = () => {
               ? `${lastMsg.sender_name}: ${lastMsg.content}`
               : undefined,
             last_message_time: timeDiff,
-            unread: 0, // placeholder
+            unread: 0,
+            memberPreviews: ((memberProfiles as MemberPreview[]) || []).slice(0, 4),
           };
         })
       );
