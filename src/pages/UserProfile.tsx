@@ -145,9 +145,10 @@ const UserProfile = () => {
         return;
       }
 
-      // Check if target is public
-      const { data: pubData } = await supabase.rpc("is_profile_public", { p_user_id: userId });
-      setTargetIsPublic(pubData ?? true);
+      // Determine if target is public based on profile_tier
+      const targetProfile = profile;
+      // profile is already fetched above — check profile_tier
+      setTargetIsPublic(profileData?.profile_tier === 'professional');
 
       // Check connections
       const { data: connData } = await supabase
