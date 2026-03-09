@@ -78,6 +78,10 @@ Deno.serve(async (req) => {
       validatedOrgId = organiser_profile_id;
     }
 
+    // Determine status: if publish_at is set in the future, mark as scheduled
+    const isScheduled = publish_at && new Date(publish_at) > new Date();
+    const eventStatus = isScheduled ? 'scheduled' : 'published';
+
     const { data, error } = await supabase
       .from('events')
       .insert({
@@ -89,8 +93,10 @@ Deno.serve(async (req) => {
         end_date: end_date || null,
         category: category || 'party',
         max_guests: max_guests ? Math.min(Math.max(1, max_guests), 100000) : null,
-        is_public: is_public !== false,
+        is_public: isScheduled ? false : (is_public !== false),
         organiser_profile_id: validatedOrgId,
+        status: eventStatus,
+        publish_at: isScheduled ? publish_at : null,
       })
       .select()
       .single();

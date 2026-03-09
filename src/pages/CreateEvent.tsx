@@ -150,9 +150,13 @@ const CreateEvent = () => {
         category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
         organiserProfileId: orgProfileId,
+        publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
       });
 
-      toast({ title: "Event created!", description: "Your event has been created successfully." });
+      toast({
+        title: publishAt ? "Event scheduled!" : "Event created!",
+        description: publishAt ? "Your event will publish at the scheduled time." : "Your event has been created successfully.",
+      });
       navigate(`/events/${(data as any).id}`);
     } catch {
       toast({ title: "Error", description: "Failed to create event. Please try again.", variant: "destructive" });
