@@ -196,7 +196,9 @@ Deno.serve(async (req) => {
     }
 
     // Calculate platform fee (10%)
-    const platform_fee_cents = Math.round(amount_cents * 0.1);
+    // NOTE: platform_fee_cents = service fee passed as application_fee_amount to Stripe
+    // amount_cents on the order = total customer charge (ticket + service fee)
+    const platform_fee_cents = service_fee_cents;
 
     // Create reservation (15-minute hold)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
@@ -208,7 +210,7 @@ Deno.serve(async (req) => {
         event_id,
         ticket_tier_id: resolved_tier_id,
         quantity,
-        amount_cents,
+        amount_cents: total_amount_cents,
         platform_fee_cents,
         currency,
         status: 'reserved',
