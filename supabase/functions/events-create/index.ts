@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
-    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id } = body;
+    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id, publish_at } = body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return new Response(JSON.stringify({ error: 'title is required' }), {
