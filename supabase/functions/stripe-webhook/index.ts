@@ -149,13 +149,80 @@ Deno.serve(async (req) => {
         const orderId = pi.metadata?.order_id;
         if (!orderId) break;
 
+        // Don't permanently fail — customer may retry. Just log it.
+        // The reservation will expire naturally after 15 min if not retried.
+        console.log(`Payment failed for order ${orderId} — reservation still active until expiry`);
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        const pi = charge.payment_intent as string;
+        if (!pi) break;
+
+        // Find order by payment intent
+        const { data: refundOrder } = await serviceClient
+          .from('orders')
+          .select('id, event_id, user_id')
+          .eq('stripe_payment_intent_id', pi)
+          .single();
+
+        if (!refundOrder) {
+          console.error('No order found for refunded charge PI:', pi);
+          break;
+        }
+
+        // Update order status
         await serviceClient
           .from('orders')
-          .update({ status: 'failed' })
-          .eq('id', orderId)
-          .eq('status', 'reserved'); // Only fail if still reserved
+          .update({ status: 'refunded', cancelled_at: new Date().toISOString() })
+          .eq('id', refundOrder.id);
 
-        console.log(`Order ${orderId} marked as failed`);
+        // Invalidate all tickets for this order
+        await serviceClient
+          .from('tickets')
+          .update({ status: 'cancelled' })
+          .eq('order_id', refundOrder.id);
+
+        // Record in refunds table
+        await serviceClient
+          .from('refunds')
+          .insert({
+            order_id: refundOrder.id,
+            stripe_refund_id: charge.id,
+            amount_cents: (charge.amount_refunded || 0),
+            reason: 'charge.refunded webhook',
+            status: 'succeeded',
+            initiated_by: null,
+          });
+
+        console.log(`Order ${refundOrder.id} refunded, tickets cancelled`);
+        break;
+      }
+
+      case 'account.updated': {
+        const account = event.data.object as Stripe.Account;
+        const stripeAccountId = account.id;
+
+        // Update organiser_stripe_accounts with latest capability status
+        const chargesEnabled = account.charges_enabled ?? false;
+        const payoutsEnabled = account.payouts_enabled ?? false;
+        const detailsSubmitted = account.details_submitted ?? false;
+
+        const { error: updateErr } = await serviceClient
+          .from('organiser_stripe_accounts')
+          .update({
+            charges_enabled: chargesEnabled,
+            payouts_enabled: payoutsEnabled,
+            onboarding_complete: detailsSubmitted,
+          })
+          .eq('stripe_account_id', stripeAccountId);
+
+        if (updateErr) {
+          console.error('Failed to update organiser stripe account:', updateErr);
+        } else {
+          console.log(`Updated stripe account ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}`);
+        }
         break;
       }
 
