@@ -77,11 +77,8 @@ const CreateEvent = () => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to create an event" });
       navigate("/auth");
-    } else if (!hasOrganiserProfile) {
-      toast({ title: "Organiser account required", description: "Create an organiser profile first to create events.", variant: "destructive" });
-      navigate("/profile");
     }
-  }, [user, loading, profileLoading, hasOrganiserProfile, navigate, toast]);
+  }, [user, loading, profileLoading, navigate, toast]);
 
   const hasData = title || date || location || description;
 
@@ -101,7 +98,7 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date || new Date().toISOString().split("T")[0]}T${time}:00` : `${date || new Date().toISOString().split("T")[0]}T00:00:00`;
 
-    const orgProfileId = organiserProfiles[0]?.id;
+    const orgProfileId = organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
 
     try {
       await createEventMutation.mutateAsync({
@@ -136,10 +133,10 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
-    // Use the active organiser profile, or fall back to first available
+    // Use the active organiser profile if available (business accounts only)
     const orgProfileId = activeProfile?.type === "organiser"
       ? activeProfile.id
-      : organiserProfiles[0]?.id;
+      : organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
 
     try {
       const data = await createEventMutation.mutateAsync({
@@ -172,7 +169,8 @@ const CreateEvent = () => {
   }
 
   const tabs: { key: BottomTab; label: string; icon: React.ReactNode }[] = [
-    { key: "ticketing", label: "Ticketing", icon: <Ticket className="h-5 w-5" /> },
+    // Only business (organiser) accounts can access ticketing
+    ...(hasOrganiserProfile ? [{ key: "ticketing" as BottomTab, label: "Ticketing", icon: <Ticket className="h-5 w-5" /> }] : []),
     { key: "guestlist", label: "Guestlist", icon: <ClipboardList className="h-5 w-5" /> },
     { key: "notifications", label: "Notifications", icon: <Bell className="h-5 w-5" /> },
   ];
