@@ -149,6 +149,15 @@ const MessageThread = () => {
           <Send className="h-4 w-4" />
         </Button>
       </div>
+      {chat && (
+        <GroupChatSettingsSheet
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          chatId={chat.id}
+          chatName={chat.name}
+          memberCount={chat.member_count}
+        />
+      )}
     </div>
   );
 };
