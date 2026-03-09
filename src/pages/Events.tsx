@@ -58,7 +58,6 @@ const Events = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
   const [selectedFilter, setSelectedFilter] = useState<EventFilter | "">("");
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | "">("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
