@@ -150,27 +150,27 @@ const UserProfile = () => {
       setTargetIsPublic(pubData ?? true);
 
       // Check connections
-      const { data } = await supabase
+      const { data: connData } = await supabase
         .from("connections")
-        .select("*, muted" as any)
+        .select("*")
         .or(
           `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
         )
         .maybeSingle();
 
-      if (!data) {
+      if (!connData) {
         setConnectionStatus("none");
         setConnectionId(null);
-      } else if (data.status === "accepted") {
+      } else if (connData.status === "accepted") {
         setConnectionStatus("accepted");
-        setConnectionId(data.id);
-        setConnectionMuted((data as any).muted ?? false);
-      } else if (data.requester_id === user.id) {
+        setConnectionId(connData.id);
+        setConnectionMuted((connData as any).muted ?? false);
+      } else if (connData.requester_id === user.id) {
         setConnectionStatus("pending_sent");
-        setConnectionId(data.id);
+        setConnectionId(connData.id);
       } else {
         setConnectionStatus("pending_received");
-        setConnectionId(data.id);
+        setConnectionId(connData.id);
       }
     };
 
