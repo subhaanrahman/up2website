@@ -251,10 +251,10 @@ const Tickets = () => {
                     eventId={t.eventId}
                     title={t.title}
                     eventDate={t.eventDate}
-                    isPast={false}
-                    ticketStatus={t.ticketStatus}
-                    onQrClick={() => setQrOpen(true)}
-                  />
+                     isPast={false}
+                     ticketStatus={t.ticketStatus}
+                     onQrClick={() => handleQrClick(t.eventId)}
+                   />
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
