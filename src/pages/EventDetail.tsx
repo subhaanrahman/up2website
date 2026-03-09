@@ -493,6 +493,33 @@ const EventDetail = () => {
           </Link>
         )}
 
+        {/* P-06: Friends going highlight */}
+        {friendsGoing.length > 0 && (
+          <div className="flex items-center gap-2 py-1">
+            <div className="flex -space-x-2">
+              {friendsGoing.slice(0, 4).map((f) => (
+                <Avatar key={f.userId} className="h-7 w-7 border-2 border-background">
+                  <AvatarImage src={f.avatarUrl || undefined} />
+                  <AvatarFallback className="text-xs">{(f.displayName || "?")[0]}</AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {friendsGoing.length === 1
+                ? `${friendsGoing[0].displayName || 'A friend'} is going`
+                : `${friendsGoing.length} friends going`}
+            </span>
+          </div>
+        )}
+
+        {/* P-05: Add to Calendar */}
+        {dbEvent && !isPastEvent && (
+          <Button variant="secondary" className="w-full" onClick={handleAddToCalendar}>
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            Add to Calendar
+          </Button>
+        )}
+
         {/* Venue / Map */}
         <div className="bg-card rounded-xl p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
