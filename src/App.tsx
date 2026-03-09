@@ -41,6 +41,7 @@ import EventCheckIn from "./pages/EventCheckIn";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EmailVerification from "./pages/EmailVerification";
+import EventAnalytics from "./pages/EventAnalytics";
 
 const queryClient = new QueryClient();
 
