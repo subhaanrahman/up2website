@@ -320,6 +320,14 @@ const Tickets = () => {
         profileUrl={profileUrl}
       />
 
+      <TicketDetailModal
+        open={ticketDetailOpen}
+        onOpenChange={setTicketDetailOpen}
+        ticket={selectedTicket}
+        onTransfer={handleTransfer}
+        transferLoading={transferLoading}
+      />
+
       <BottomNav />
     </div>
   );
