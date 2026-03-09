@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, Search, ScanLine, ShoppingCart, Check, UserCheck } from "lucide-react";
+import { ArrowLeft, Search, ScanLine, Check, UserCheck, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import { callEdgeFunction } from "@/infrastructure/api-client";
@@ -20,6 +20,14 @@ interface Attendee {
   checked_in: boolean;
 }
 
+/** Extract a user_id (UUID) from a profile URL or raw UUID string */
+function extractUserId(input: string): string | null {
+  const trimmed = input.trim();
+  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const match = trimmed.match(uuidRegex);
+  return match ? match[0] : null;
+}
+
 const EventCheckIn = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -27,6 +35,8 @@ const EventCheckIn = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [scanMode, setScanMode] = useState(false);
+  const [scanInput, setScanInput] = useState("");
 
   // Fetch event
   const { data: event } = useQuery({
@@ -68,27 +78,12 @@ const EventCheckIn = () => {
     enabled: !!id,
   });
 
-  // Fetch ticket tiers for labeling
-  const { data: tiers } = useQuery({
-    queryKey: ["checkin-tiers", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ticket_tiers")
-        .select("id, name")
-        .eq("event_id", id!);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
   const checkedInSet = checkIns || new Set<string>();
 
   // Build unified attendee list
   const attendees: Attendee[] = [];
   const seenUserIds = new Set<string>();
 
-  // Add order holders as "ticket" attendees
   manageData?.orders?.forEach((order: any) => {
     if (order.user_id && !seenUserIds.has(order.user_id)) {
       seenUserIds.add(order.user_id);
@@ -103,7 +98,6 @@ const EventCheckIn = () => {
     }
   });
 
-  // Add RSVPs
   manageData?.rsvps?.forEach((rsvp: any) => {
     if (rsvp.user_id && !seenUserIds.has(rsvp.user_id)) {
       seenUserIds.add(rsvp.user_id);
@@ -146,6 +140,32 @@ const EventCheckIn = () => {
     },
   });
 
+  // QR / manual lookup check-in
+  const scanMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return callEdgeFunction("checkin-toggle", {
+        body: { event_id: id, user_id: userId, action: "check_in", method: "qr" },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["check-ins", id] });
+      setScanInput("");
+      toast({ title: "Checked In!", description: "User has been checked in successfully." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Check-in Failed", description: err.message || "Could not check in user", variant: "destructive" });
+    },
+  });
+
+  const handleScanSubmit = () => {
+    const userId = extractUserId(scanInput);
+    if (!userId) {
+      toast({ title: "Invalid Input", description: "Please enter a valid profile URL or user ID", variant: "destructive" });
+      return;
+    }
+    scanMutation.mutate(userId);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
@@ -177,16 +197,35 @@ const EventCheckIn = () => {
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="px-4 pb-3 flex gap-2">
-        <Button variant="outline" className="flex-1 h-10" disabled>
-          <ScanLine className="h-4 w-4 mr-2" />
-          QR Scan Mode
+      {/* Scan Mode Toggle */}
+      <div className="px-4 pb-3">
+        <Button
+          variant={scanMode ? "default" : "outline"}
+          className="w-full h-10"
+          onClick={() => setScanMode(!scanMode)}
+        >
+          {scanMode ? <X className="h-4 w-4 mr-2" /> : <ScanLine className="h-4 w-4 mr-2" />}
+          {scanMode ? "Close Lookup" : "QR / User Lookup"}
         </Button>
-        <Button variant="outline" className="flex-1 h-10" disabled>
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Buy @ Door
-        </Button>
+
+        {scanMode && (
+          <div className="mt-3 flex gap-2">
+            <Input
+              placeholder="Paste profile URL or user ID..."
+              value={scanInput}
+              onChange={(e) => setScanInput(e.target.value)}
+              className="bg-secondary border-0 h-10 flex-1"
+              onKeyDown={(e) => e.key === "Enter" && handleScanSubmit()}
+            />
+            <Button
+              className="h-10 px-4"
+              onClick={handleScanSubmit}
+              disabled={!scanInput.trim() || scanMutation.isPending}
+            >
+              {scanMutation.isPending ? "..." : "Check In"}
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="px-4 flex items-center justify-between mb-2">
