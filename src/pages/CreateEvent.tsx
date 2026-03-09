@@ -133,10 +133,10 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
-    // Use the active organiser profile, or fall back to first available
+    // Use the active organiser profile if available (business accounts only)
     const orgProfileId = activeProfile?.type === "organiser"
       ? activeProfile.id
-      : organiserProfiles[0]?.id;
+      : organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
 
     try {
       const data = await createEventMutation.mutateAsync({
