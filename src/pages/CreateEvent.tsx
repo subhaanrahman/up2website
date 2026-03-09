@@ -230,6 +230,7 @@ const CreateEvent = () => {
               ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
+              payoutsReady={payoutsReady}
             />
           )}
           {activeTab === "guestlist" && (
