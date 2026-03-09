@@ -42,6 +42,8 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EmailVerification from "./pages/EmailVerification";
 import EventAnalytics from "./pages/EventAnalytics";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import PaymentMethods from "./pages/PaymentMethods";
 
 const queryClient = new QueryClient();
 
