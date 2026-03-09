@@ -29,6 +29,7 @@ export interface PostWithAuthor {
   author_display_name: string | null;
   author_username: string | null;
   author_avatar_url: string | null;
+  author_is_verified: boolean;
   reposted_by_name?: string;
   event_data?: PostEventData | null;
   collaborators?: PostCollaborator[];
