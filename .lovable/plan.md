@@ -1,36 +1,38 @@
+## Plan: Feature Gaps & Stubbed Flows — All Batches
 
+### ✅ Batch 1 — COMPLETED
+- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
+- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
+- **F-03**: Change Password → `supabase.auth.updateUser()` 
+- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
+- **F-05**: Contact Us form → inserts into `contact_messages` table
+- **F-06**: Connect Music → persisted to `user_music_connections` table
+- **F-07**: Save/Interested → persisted to `saved_events` table
+- **F-08**: Map Preview → Google Maps embed iframe
+- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
+- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-## Plan: Like counters, filled heart, and repost-to-feed functionality
+### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
+- P-05: Add to Calendar (.ics download)
+- P-06: "Who's going" friend highlights
+- P-07: RSVP with +1 guest count
+- P-10: Waitlist when full
+- P-19: "Going" friends on event cards
 
-### 1. Update FeedPost component
-- Add `postId` prop and optional `repostedBy` prop (string, the display name of the reposter)
-- Wire up `usePostInteractions(postId)` hook to get `likeCount`, `repostCount`, `isLiked`, `isReposted`, `toggleLike`, `toggleRepost`
-- Show like count next to the heart icon; show repost count next to the repost icon
-- When `isLiked` is true, render the Heart with `fill="currentColor"` and color it red/primary
-- When `isReposted` is true, color the repost icon green (Twitter-style)
-- When `repostedBy` is provided, show a small header above the post: "🔁 {name} reposted" in muted text with a Repeat2 icon
+### Batch 3 — Ticketing & Orders
+- P-11: Order confirmation / success page
+- P-12: View purchased tickets with QR codes
+- P-14: Transfer tickets
+- P-15: Discount code validation
+- P-28: Linked payment methods
 
-### 2. Update feed query to include reposts
-- Modify `useFeedPosts` to also fetch `post_reposts` for the current user, join with the original post data, and merge them into the feed sorted by time
-- Reposted items appear in the feed with the `repostedBy` label showing the current user's display name
-- Deduplicate: if a post already appears as an original, the repost still shows separately (Twitter behavior)
+### Batch 4 — Organiser Tools
+- P-21: Revenue / sales dashboard tab
+- P-23: Scheduled event publishing
+- P-24: Attendee blast notifications
+- P-25: Embed event widget
 
-### 3. Pass `postId` from Index.tsx
-- Add `id={post.id}` as `postId` prop to `<FeedPost>` in the feed rendering loop
-
-### Technical details
-
-**FeedPost.tsx changes:**
-- New props: `postId: string`, `repostedBy?: string`
-- Import and call `usePostInteractions(postId)`
-- Render repostedBy banner above the post content
-- Like button: `className` toggles red color + `fill="currentColor"` when liked
-- Display `likeCount` and `repostCount` as small text next to icons (only when > 0)
-
-**usePostsQuery.ts changes:**
-- In `fetchPosts()`, after fetching posts, also fetch `post_reposts` joined with posts to get reposted content
-- Return merged + sorted array with a `reposted_by_name` field on reposted entries
-
-**Index.tsx changes:**
-- Pass `postId={post.id}` and `repostedBy={post.reposted_by_name}` to each `<FeedPost>`
-
+### Batch 5 — Discovery & Social
+- P-02: Location-based event discovery
+- P-03: Event recommendations / "For You"
+- P-18: Share event as post to feed
