@@ -1,6 +1,12 @@
 import { Link } from "react-router-dom";
 import { Calendar, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface FriendGoingSummary {
+  avatarUrl: string | null;
+  displayName: string | null;
+}
 
 interface EventCardProps {
   id: string;
@@ -11,9 +17,10 @@ interface EventCardProps {
   image: string;
   attendees: number;
   category: string;
+  friendsGoing?: FriendGoingSummary[];
 }
 
-const EventCard = ({ id, title, date, time, location, image, attendees, category }: EventCardProps) => {
+const EventCard = ({ id, title, date, time, location, image, attendees, category, friendsGoing }: EventCardProps) => {
   return (
     <Link to={`/events/${id}`} className="group block">
       <div className="bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -47,6 +54,25 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
               <span>{attendees} attending</span>
             </div>
           </div>
+
+          {/* P-19: Friends going */}
+          {friendsGoing && friendsGoing.length > 0 && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
+              <div className="flex -space-x-2">
+                {friendsGoing.slice(0, 3).map((f, i) => (
+                  <Avatar key={i} className="h-6 w-6 border-2 border-card">
+                    <AvatarImage src={f.avatarUrl || undefined} />
+                    <AvatarFallback className="text-[10px]">{(f.displayName || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {friendsGoing.length === 1
+                  ? `${friendsGoing[0].displayName || 'A friend'} is going`
+                  : `${friendsGoing.length} friends going`}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </Link>
