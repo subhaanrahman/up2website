@@ -381,7 +381,8 @@ const UserProfile = () => {
       );
     }
 
-    // Personal profiles
+    // Personal profiles: always require friend request
+    // Professional profiles: auto-accept (public)
     switch (connectionStatus) {
       case "none":
         return (
@@ -391,7 +392,7 @@ const UserProfile = () => {
             disabled={connectionLoading}
           >
             <UserPlus className="h-4 w-4" />
-            + FRIEND
+            {targetIsPublic ? "FOLLOW" : "+ FRIEND"}
           </Button>
         );
       case "accepted":
