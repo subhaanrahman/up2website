@@ -74,6 +74,11 @@ const CreateEvent = () => {
   // Ticketing is only available when actively using a business (organiser) profile
   const hasOrganiserProfile = isOrganiser;
 
+  // Check if the active organiser has Stripe Connect set up for paid tickets
+  const activeOrgId = isOrganiser ? activeProfile?.id : undefined;
+  const { data: connectStatus } = useStripeConnectStatus(activeOrgId);
+  const payoutsReady = connectStatus?.charges_enabled ?? false;
+
   useEffect(() => {
     if (loading || profileLoading) return;
     if (!user) {
