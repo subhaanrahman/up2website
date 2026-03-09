@@ -1540,6 +1540,15 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      get_group_chat_member_profiles: {
+        Args: { p_group_chat_id: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          user_id: string
+          username: string
+        }[]
+      }
       get_mutual_friends: {
         Args: { p_user_a: string; p_user_b: string }
         Returns: {
