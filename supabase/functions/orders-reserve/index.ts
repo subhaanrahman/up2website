@@ -156,23 +156,33 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check overall event capacity
+    // Check overall event capacity — only count orders (not RSVPs)
+    // because confirmed orders auto-create RSVPs which would double-count
     if (event.max_guests) {
-      const [rsvpResult, reservedResult] = await Promise.all([
-        serviceClient
-          .from('rsvps')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_id', event_id)
-          .eq('status', 'going'),
-        serviceClient
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .eq('event_id', event_id)
-          .in('status', ['reserved', 'confirmed'])
-          .gt('expires_at', new Date().toISOString()),
-      ]);
+      const { data: orderRows } = await serviceClient
+        .from('orders')
+        .select('quantity')
+        .eq('event_id', event_id)
+        .in('status', ['reserved', 'confirmed'])
+        .gt('expires_at', new Date().toISOString());
 
-      const totalOccupied = (rsvpResult.count ?? 0) + (reservedResult.count ?? 0);
+      // Also count free RSVPs (those without a matching confirmed order)
+      const { count: freeRsvpCount } = await serviceClient
+        .from('rsvps')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', event_id)
+        .eq('status', 'going');
+
+      // Subtract confirmed orders from RSVP count to avoid double-counting
+      const { count: confirmedOrderCount } = await serviceClient
+        .from('orders')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', event_id)
+        .eq('status', 'confirmed');
+
+      const orderQty = (orderRows ?? []).reduce((sum: number, r: any) => sum + (r.quantity ?? 0), 0);
+      const pureRsvps = Math.max(0, (freeRsvpCount ?? 0) - (confirmedOrderCount ?? 0));
+      const totalOccupied = orderQty + pureRsvps;
       if (totalOccupied + quantity > event.max_guests) {
         return new Response(JSON.stringify({ error: 'Not enough capacity for this event' }), {
           status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
