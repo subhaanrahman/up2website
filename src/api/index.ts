@@ -63,9 +63,9 @@ export const eventsApi = {
 
 // --- RSVP API ---
 export const rsvpApi = {
-  join(eventId: string, status = 'going') {
+  join(eventId: string, status = 'going', guestCount = 1) {
     return callEdgeFunction<Record<string, unknown>>('rsvp', {
-      body: { action: 'join', event_id: eventId, status },
+      body: { action: 'join', event_id: eventId, status, guest_count: guestCount },
     });
   },
 
