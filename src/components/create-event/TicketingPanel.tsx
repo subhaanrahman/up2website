@@ -39,6 +39,7 @@ const TicketingPanel = ({
   ticketsAvailableFrom, setTicketsAvailableFrom,
   soldOutMessageEnabled, setSoldOutMessageEnabled,
   soldOutMessage, setSoldOutMessage,
+  payoutsReady = false,
 }: TicketingPanelProps) => {
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
