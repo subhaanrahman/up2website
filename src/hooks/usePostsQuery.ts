@@ -170,7 +170,7 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
   const repostAuthorIds = [...new Set(repostedPosts.map((p) => p.author_id))];
   const { data: repostAuthorProfiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", repostAuthorIds);
   const repostAuthorMap = new Map((repostAuthorProfiles || []).map((p) => [p.user_id, p]));
   const repostedPostMap = new Map(repostedPosts.map((p) => [p.id, p]));
@@ -193,6 +193,7 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
         author_display_name: author?.display_name || null,
         author_username: author?.username || null,
         author_avatar_url: author?.avatar_url || null,
+        author_is_verified: author?.is_verified ?? false,
         reposted_by_name: reposter?.display_name || reposter?.username || "Someone",
         event_data: null,
         collaborators: [],
