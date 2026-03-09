@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Minus, Plus, Info, Tag } from "lucide-react";
+import { Minus, Plus, Info, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface TicketTier {
-  id: string;
-  name: string;
-  price: number;
-  description?: string;
-}
+import type { TicketTier } from "@/hooks/useTicketTiers";
 
 interface PurchaseModalProps {
   open: boolean;
@@ -28,8 +22,11 @@ interface PurchaseModalProps {
   eventDate: string;
   eventLocation: string;
   ticketTiers: TicketTier[];
+  loading?: boolean;
   onCheckout: (tierId: string, quantity: number, discountCode?: string) => void;
 }
+
+const SERVICE_FEE_RATE = 0.1; // 10%
 
 const PurchaseModal = ({
   open,
@@ -38,6 +35,7 @@ const PurchaseModal = ({
   eventDate,
   eventLocation,
   ticketTiers,
+  loading,
   onCheckout,
 }: PurchaseModalProps) => {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
@@ -46,8 +44,9 @@ const PurchaseModal = ({
   const [discountCode, setDiscountCode] = useState("");
 
   const selectedTicket = ticketTiers.find(t => t.id === selectedTier);
-  const subtotal = selectedTicket ? selectedTicket.price * quantity : 0;
-  const fees = subtotal * 0.1; // 10% service fee
+  const unitPriceRands = selectedTicket ? selectedTicket.priceCents / 100 : 0;
+  const subtotal = unitPriceRands * quantity;
+  const fees = subtotal * SERVICE_FEE_RATE;
   const total = subtotal + fees;
 
   const handleCheckout = () => {
@@ -98,6 +97,9 @@ const PurchaseModal = ({
 
         {/* Ticket Tiers */}
         <div className="p-4 space-y-2 max-h-[200px] overflow-y-auto">
+          {ticketTiers.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">No ticket tiers available</p>
+          )}
           {ticketTiers.map((tier) => (
             <button
               key={tier.id}
@@ -111,12 +113,12 @@ const PurchaseModal = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-semibold text-foreground">{tier.name}</p>
-                  {tier.description && (
-                    <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  {tier.availableQuantity !== null && (
+                    <p className="text-xs text-muted-foreground">{tier.availableQuantity} remaining</p>
                   )}
                 </div>
                 <p className="font-bold text-foreground">
-                  ${tier.price.toFixed(2)}
+                  R{(tier.priceCents / 100).toFixed(2)}
                 </p>
               </div>
             </button>
@@ -154,22 +156,24 @@ const PurchaseModal = ({
 
           <Button
             className="w-full h-12 text-base font-semibold"
-            disabled={!selectedTier}
+            disabled={!selectedTier || loading}
             onClick={handleCheckout}
           >
-            CHECKOUT – ${total.toFixed(2)}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-4 w-4 ml-2 opacity-70" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <div className="text-sm">
-                  <p>Tickets: ${subtotal.toFixed(2)}</p>
-                  <p>Service Fee: ${fees.toFixed(2)}</p>
-                  <p className="font-semibold">Total: ${total.toFixed(2)}</p>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+            {loading ? "Reserving..." : `CHECKOUT – R${total.toFixed(2)}`}
+            {!loading && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="h-4 w-4 ml-2 opacity-70" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-sm">
+                    <p>Tickets: R{subtotal.toFixed(2)}</p>
+                    <p>Service Fee: R{fees.toFixed(2)}</p>
+                    <p className="font-semibold">Total: R{total.toFixed(2)}</p>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            )}
           </Button>
         </div>
       </DialogContent>
