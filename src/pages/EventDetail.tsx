@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { useState } from "react";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -396,7 +397,7 @@ const EventDetail = () => {
       <div className="px-4 pb-4">
         <div className="rounded-2xl overflow-hidden">
           {eventImage ? (
-            <img src={eventImage} alt={eventTitle} className="w-full aspect-[4/5] object-cover" />
+            <img src={getOptimizedUrl(eventImage, 'EVENT_HERO') || eventImage} alt={eventTitle} className="w-full aspect-[4/5] object-cover" />
           ) : (
             <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-2xl">
               <span className="text-6xl">🎉</span>

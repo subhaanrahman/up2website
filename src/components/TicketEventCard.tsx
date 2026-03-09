@@ -3,6 +3,7 @@ import { ChevronRight, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Badge } from "@/components/ui/badge";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested";
 
@@ -42,9 +43,10 @@ const TicketEventCard = ({
     >
       <div className="w-28 h-28 flex-shrink-0">
         <img
-          src={getEventFlyer(eventId)}
+          src={getOptimizedUrl(getEventFlyer(eventId), 'EVENT_CARD') || getEventFlyer(eventId)}
           alt={title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       </div>
 

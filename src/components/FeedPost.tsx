@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin, Trash2, Flag, Ban } from "lucide-react";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
@@ -111,7 +112,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
       <div className="flex gap-3">
         <Link to={profileLink}>
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={avatarUrl || ""} />
+            <AvatarImage src={getOptimizedUrl(avatarUrl, 'AVATAR_MD') || ""} />
             <AvatarFallback className="bg-card text-foreground font-bold text-sm">
               {(displayName || "?")[0]?.toUpperCase()}
             </AvatarFallback>
@@ -161,8 +162,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <div className="flex items-center -space-x-1">
                 {collaborators.slice(0, 3).map((c, i) => (
                   <Link key={i} to={`/user/${c.user_id}`}>
-                    <Avatar className="h-4 w-4 border border-background">
-                      <AvatarImage src={c.avatar_url || undefined} />
+                     <Avatar className="h-4 w-4 border border-background">
+                      <AvatarImage src={getOptimizedUrl(c.avatar_url, 'AVATAR_SM') || undefined} />
                       <AvatarFallback className="text-[7px] bg-muted">{c.display_name[0]}</AvatarFallback>
                     </Avatar>
                   </Link>
@@ -207,7 +208,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {!eventData && imageUrl && (
             <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
-              <img src={imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
+              <img src={getOptimizedUrl(imageUrl, 'FEED_IMAGE') || imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
           {gifUrl && (
