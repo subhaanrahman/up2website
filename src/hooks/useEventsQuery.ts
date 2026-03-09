@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '@/features/events';
 import { eventsApi, rsvpApi } from '@/api';
-import type { CreateEventInput, UpdateEventInput, EventFilter } from '@/features/events';
+import type { CreateEventInput, UpdateEventInput, EventFilter, EventCategory } from '@/features/events';
 
 
 
