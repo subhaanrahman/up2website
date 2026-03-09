@@ -65,8 +65,7 @@ const Events = () => {
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
     filter: selectedFilter || undefined,
-    category: selectedCategory || undefined,
-    city: (!searchQuery.trim() && !selectedFilter && !selectedCategory && profile?.city) ? profile.city : undefined,
+    city: (!searchQuery.trim() && !selectedFilter && profile?.city) ? profile.city : undefined,
     limit: 30,
   });
 
