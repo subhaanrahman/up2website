@@ -311,6 +311,12 @@ const EditOrganiserProfile = () => {
             </div>
           </div>
         )}
+
+        {/* Payouts Section */}
+        <PayoutSetupSection
+          organiserProfileId={activeOrg.id}
+          isOwner={activeOrg.ownerId === (user?.id || '')}
+        />
       </main>
     </div>
   );
