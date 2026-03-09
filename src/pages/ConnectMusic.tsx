@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Music } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MusicService {
   id: string;
@@ -19,11 +21,42 @@ const services: MusicService[] = [
 
 const ConnectMusic = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
 
-  const toggleService = (id: string) => {
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_music_connections")
+      .select("service_id, connected")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        const state: Record<string, boolean> = {};
+        data?.forEach((row: any) => { state[row.service_id] = row.connected; });
+        setConnected(state);
+        setLoading(false);
+      });
+  }, [user]);
+
+  const toggleService = async (id: string) => {
+    if (!user) return;
     const next = !connected[id];
     setConnected((prev) => ({ ...prev, [id]: next }));
+
+    const { error } = await supabase
+      .from("user_music_connections")
+      .upsert(
+        { user_id: user.id, service_id: id, connected: next },
+        { onConflict: "user_id,service_id" }
+      );
+
+    if (error) {
+      setConnected((prev) => ({ ...prev, [id]: !next }));
+      toast({ title: "Failed to update", variant: "destructive" });
+      return;
+    }
+
     toast({
       title: next
         ? `${services.find((s) => s.id === id)?.name} connected`
@@ -62,6 +95,7 @@ const ConnectMusic = () => {
             <Switch
               checked={!!connected[service.id]}
               onCheckedChange={() => toggleService(service.id)}
+              disabled={loading}
             />
           </div>
         ))}

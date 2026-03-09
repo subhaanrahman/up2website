@@ -14,6 +14,8 @@ import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useFeedPosts } from "@/hooks/usePostsQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/services/recommendationService";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 import logoImg from "@/assets/logo.png";
 
 const Index = () => {
@@ -25,6 +27,7 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   const [suggestedProfiles, setSuggestedProfiles] = useState<SuggestedProfile[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
   const { data: feedPosts = [] } = useFeedPosts();
 
   useEffect(() => {
@@ -38,6 +41,34 @@ const Index = () => {
   const displayName = isOrganiser && activeOrg ? activeOrg.displayName : (profile?.displayName || user?.email?.split("@")[0] || "Guest");
   const username = isOrganiser && activeOrg ? activeOrg.username : (profile?.username || displayName.toLowerCase().replace(/\s+/g, ""));
   const avatarUrl = isOrganiser && activeOrg ? (activeOrg.avatarUrl || "") : (profile?.avatarUrl || "");
+
+  const handleAddFriend = async (friendUserId: string) => {
+    if (!user) return;
+    setPendingRequests((prev) => new Set(prev).add(friendUserId));
+    try {
+      const { error } = await supabase.from("connections").insert({
+        requester_id: user.id,
+        addressee_id: friendUserId,
+        status: "pending",
+      });
+      if (error) {
+        if (error.code === "23505") {
+          toast({ title: "Request already sent" });
+        } else {
+          throw error;
+        }
+      } else {
+        toast({ title: "Friend request sent!" });
+      }
+    } catch {
+      setPendingRequests((prev) => {
+        const next = new Set(prev);
+        next.delete(friendUserId);
+        return next;
+      });
+      toast({ title: "Failed to send request", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -150,8 +181,14 @@ const Index = () => {
                     <span className="text-xs text-muted-foreground truncate w-full text-center">
                       @{friend.username || "user"}
                     </span>
-                    <Button variant="secondary" size="sm" className="mt-3 w-full rounded-full text-xs">
-                      Add
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="mt-3 w-full rounded-full text-xs"
+                      disabled={pendingRequests.has(friend.user_id)}
+                      onClick={() => handleAddFriend(friend.user_id)}
+                    >
+                      {pendingRequests.has(friend.user_id) ? "Requested" : "+ Friend"}
                     </Button>
                   </div>
                 ))}
