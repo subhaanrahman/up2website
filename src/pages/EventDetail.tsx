@@ -34,6 +34,7 @@ const EventDetail = () => {
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [guestCount, setGuestCount] = useState(1);
 
   const { reserving } = useOrderFlow();
 
