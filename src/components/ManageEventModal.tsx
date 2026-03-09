@@ -27,6 +27,7 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
     { icon: ClipboardList, label: "Orders, Guestlists & Refunds", description: "View all ticket orders, guest lists, and refunds", action: () => goTo(`/events/${eventId}/manage`) },
     { icon: ScanLine, label: "Check-In", description: "Attendee list & QR scan mode", action: () => goTo(`/events/${eventId}/checkin`) },
     { icon: Share2, label: "Share & Ticket Links", description: "Copy event link, RSVP link & QR code", action: () => { onOpenChange(false); setShareOpen(true); } },
+    { icon: Megaphone, label: "Message Attendees", description: "Broadcast a message to all guests", action: () => { onOpenChange(false); setBroadcastOpen(true); } },
     { icon: Image, label: "Upload Media", description: "Add event photo gallery", action: () => goTo(`/events/${eventId}/manage`) },
     { icon: Settings, label: "Event Settings", description: "Edit event details", action: () => goTo(`/events/${eventId}/edit`) },
     { icon: BarChart3, label: "Analytics", description: "Views, sales & revenue tracking", action: () => goTo(`/events/${eventId}/analytics`) },
