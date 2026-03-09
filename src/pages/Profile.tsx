@@ -198,7 +198,9 @@ const Profile = () => {
             <h2 className="text-2xl font-black tracking-[0.05em] text-foreground uppercase font-display" style={{ fontStretch: "expanded" }}>
               {displayName || username}
             </h2>
-            <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            {(isOrganiser || profile?.isVerified) && (
+              <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            )}
           </div>
 
           <p className="text-muted-foreground mb-4 tracking-[0.1em] mt-1 text-base">
