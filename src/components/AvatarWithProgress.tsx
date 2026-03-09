@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 
 interface AvatarWithProgressProps {
   src?: string;
@@ -8,6 +9,7 @@ interface AvatarWithProgressProps {
 }
 
 const AvatarWithProgress = ({ src, fallback, progress, size = 112 }: AvatarWithProgressProps) => {
+  const optimizedSrc = getOptimizedUrl(src, 'AVATAR_MD');
   const strokeWidth = 4;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
