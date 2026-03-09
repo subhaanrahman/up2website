@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Minus, Plus, Info, Tag } from "lucide-react";
+import { Minus, Plus, Info, Tag, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,6 +14,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { TicketTier } from "@/hooks/useTicketTiers";
+import { callEdgeFunction } from "@/infrastructure/api-client";
+
+interface DiscountResult {
+  valid: boolean;
+  discount_type: string;
+  discount_value: number;
+  reveal_hidden_tickets?: boolean;
+}
 
 interface PurchaseModalProps {
   open: boolean;
@@ -21,6 +29,7 @@ interface PurchaseModalProps {
   eventTitle: string;
   eventDate: string;
   eventLocation: string;
+  eventId?: string;
   ticketTiers: TicketTier[];
   loading?: boolean;
   onCheckout: (tierId: string, quantity: number, discountCode?: string) => void;
@@ -34,6 +43,7 @@ const PurchaseModal = ({
   eventTitle,
   eventDate,
   eventLocation,
+  eventId,
   ticketTiers,
   loading,
   onCheckout,
@@ -42,16 +52,47 @@ const PurchaseModal = ({
   const [quantity, setQuantity] = useState(1);
   const [showCodeInput, setShowCodeInput] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
+  const [discountResult, setDiscountResult] = useState<DiscountResult | null>(null);
+  const [discountError, setDiscountError] = useState("");
+  const [validatingCode, setValidatingCode] = useState(false);
 
   const selectedTicket = ticketTiers.find(t => t.id === selectedTier);
   const unitPriceRands = selectedTicket ? selectedTicket.priceCents / 100 : 0;
   const subtotal = unitPriceRands * quantity;
-  const fees = subtotal * SERVICE_FEE_RATE;
-  const total = subtotal + fees;
+
+  // Apply discount
+  let discountAmount = 0;
+  if (discountResult?.valid) {
+    if (discountResult.discount_type === 'percentage') {
+      discountAmount = subtotal * (discountResult.discount_value / 100);
+    } else {
+      discountAmount = discountResult.discount_value / 100; // cents to rands
+    }
+  }
+  const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+  const fees = discountedSubtotal * SERVICE_FEE_RATE;
+  const total = discountedSubtotal + fees;
+
+  const handleValidateCode = async () => {
+    if (!discountCode.trim() || !eventId) return;
+    setValidatingCode(true);
+    setDiscountError("");
+    setDiscountResult(null);
+    try {
+      const result = await callEdgeFunction<DiscountResult>('validate-discount', {
+        body: { event_id: eventId, code: discountCode.trim() },
+      });
+      setDiscountResult(result);
+    } catch (err: any) {
+      setDiscountError(err?.message || "Invalid code");
+    } finally {
+      setValidatingCode(false);
+    }
+  };
 
   const handleCheckout = () => {
     if (selectedTier) {
-      onCheckout(selectedTier, quantity, discountCode || undefined);
+      onCheckout(selectedTier, quantity, discountResult?.valid ? discountCode : undefined);
     }
   };
 
