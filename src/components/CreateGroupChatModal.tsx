@@ -213,11 +213,16 @@ const CreateGroupChatModal = ({ open, onOpenChange }: CreateGroupChatModalProps)
 
           <Button
             onClick={handleCreate}
-            disabled={!name.trim() || creating}
+            disabled={!name.trim() || selectedIds.size < 2 || creating}
             className="w-full"
           >
-            {creating ? "Creating…" : "Create Group"}
+            {creating ? "Creating…" : `Create Group (${1 + selectedIds.size} members)`}
           </Button>
+          {selectedIds.size < 2 && selectedIds.size > 0 && (
+            <p className="text-[11px] text-muted-foreground text-center">
+              Select at least 2 friends — group chats need 3+ people
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
