@@ -31,6 +31,7 @@ export const eventsApi = {
         is_public: input.isPublic,
         cover_image: input.coverImage,
         organiser_profile_id: input.organiserProfileId,
+        publish_at: input.publishAt,
       },
     });
   },
