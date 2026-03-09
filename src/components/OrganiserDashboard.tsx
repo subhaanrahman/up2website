@@ -64,7 +64,7 @@ const OrganiserDashboard = () => {
   });
 
   const formatCurrency = (cents: number) => {
-    return `R${(cents / 100).toLocaleString("en-ZA", { minimumFractionDigits: 0 })}`;
+    return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
   };
 
   const now = new Date();
