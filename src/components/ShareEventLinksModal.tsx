@@ -79,6 +79,24 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
               <Copy className="h-4 w-4 text-muted-foreground" />
             )}
           </Button>
+          <Button
+            variant="outline"
+            className="w-full justify-between h-auto py-3 px-4"
+            onClick={() => copyToClipboard(embedCode, "Embed code")}
+          >
+            <span className="flex items-center gap-2 text-left">
+              <Code className="h-4 w-4 text-primary flex-shrink-0" />
+              <div>
+                <p className="font-medium text-foreground text-sm">Embed Widget</p>
+                <p className="text-xs text-muted-foreground truncate max-w-[200px]">Copy iframe code for your website</p>
+              </div>
+            </span>
+            {copiedLink === embedCode ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

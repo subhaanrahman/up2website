@@ -62,6 +62,7 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
         </DialogContent>
       </Dialog>
       <ShareEventLinksModal open={shareOpen} onOpenChange={setShareOpen} eventId={eventId} eventTitle={eventTitle} />
+      <AttendeeBroadcastModal open={broadcastOpen} onOpenChange={setBroadcastOpen} eventId={eventId} eventTitle={eventTitle} />
     </>
   );
 };
