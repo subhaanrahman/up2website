@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit2, Info } from "lucide-react";
+import { Plus, Edit2, Info, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import TicketTierModal, { type TicketTier } from "./TicketTierModal";
 import DiscountCodeModal, { type DiscountCode } from "./DiscountCodeModal";
 
