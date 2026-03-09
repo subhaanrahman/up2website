@@ -114,30 +114,30 @@ const CheckoutSuccess = () => {
             {/* Order Details */}
             <div className="bg-card rounded-xl p-4">
               <h3 className="font-semibold text-foreground mb-3">Order Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Quantity</span>
-                  <span className="text-foreground">{order.quantity}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-foreground">R{(order.amount_cents / 100).toFixed(2)}</span>
-                </div>
-                {order.platform_fee_cents > 0 && (
+                <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Service Fee</span>
-                    <span className="text-foreground">R{(order.platform_fee_cents / 100).toFixed(2)}</span>
+                    <span className="text-muted-foreground">Quantity</span>
+                    <span className="text-foreground">{order.quantity}</span>
                   </div>
-                )}
-                <div className="border-t border-border pt-2 mt-2">
-                  <div className="flex justify-between font-semibold">
-                    <span className="text-foreground">Total</span>
-                    <span className="text-foreground">
-                      R{((order.amount_cents + order.platform_fee_cents) / 100).toFixed(2)} {order.currency.toUpperCase()}
-                    </span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-foreground">R{((order.amount_cents - order.platform_fee_cents) / 100).toFixed(2)}</span>
+                  </div>
+                  {order.platform_fee_cents > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Service Fee</span>
+                      <span className="text-foreground">R{(order.platform_fee_cents / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-2 mt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-foreground">Total</span>
+                      <span className="text-foreground">
+                        R{(order.amount_cents / 100).toFixed(2)} {order.currency.toUpperCase()}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
             </div>
 
             {/* QR Codes */}
