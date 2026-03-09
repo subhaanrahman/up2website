@@ -38,6 +38,24 @@ const ActiveProfileContext = createContext<ActiveProfileContextValue | undefined
 
 const STORAGE_KEY = "active_profile";
 
+function mapOrgRow(r: any): OrganiserProfile {
+  return {
+    id: r.id,
+    ownerId: r.owner_id,
+    displayName: r.display_name,
+    username: r.username,
+    avatarUrl: r.avatar_url,
+    bio: r.bio,
+    city: r.city,
+    instagramHandle: r.instagram_handle,
+    category: r.category,
+    openingHours: r.opening_hours || null,
+    tags: Array.isArray(r.tags) ? r.tags : [],
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
 export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [organiserProfiles, setOrganiserProfiles] = useState<OrganiserProfile[]>([]);
@@ -50,41 +68,30 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Fetch owned profiles
-    const { data: ownedData } = await supabase
-      .from("organiser_profiles")
-      .select("*")
-      .eq("owner_id", user.id)
-      .order("created_at", { ascending: true });
+    // PARALLEL: fetch owned profiles AND accepted memberships simultaneously
+    const [ownedResult, memberResult] = await Promise.all([
+      supabase
+        .from("organiser_profiles")
+        .select("*")
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("organiser_members")
+        .select("organiser_profile_id")
+        .eq("user_id", user.id)
+        .eq("status", "accepted"),
+    ]);
 
-    const owned = (ownedData || []).map((r: any) => ({
-      id: r.id,
-      ownerId: r.owner_id,
-      displayName: r.display_name,
-      username: r.username,
-      avatarUrl: r.avatar_url,
-      bio: r.bio,
-      city: r.city,
-      instagramHandle: r.instagram_handle,
-      category: r.category,
-      openingHours: r.opening_hours || null,
-      tags: Array.isArray(r.tags) ? r.tags : [],
-      createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    }));
+    const owned = (ownedResult.data || []).map(mapOrgRow);
+    const ownedIds = new Set(owned.map((o) => o.id));
 
-    // Fetch accepted memberships
-    const { data: memberData } = await supabase
-      .from("organiser_members")
-      .select("organiser_profile_id")
-      .eq("user_id", user.id)
-      .eq("status", "accepted");
-
+    // Only fetch member org profiles if there are IDs not already in owned
     let memberProfiles: OrganiserProfile[] = [];
+    const memberData = memberResult.data;
     if (memberData && memberData.length > 0) {
-      const memberOrgIds = memberData.map((m: any) => m.organiser_profile_id);
-      const ownedIds = new Set(owned.map((o) => o.id));
-      const newIds = memberOrgIds.filter((id: string) => !ownedIds.has(id));
+      const newIds = memberData
+        .map((m: any) => m.organiser_profile_id)
+        .filter((id: string) => !ownedIds.has(id));
 
       if (newIds.length > 0) {
         const { data: orgData } = await supabase
@@ -92,21 +99,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
           .select("*")
           .in("id", newIds);
 
-        memberProfiles = (orgData || []).map((r: any) => ({
-          id: r.id,
-          ownerId: r.owner_id,
-          displayName: r.display_name,
-          username: r.username,
-          avatarUrl: r.avatar_url,
-          bio: r.bio,
-          city: r.city,
-          instagramHandle: r.instagram_handle,
-          category: r.category,
-          openingHours: r.opening_hours || null,
-          tags: Array.isArray(r.tags) ? r.tags : [],
-          createdAt: r.created_at,
-          updatedAt: r.updated_at,
-        }));
+        memberProfiles = (orgData || []).map(mapOrgRow);
       }
     }
 
@@ -131,7 +124,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as ActiveProfile;
-          // Verify it still belongs to this user
           if (parsed.type === "personal" && parsed.id === user.id) {
             setActiveProfile(parsed);
             setIsLoading(false);
@@ -170,7 +162,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
 
       const found = organiserProfiles.find((o) => o.id === parsed.id);
       if (found) {
-        // Valid organiser profile — set it with fresh data
         const synced: ActiveProfile = {
           id: found.id,
           type: "organiser",
@@ -180,7 +171,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
         setActiveProfile(synced);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
       } else {
-        // Organiser profile no longer accessible — fall back to personal
         const personal: ActiveProfile = {
           id: user.id,
           type: "personal",
@@ -220,7 +210,6 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     },
     [user, organiserProfiles]
   );
-
 
   const refetchOrganiserProfiles = useCallback(async () => {
     await fetchOrganiserProfiles();
