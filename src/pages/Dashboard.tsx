@@ -119,6 +119,7 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
 const Dashboard = () => {
   const { loading } = useAuth();
   const { data: chats, isLoading } = useGroupChats();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if (loading || isLoading) {
     return (
