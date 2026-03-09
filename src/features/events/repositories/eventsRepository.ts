@@ -6,6 +6,11 @@ import type { EventEntity, Rsvp } from '../domain/types';
 
 export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
+export const EVENT_CATEGORIES = [
+  'party', 'music', 'networking', 'food', 'sports', 'arts', 'charity', 'festival', 'comedy', 'other'
+] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
+
 function mapEventRow(row: Record<string, unknown>): EventEntity {
   return {
     id: row.id as string,
