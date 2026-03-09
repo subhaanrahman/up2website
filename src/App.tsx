@@ -78,8 +78,8 @@ const App = () => (
 
               {/* Protected routes */}
               <Route path="/messages" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/messages/:id" element={<ProtectedRoute><MessageThread /></ProtectedRoute>} />
               <Route path="/messages/dm/:id" element={<ProtectedRoute><DmThread /></ProtectedRoute>} />
+              <Route path="/messages/:id" element={<ProtectedRoute><MessageThread /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
               <Route path="/profile/create-organiser" element={<ProtectedRoute><CreateOrganiserProfile /></ProtectedRoute>} />
