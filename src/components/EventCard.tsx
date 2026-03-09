@@ -27,9 +27,10 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
       <div className="bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         <div className="relative aspect-square overflow-hidden">
           <img
-            src={image}
+            src={getOptimizedUrl(image, 'EVENT_CARD') || image}
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
           />
           <div className="absolute top-3 left-3">
             <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-card-foreground">
