@@ -10,6 +10,7 @@ const corsHeaders = {
 
 const reserveSchema = z.object({
   event_id: z.string().uuid('Invalid event ID'),
+  ticket_tier_id: z.string().uuid('Invalid ticket tier ID').optional(),
   quantity: z.number().int().min(1).max(20).default(1),
   currency: z.string().length(3).default('zar'),
 });
@@ -45,7 +46,7 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('orders-reserve', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    // Validate input — amount_cents is no longer accepted from client
+    // Validate input
     const body = await req.json();
     const parsed = reserveSchema.safeParse(body);
     if (!parsed.success) {
@@ -54,18 +55,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { event_id, quantity, currency } = parsed.data;
+    const { event_id, ticket_tier_id, quantity, currency } = parsed.data;
 
-    // Use service role for order management (no client write policies)
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify event exists, check capacity, and get canonical price
+    // Verify event exists, is published, and get canonical price
     const { data: event, error: eventError } = await serviceClient
       .from('events')
-      .select('id, max_guests, title, ticket_price_cents')
+      .select('id, max_guests, title, ticket_price_cents, status')
       .eq('id', event_id)
       .single();
 
@@ -75,25 +75,70 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Derive amount server-side from canonical event price
-    const amount_cents = event.ticket_price_cents * quantity;
+    // Only allow purchases for published events
+    if (event.status !== 'published') {
+      return new Response(JSON.stringify({ error: 'Event is not available for ticket sales' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Check capacity: count confirmed RSVPs + active reservations
+    // Derive price from ticket tier (preferred) or fallback to event price
+    let amount_cents: number;
+    let resolved_tier_id: string | null = ticket_tier_id || null;
+
+    if (ticket_tier_id) {
+      const { data: tier, error: tierError } = await serviceClient
+        .from('ticket_tiers')
+        .select('id, price_cents, available_quantity')
+        .eq('id', ticket_tier_id)
+        .eq('event_id', event_id)
+        .single();
+
+      if (tierError || !tier) {
+        return new Response(JSON.stringify({ error: 'Ticket tier not found for this event' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Check tier-level inventory
+      if (tier.available_quantity !== null) {
+        const { count: tierSold } = await serviceClient
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', event_id)
+          .eq('ticket_tier_id', ticket_tier_id)
+          .in('status', ['reserved', 'confirmed'])
+          .gt('expires_at', new Date().toISOString());
+
+        if ((tierSold ?? 0) + quantity > tier.available_quantity) {
+          return new Response(JSON.stringify({ error: 'This ticket tier is sold out' }), {
+            status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      amount_cents = tier.price_cents * quantity;
+    } else {
+      amount_cents = event.ticket_price_cents * quantity;
+    }
+
+    // Check overall event capacity
     if (event.max_guests) {
-      const { count: rsvpCount } = await serviceClient
-        .from('rsvps')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', event_id)
-        .eq('status', 'going');
+      const [rsvpResult, reservedResult] = await Promise.all([
+        serviceClient
+          .from('rsvps')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', event_id)
+          .eq('status', 'going'),
+        serviceClient
+          .from('orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_id', event_id)
+          .in('status', ['reserved', 'confirmed'])
+          .gt('expires_at', new Date().toISOString()),
+      ]);
 
-      const { count: reservedCount } = await serviceClient
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .eq('event_id', event_id)
-        .in('status', ['reserved', 'confirmed'])
-        .gt('expires_at', new Date().toISOString());
-
-      const totalOccupied = (rsvpCount ?? 0) + (reservedCount ?? 0);
+      const totalOccupied = (rsvpResult.count ?? 0) + (reservedResult.count ?? 0);
       if (totalOccupied + quantity > event.max_guests) {
         return new Response(JSON.stringify({ error: 'Not enough capacity for this event' }), {
           status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -117,6 +162,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Calculate platform fee (10%)
+    const platform_fee_cents = Math.round(amount_cents * 0.1);
+
     // Create reservation (15-minute hold)
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
@@ -125,8 +173,10 @@ Deno.serve(async (req) => {
       .insert({
         user_id: user.id,
         event_id,
+        ticket_tier_id: resolved_tier_id,
         quantity,
         amount_cents,
+        platform_fee_cents,
         currency,
         status: 'reserved',
         expires_at: expiresAt,
