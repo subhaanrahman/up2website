@@ -3,6 +3,7 @@ import { ChevronRight, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Badge } from "@/components/ui/badge";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested";
 
