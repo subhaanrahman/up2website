@@ -58,7 +58,7 @@ const MessageThread = () => {
   const displayChatName = chatName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
   const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
 
-  const senderDisplayName = profile?.display_name || profile?.username || "You";
+  const senderDisplayName = profile?.displayName || profile?.username || "You";
 
   const handleSend = async () => {
     if (!message.trim() || !user) return;
