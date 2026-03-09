@@ -177,6 +177,70 @@ export type Database = {
           },
         ]
       }
+      dm_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          sender_id: string
+          thread_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          thread_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "dm_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dm_threads: {
+        Row: {
+          created_at: string
+          id: string
+          organiser_profile_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organiser_profile_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organiser_profile_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dm_threads_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_cohosts: {
         Row: {
           created_at: string
