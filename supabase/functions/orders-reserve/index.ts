@@ -122,6 +122,39 @@ Deno.serve(async (req) => {
       amount_cents = event.ticket_price_cents * quantity;
     }
 
+    // Calculate platform service fee (7%) — charged ON TOP of ticket price
+    const service_fee_cents = Math.round(amount_cents * 0.07);
+    // Total customer pays = ticket price + service fee
+    const total_amount_cents = amount_cents + service_fee_cents;
+
+    // For paid events with an organiser, verify Stripe Connect is ready
+    if (amount_cents > 0) {
+      const { data: eventFull } = await serviceClient
+        .from('events')
+        .select('organiser_profile_id')
+        .eq('id', event_id)
+        .single();
+
+      if (eventFull?.organiser_profile_id) {
+        const { data: stripeAcct } = await serviceClient
+          .from('organiser_stripe_accounts')
+          .select('charges_enabled')
+          .eq('organiser_profile_id', eventFull.organiser_profile_id)
+          .maybeSingle();
+
+        if (!stripeAcct || !stripeAcct.charges_enabled) {
+          return new Response(JSON.stringify({ error: 'This organiser has not completed payout setup. Tickets cannot be purchased yet.' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else {
+        // Paid event without an organiser profile — should not happen, but block it
+        return new Response(JSON.stringify({ error: 'Paid events require an organiser with payout setup' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // Check overall event capacity
     if (event.max_guests) {
       const [rsvpResult, reservedResult] = await Promise.all([
