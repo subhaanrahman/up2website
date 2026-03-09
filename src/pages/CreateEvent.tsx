@@ -169,7 +169,8 @@ const CreateEvent = () => {
   }
 
   const tabs: { key: BottomTab; label: string; icon: React.ReactNode }[] = [
-    { key: "ticketing", label: "Ticketing", icon: <Ticket className="h-5 w-5" /> },
+    // Only business (organiser) accounts can access ticketing
+    ...(hasOrganiserProfile ? [{ key: "ticketing" as BottomTab, label: "Ticketing", icon: <Ticket className="h-5 w-5" /> }] : []),
     { key: "guestlist", label: "Guestlist", icon: <ClipboardList className="h-5 w-5" /> },
     { key: "notifications", label: "Notifications", icon: <Bell className="h-5 w-5" /> },
   ];
