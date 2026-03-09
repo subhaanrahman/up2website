@@ -199,6 +199,31 @@ const GroupChatSettingsSheet = ({
     });
   };
 
+  const handleRemoveMember = async (memberId: string) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("group_chat_members")
+        .delete()
+        .eq("group_chat_id", chatId)
+        .eq("user_id", memberId);
+      if (error) throw error;
+
+      const newCount = Math.max(0, memberCount - 1);
+      await supabase.from("group_chats").update({ member_count: newCount }).eq("id", chatId);
+
+      queryClient.invalidateQueries({ queryKey: ["group-chat-members", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["group-chat", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["group-chat-available-friends", chatId] });
+      toast({ title: "Member removed" });
+    } catch {
+      toast({ title: "Failed to remove member", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filteredFriends = availableFriends.filter((f) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
