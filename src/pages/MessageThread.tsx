@@ -23,7 +23,7 @@ const MessageThread = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { data: profile } = useProfile();
+  const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
 
   const { data: chat } = useQuery({
