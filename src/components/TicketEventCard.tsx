@@ -34,7 +34,6 @@ const TicketEventCard = ({
   onQrClick,
 }: TicketEventCardProps) => {
   const cfg = statusConfig[ticketStatus];
-  const showQr = ticketStatus === "purchased" || ticketStatus === "going";
 
   return (
     <Link
