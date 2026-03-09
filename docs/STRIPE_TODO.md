@@ -28,6 +28,9 @@ All items implemented:
 - [x] Fix capacity check — parallel count of RSVPs + active reservations
 - [x] Event status check — only `published` events allow ticket sales
 - [x] Tier-level inventory check
+- [x] **Pricing model fix** — `amount_cents` = ticket_price + 7% service_fee (customer total). `platform_fee_cents` = service_fee. Organiser receives ticket_price via destination charge.
+- [x] **Server-side Connect validation in `orders-reserve`** — blocks paid ticket reservations if organiser hasn't completed Stripe Connect
+- [x] **`payment_intent.payment_failed` no longer permanently fails** — reservation stays active until natural expiry
 
 ### Remaining Phase 1 pre-launch items
 
