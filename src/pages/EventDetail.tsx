@@ -114,6 +114,47 @@ const EventDetail = () => {
     enabled: !!id && !isMock,
   });
 
+  // P-06: Friends going to this event
+  const { data: friendsGoing = [] } = useFriendsGoing(isUuid && !isMock ? id : undefined);
+
+  // P-10: Waitlist & capacity check
+  const { data: capacityInfo } = useQuery({
+    queryKey: ["event-capacity", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data: ev } = await supabase
+        .from("events")
+        .select("max_guests")
+        .eq("id", id)
+        .single();
+      if (!ev?.max_guests) return { isFull: false, maxGuests: null };
+      const { data: rsvps } = await supabase
+        .from("rsvps")
+        .select("guest_count")
+        .eq("event_id", id)
+        .eq("status", "going");
+      const totalGuests = (rsvps || []).reduce((sum, r) => sum + ((r as any).guest_count || 1), 0);
+      return { isFull: totalGuests >= ev.max_guests, maxGuests: ev.max_guests, currentCount: totalGuests };
+    },
+    enabled: !!id && !isMock,
+  });
+
+  // P-10: User's waitlist status
+  const { data: waitlistStatus, refetch: refetchWaitlist } = useQuery({
+    queryKey: ["waitlist-status", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data } = await supabase
+        .from("waitlist")
+        .select("id, position")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = () => {
