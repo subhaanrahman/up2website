@@ -34,9 +34,10 @@ const CheckoutForm = ({
   const { toast } = useToast();
   const [processing, setProcessing] = useState(false);
 
-  const subtotal = amountCents / 100;
-  const fees = subtotal * 0.1;
-  const total = subtotal + fees;
+  // amount_cents from server already includes service fee
+  const total = amountCents / 100;
+  const fees = total * (0.07 / 1.07); // back-calculate service fee from total
+  const subtotal = total - fees;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
