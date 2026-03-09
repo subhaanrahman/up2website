@@ -285,18 +285,8 @@ const Dashboard = () => {
   const { data: chats, isLoading: chatsLoading } = useGroupChats();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // For organiser view: get all organiser profiles owned by this user
-  const { data: ownedOrgIds } = useQuery({
-    queryKey: ["owned-org-ids", user?.id],
-    enabled: !!user && isOrganiser,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("organiser_profiles")
-        .select("id")
-        .eq("owner_id", user!.id);
-      return (data || []).map((o) => o.id);
-    },
-  });
+  // For organiser view: use organiser profiles from context
+  const ownedOrgIds = isOrganiser ? organiserProfiles.map(o => o.id) : [];
 
   // Personal/professional: DMs where user is the initiator
   const { data: userDms, isLoading: userDmsLoading } = useDmThreads("user");
