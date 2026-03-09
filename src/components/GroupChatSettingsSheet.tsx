@@ -325,7 +325,7 @@ const GroupChatSettingsSheet = ({
                   className="flex items-center gap-2.5 px-2 py-2 rounded-lg"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={m.avatar_url || undefined} />
+                    <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
                     <AvatarFallback className="bg-muted text-[10px]">
                       {(m.display_name || m.username || "U")[0]}
                     </AvatarFallback>
