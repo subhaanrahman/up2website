@@ -32,7 +32,8 @@
 - P-24: Attendee blast notifications
 - P-25: Embed event widget
 
-### Batch 5 — Discovery & Social
-- P-02: Location-based event discovery
-- P-03: Event recommendations / "For You"
-- P-18: Share event as post to feed
+### ✅ Batch 5 — Discovery & Social (COMPLETED)
+- P-02: Location-based event discovery (city filtering from user profile)
+- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
+- P-18: Share event as post to feed (Post button in share sheet)
+- P-XX: Event category filtering (10 categories with emoji pills)
