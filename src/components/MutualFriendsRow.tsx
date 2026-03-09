@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 
 interface MutualFriend {
   user_id: string;
