@@ -3,6 +3,7 @@ import { ArrowLeft, Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/BottomNav";
 import PendingOrganiserInvites from "@/components/PendingOrganiserInvites";
+import FriendRequestsSection from "@/components/FriendRequestsSection";
 import NotificationItem from "@/components/notifications/NotificationItem";
 import {
   useNotifications,
@@ -40,6 +41,8 @@ const Notifications = () => {
       </header>
 
       <main className="px-4 pt-2 space-y-4">
+        {/* Friend Requests — always at top, queries pending connections regardless of notification expiry */}
+        <FriendRequestsSection />
         <PendingOrganiserInvites />
         {isLoading ? (
           <div className="space-y-2">

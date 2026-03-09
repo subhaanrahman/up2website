@@ -25,30 +25,32 @@ function mapRow(row: Record<string, unknown>): UserProfile {
 
 export const identityRepository = {
   async getProfile(userId: string): Promise<UserProfile | null> {
-    // Try normal authenticated query first
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+    // Direct query — Supabase client handles auth headers automatically.
+    // No need for explicit getSession() call.
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-      if (error) throw error;
-      return data ? mapRow(data) : null;
+    if (!error && data) {
+      return mapRow(data);
     }
 
-    // Mock login fallback — fetch via edge function (bypasses RLS)
-    try {
-      const data = await callEdgeFunction<Record<string, unknown> | null>('dev-profile', {
-        method: 'POST',
-        body: { user_id: userId },
-      });
-      return data ? mapRow(data) : null;
-    } catch {
-      return null;
+    // Fallback for dev-login or RLS-blocked scenarios
+    if (error) {
+      try {
+        const fallback = await callEdgeFunction<Record<string, unknown> | null>('dev-profile', {
+          method: 'POST',
+          body: { user_id: userId },
+        });
+        return fallback ? mapRow(fallback) : null;
+      } catch {
+        return null;
+      }
     }
+
+    return null;
   },
 
   // Avatar upload is now handled by the avatar-upload Edge Function.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, ReactNode, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { loyaltyService } from "@/features/loyalty";
 import { loyaltyApi } from "@/api";
@@ -22,7 +22,8 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
   const [rank, setRank] = useState<UserRank>('bronze');
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Start false — non-blocking
+  const fetchedRef = useRef(false);
 
   const fetchData = useCallback(async () => {
     if (!user) {
@@ -30,6 +31,7 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    setLoading(true);
     try {
       const [pts, vchs, txns] = await Promise.all([
         loyaltyService.getUserPoints(user.id),
@@ -48,9 +50,23 @@ export const GamificationProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  // DEFERRED: Wait 2s after auth to fetch gamification data
+  // so it doesn't compete with critical login bootstrap
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!user) {
+      fetchedRef.current = false;
+      setLoading(false);
+      return;
+    }
+    if (fetchedRef.current) return;
+
+    const timer = setTimeout(() => {
+      fetchedRef.current = true;
+      fetchData();
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [user, fetchData]);
 
   // Subscribe to realtime updates via repository
   useEffect(() => {

@@ -58,6 +58,7 @@ export type Database = {
           addressee_id: string
           created_at: string
           id: string
+          muted: boolean
           requester_id: string
           status: string
         }
@@ -66,6 +67,7 @@ export type Database = {
           addressee_id: string
           created_at?: string
           id?: string
+          muted?: boolean
           requester_id: string
           status?: string
         }
@@ -74,6 +76,7 @@ export type Database = {
           addressee_id?: string
           created_at?: string
           id?: string
+          muted?: boolean
           requester_id?: string
           status?: string
         }
@@ -631,18 +634,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          muted: boolean
           organiser_profile_id: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          muted?: boolean
           organiser_profile_id: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          muted?: boolean
           organiser_profile_id?: string
           user_id?: string
         }
@@ -1218,6 +1224,15 @@ export type Database = {
       get_friends_and_following_count: {
         Args: { p_user_id: string }
         Returns: number
+      }
+      get_mutual_friends: {
+        Args: { p_user_a: string; p_user_b: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          user_id: string
+          username: string
+        }[]
       }
       get_organiser_attendee_count: {
         Args: { p_organiser_profile_id: string }

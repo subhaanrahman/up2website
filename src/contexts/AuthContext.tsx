@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { callEdgeFunction } from "@/infrastructure/api-client";
@@ -31,19 +31,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Dedup guard: once onAuthStateChange fires, skip the getSession fallback
+  const authStateReceived = useRef(false);
+
   useEffect(() => {
+    authStateReceived.current = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
+        authStateReceived.current = true;
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
       }
     );
 
+    // Cold boot / refresh recovery — only if onAuthStateChange hasn't fired yet
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (!authStateReceived.current) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
