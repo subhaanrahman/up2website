@@ -15,6 +15,7 @@ const profileUpdateSchema = z.object({
   bio: z.string().trim().max(500).optional().nullable(),
   city: z.string().trim().max(100).optional().nullable(),
   page_classification: z.enum(['DJ', 'Promoter', 'Artist']).optional().nullable(),
+  profile_tier: z.enum(['personal', 'professional']).optional(),
   avatar_url: z.string().url().max(500).optional(),
   instagram_handle: z.string().trim().max(30).regex(/^[a-zA-Z0-9._]*$/, 'Invalid Instagram handle').optional().nullable(),
 });
