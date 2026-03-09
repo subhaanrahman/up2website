@@ -72,7 +72,7 @@ const Events = () => {
   const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
 
   // Show "For You" when no search/filter active
-  const showForYou = !searchQuery.trim() && !selectedFilter && !selectedCategory;
+  const showForYou = !searchQuery.trim() && !selectedFilter;
   const displayEvents = showForYou ? forYouEvents : eventResults;
   const displayEventsLoading = showForYou ? forYouLoading : eventsLoading;
 
