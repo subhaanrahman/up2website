@@ -172,6 +172,22 @@ const ShareEventSheet = ({
     }
   };
 
+  const handlePostToFeed = async () => {
+    if (!user || !eventId) return;
+    try {
+      const { error } = await supabase.from("posts").insert({
+        author_id: user.id,
+        content: `Check out this event: ${eventTitle}! 🎉`,
+        event_id: eventId,
+      });
+      if (error) throw error;
+      toast.success("Event shared to your feed!");
+      onOpenChange(false);
+    } catch {
+      toast.error("Failed to post");
+    }
+  };
+
   const themeColors: Record<number, { cardBg: string; accent: string }> = {
     0: { cardBg: "#7c3aed", accent: "#a855f7" },
     1: { cardBg: "#7c3aed", accent: "#8b5cf6" },
@@ -181,6 +197,7 @@ const ShareEventSheet = ({
 
   const shareOptions = [
     { label: "Copy link", icon: Copy, onClick: handleCopyLink },
+    ...(eventId ? [{ label: "Post", icon: FileText, onClick: handlePostToFeed }] : []),
     { label: "IG Story", icon: Camera, onClick: handleInstagramStory, loading: generatingStory },
     { label: "WhatsApp", icon: MessageCircle, onClick: handleWhatsApp },
     { label: "Instagram", icon: Instagram, onClick: handleInstagram },
