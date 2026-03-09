@@ -225,11 +225,64 @@ const EventDetail = () => {
 
     setRsvpLoading(true);
     try {
-      await rsvpApi.join(id);
+      await rsvpApi.join(id, 'going', guestCount);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
-      toast({ title: "RSVP Submitted!", description: "You're going to this event!" });
+      queryClient.invalidateQueries({ queryKey: ["event-capacity", id] });
+      toast({ title: "RSVP Submitted!", description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ''}!` });
+    } catch (err: any) {
+      const msg = err?.message?.includes('capacity') ? 'Event is at capacity' : 'Something went wrong, please try again.';
+      toast({ title: "RSVP Failed", description: msg, variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  // P-05: Add to Calendar
+  const handleAddToCalendar = () => {
+    if (!dbEvent) return;
+    downloadIcsFile({
+      title: dbEvent.title,
+      description: dbEvent.description,
+      location: dbEvent.location,
+      startDate: new Date(dbEvent.eventDate),
+      endDate: dbEvent.endDate ? new Date(dbEvent.endDate) : null,
+    });
+    toast({ title: "Calendar file downloaded", description: "Import the .ics file into your calendar app" });
+  };
+
+  // P-10: Join waitlist
+  const handleJoinWaitlist = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      // Get current waitlist count for position
+      const { count } = await supabase
+        .from("waitlist")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", id);
+      await supabase.from("waitlist").insert({
+        event_id: id,
+        user_id: user.id,
+        position: (count || 0) + 1,
+      });
+      refetchWaitlist();
+      toast({ title: "Joined Waitlist", description: `You're #${(count || 0) + 1} on the waitlist` });
     } catch {
-      toast({ title: "RSVP Failed", description: "Something went wrong, please try again.", variant: "destructive" });
+      toast({ title: "Failed", description: "Could not join waitlist", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      await supabase.from("waitlist").delete().eq("event_id", id).eq("user_id", user.id);
+      refetchWaitlist();
+      toast({ title: "Left Waitlist" });
+    } catch {
+      toast({ title: "Failed", variant: "destructive" });
     } finally {
       setRsvpLoading(false);
     }
