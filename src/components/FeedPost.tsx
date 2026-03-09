@@ -69,7 +69,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <Link to={profileLink} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
                 {firstName}
               </Link>
-              <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />
+              {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />}
               <span className="text-muted-foreground text-[15px] truncate">@{username || "user"}</span>
               <span className="text-muted-foreground text-[15px] shrink-0">·</span>
               <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo}</span>

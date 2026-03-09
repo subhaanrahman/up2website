@@ -169,7 +169,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
             <Link to="/profile" className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
               {displayName}
             </Link>
-            <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
             <span className="text-muted-foreground text-[13px]">@{username}</span>
           </div>
 
