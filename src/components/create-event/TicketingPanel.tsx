@@ -27,6 +27,7 @@ interface TicketingPanelProps {
   setSoldOutMessageEnabled: (v: boolean) => void;
   soldOutMessage: string;
   setSoldOutMessage: (v: string) => void;
+  payoutsReady?: boolean;
 }
 
 const TicketingPanel = ({
