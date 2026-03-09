@@ -229,10 +229,10 @@ const Tickets = () => {
                   eventId={t.eventId}
                   title={t.title}
                   eventDate={t.eventDate}
-                  isPast
-                  ticketStatus={t.ticketStatus}
-                  onQrClick={() => setQrOpen(true)}
-                />
+                   isPast
+                   ticketStatus={t.ticketStatus}
+                   onQrClick={() => handleQrClick(t.eventId)}
+                 />
               ))}
 
               {pastEvents.length > 0 && (
