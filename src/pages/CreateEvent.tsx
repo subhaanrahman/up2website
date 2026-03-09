@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useCreateEvent } from "@/hooks/useEventsQuery";
+import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
 import EventDetailsForm from "@/components/create-event/EventDetailsForm";
 import TicketingPanel from "@/components/create-event/TicketingPanel";
 import GuestlistPanel from "@/components/create-event/GuestlistPanel";
