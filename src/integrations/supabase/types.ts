@@ -1211,6 +1211,47 @@ export type Database = {
         }
         Relationships: []
       }
+      refunds: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          initiated_by: string | null
+          order_id: string
+          reason: string | null
+          status: string
+          stripe_refund_id: string | null
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          order_id: string
+          reason?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          initiated_by?: string | null
+          order_id?: string
+          reason?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reports: {
         Row: {
           created_at: string
