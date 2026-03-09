@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -13,6 +13,9 @@ import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
 import ProfileQrModal from "@/components/ProfileQrModal";
+import TicketDetailModal from "@/components/TicketDetailModal";
+import { callEdgeFunction } from "@/infrastructure/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 interface TicketEvent {
   rsvpId: string;
