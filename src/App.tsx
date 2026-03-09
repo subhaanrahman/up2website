@@ -44,6 +44,7 @@ import EmailVerification from "./pages/EmailVerification";
 import EventAnalytics from "./pages/EventAnalytics";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import PaymentMethods from "./pages/PaymentMethods";
+import EventEmbed from "./pages/EventEmbed";
 
 const queryClient = new QueryClient();
 
