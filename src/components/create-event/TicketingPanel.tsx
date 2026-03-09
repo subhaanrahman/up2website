@@ -66,6 +66,15 @@ const TicketingPanel = ({
 
   return (
     <div className="space-y-6 animate-in fade-in-0 duration-200">
+      {/* Payout setup warning */}
+      {!payoutsReady && (
+        <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            Set up payouts in your organiser profile settings before creating paid ticket tiers.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Capacity */}
       <div className="space-y-2">
         <Label className="text-foreground">Capacity</Label>
