@@ -7,7 +7,7 @@ import { ArrowLeft, Send, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import { useProfileQuery } from "@/hooks/useProfileQuery";
+import { useProfile } from "@/hooks/useProfileQuery";
 
 interface ChatMessage {
   id: string;
