@@ -14,6 +14,7 @@ interface PostComposerProps {
   username: string;
   avatarUrl: string;
   organiserProfileId?: string;
+  isVerified?: boolean;
   onPostCreated?: () => void;
 }
 
