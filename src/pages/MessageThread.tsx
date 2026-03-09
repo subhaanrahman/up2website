@@ -26,6 +26,7 @@ const MessageThread = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   const { data: chat } = useQuery({
     queryKey: ["group-chat", id],
