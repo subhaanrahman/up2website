@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Not authenticated' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -44,12 +44,15 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+    if (authError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const user = { id: claimsData.claims.sub as string };
 
     const allowed = await checkRateLimit('dashboard-analytics', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
