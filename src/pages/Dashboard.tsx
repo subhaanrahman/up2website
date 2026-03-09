@@ -388,6 +388,12 @@ const Dashboard = () => {
             <p className="text-xs">Message organisers from their profile page</p>
           </div>
         )}
+
+        {/* Broadcast channels promo */}
+        <div className="flex items-center gap-2 px-4 py-3 mt-1">
+          <Radio className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <p className="text-[11px] text-muted-foreground/50 tracking-wide uppercase">Broadcast Channels — Coming Soon</p>
+        </div>
       </main>
 
       {/* FAB — create group chat */}
