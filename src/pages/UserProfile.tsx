@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   Clock,
   Users,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -299,6 +300,41 @@ const UserProfile = () => {
   const isOrg = !!profile?._isOrganiser;
   const vibeTags: string[] = profile?._tags || [];
 
+  // DM handler for organiser profiles
+  const [dmLoading, setDmLoading] = useState(false);
+  const handleDm = useCallback(async () => {
+    if (!user || !userId || !isOrg) return;
+    setDmLoading(true);
+    try {
+      // Check if thread already exists
+      const { data: existing } = await supabase
+        .from("dm_threads")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("organiser_profile_id", userId)
+        .maybeSingle();
+
+      if (existing) {
+        navigate(`/messages/dm/${existing.id}`);
+        return;
+      }
+
+      // Create new thread
+      const { data: newThread, error } = await supabase
+        .from("dm_threads")
+        .insert({ user_id: user.id, organiser_profile_id: userId })
+        .select()
+        .single();
+
+      if (error) throw error;
+      navigate(`/messages/dm/${newThread.id}`);
+    } catch {
+      toast.error("Failed to start conversation");
+    } finally {
+      setDmLoading(false);
+    }
+  }, [user, userId, isOrg, navigate]);
+
   // ── Event visibility gating ──
   // Personal profiles: upcoming only visible if friends or public profile
   // Organiser profiles: always show all events
@@ -487,6 +523,18 @@ const UserProfile = () => {
 
           <div className="flex items-center justify-center gap-2 mb-5">
             {renderFriendButton()}
+            {/* DM button — only on organiser profiles, not own profile */}
+            {isOrg && !isOwnProfile && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-11 w-11 rounded-full"
+                onClick={handleDm}
+                disabled={dmLoading}
+              >
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+            )}
             {profile.instagram_handle ? (
               <Button
                 variant="secondary"

@@ -30,6 +30,7 @@ import ContactUs from "./pages/ContactUs";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
 import MessageThread from "./pages/MessageThread";
+import DmThread from "./pages/DmThread";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
@@ -77,6 +78,7 @@ const App = () => (
 
               {/* Protected routes */}
               <Route path="/messages" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/messages/dm/:id" element={<ProtectedRoute><DmThread /></ProtectedRoute>} />
               <Route path="/messages/:id" element={<ProtectedRoute><MessageThread /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/profile/edit" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
