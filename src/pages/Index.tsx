@@ -67,6 +67,7 @@ const Index = () => {
           username={username}
           avatarUrl={avatarUrl}
           organiserProfileId={isOrganiser && activeOrg ? activeOrg.id : undefined}
+          isVerified={isOrganiser || profile?.isVerified || false}
           onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
         />
 

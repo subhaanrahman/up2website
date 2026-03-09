@@ -319,6 +319,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
       let author_display_name: string | null = null;
       let author_username: string | null = null;
       let author_avatar_url: string | null = null;
+      let author_is_verified = false;
 
       if (originalPost.organiser_profile_id) {
         const org = orgMap.get(originalPost.organiser_profile_id);
@@ -326,6 +327,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
           author_display_name = org.display_name;
           author_username = org.username;
           author_avatar_url = org.avatar_url;
+          author_is_verified = true;
         }
       }
       if (!author_display_name) {
@@ -333,6 +335,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
         author_display_name = author?.display_name || null;
         author_username = author?.username || null;
         author_avatar_url = author?.avatar_url || null;
+        author_is_verified = author?.is_verified ?? false;
       }
 
       return {
@@ -347,6 +350,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
         author_display_name,
         author_username,
         author_avatar_url,
+        author_is_verified,
         reposted_by_name: reposterName,
         event_data: originalPost.event_id ? eventMap.get(originalPost.event_id) || null : null,
         collaborators: [],
