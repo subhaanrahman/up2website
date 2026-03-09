@@ -347,6 +347,16 @@ const GroupChatSettingsSheet = ({
                       <Crown className="h-3 w-3" /> You
                     </span>
                   )}
+                  {m.user_id !== user?.id && (
+                    <button
+                      onClick={() => handleRemoveMember(m.user_id)}
+                      disabled={saving}
+                      className="p-1.5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Remove member"
+                    >
+                      <UserMinus className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
