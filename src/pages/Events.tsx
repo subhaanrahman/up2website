@@ -12,8 +12,7 @@ import { useSearchEvents } from "@/hooks/useEventsQuery";
 import { useForYouEvents } from "@/hooks/useForYouEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
-import type { EventFilter, EventCategory } from "@/features/events";
-import { EVENT_CATEGORIES } from "@/features/events";
+import type { EventFilter } from "@/features/events";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
@@ -53,26 +52,12 @@ const timeFilters = [
   { value: "free", label: "🎟️ Free" },
 ];
 
-const categoryLabels: Record<string, string> = {
-  party: "🎉 Party",
-  music: "🎵 Music",
-  networking: "🤝 Networking",
-  food: "🍕 Food",
-  sports: "⚽ Sports",
-  arts: "🎨 Arts",
-  charity: "💝 Charity",
-  festival: "🎪 Festival",
-  comedy: "😂 Comedy",
-  other: "📌 Other",
-};
-
 const Events = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
   const [selectedFilter, setSelectedFilter] = useState<EventFilter | "">("");
-  const [selectedCategory, setSelectedCategory] = useState<EventCategory | "">("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -80,15 +65,14 @@ const Events = () => {
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
     filter: selectedFilter || undefined,
-    category: selectedCategory || undefined,
-    city: (!searchQuery.trim() && !selectedFilter && !selectedCategory && profile?.city) ? profile.city : undefined,
+    city: (!searchQuery.trim() && !selectedFilter && profile?.city) ? profile.city : undefined,
     limit: 30,
   });
 
   const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
 
   // Show "For You" when no search/filter active
-  const showForYou = !searchQuery.trim() && !selectedFilter && !selectedCategory;
+  const showForYou = !searchQuery.trim() && !selectedFilter;
   const displayEvents = showForYou ? forYouEvents : eventResults;
   const displayEventsLoading = showForYou ? forYouLoading : eventsLoading;
 
@@ -209,32 +193,7 @@ const Events = () => {
                 ))}
               </div>
 
-              {/* Category filters */}
-              <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 no-scrollbar">
-                <button
-                  onClick={() => setSelectedCategory("")}
-                  className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                    !selectedCategory
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {EVENT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
-                    className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {categoryLabels[cat] || cat}
-                  </button>
-                ))}
-              </div>
+
 
               {/* Section label */}
               {showForYou && (
@@ -321,31 +280,7 @@ const Events = () => {
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2 flex-wrap mb-6">
-                <button
-                  onClick={() => setSelectedCategory("")}
-                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                    !selectedCategory
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {EVENT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
-                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {categoryLabels[cat] || cat}
-                  </button>
-                ))}
-              </div>
+
 
               {showForYou && <p className="text-sm font-semibold text-muted-foreground mb-3">For You</p>}
 
