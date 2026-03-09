@@ -48,7 +48,7 @@ export const eventsRepository = {
     return (data || []).map(mapEventRow);
   },
 
-  async search(options: { query?: string; filter?: EventFilter; limit?: number }): Promise<EventEntity[]> {
+  async search(options: { query?: string; filter?: EventFilter; category?: EventCategory; city?: string; limit?: number }): Promise<EventEntity[]> {
     const now = new Date();
 
     // For "free" filter we need to join ticket_tiers; otherwise plain events query
@@ -65,6 +65,14 @@ export const eventsRepository = {
     if (options.query?.trim()) {
       const term = `%${options.query.trim()}%`;
       q = q.or(`title.ilike.${term},location.ilike.${term}`);
+    }
+
+    if (options.category) {
+      q = q.eq('category', options.category);
+    }
+
+    if (options.city) {
+      q = q.ilike('location', `%${options.city}%`);
     }
 
     // Date-range filters
