@@ -145,9 +145,8 @@ const UserProfile = () => {
         return;
       }
 
-      // Check if target is public
-      const { data: pubData } = await supabase.rpc("is_profile_public", { p_user_id: userId });
-      setTargetIsPublic(pubData ?? true);
+      // Determine if target is public based on profile_tier
+      setTargetIsPublic(profile?.profile_tier === 'professional');
 
       // Check connections
       const { data: connData } = await supabase
@@ -380,7 +379,8 @@ const UserProfile = () => {
       );
     }
 
-    // Personal profiles
+    // Personal profiles: always require friend request
+    // Professional profiles: auto-accept (public)
     switch (connectionStatus) {
       case "none":
         return (
@@ -390,7 +390,7 @@ const UserProfile = () => {
             disabled={connectionLoading}
           >
             <UserPlus className="h-4 w-4" />
-            + FRIEND
+            {targetIsPublic ? "FOLLOW" : "+ FRIEND"}
           </Button>
         );
       case "accepted":

@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -54,26 +53,12 @@ const EditProfile = () => {
     instagram_handle: "",
   });
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [isPublic, setIsPublic] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
-
-  // Load privacy settings
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("privacy_settings")
-      .select("go_public")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        setIsPublic(data?.go_public ?? true);
-      });
-  }, [user]);
 
   useEffect(() => {
     if (profile) {
@@ -116,13 +101,6 @@ const EditProfile = () => {
         city: formData.city,
         instagramHandle: formData.instagram_handle || null,
       });
-
-      // Upsert privacy setting
-      if (user) {
-        await supabase
-          .from("privacy_settings")
-          .upsert({ user_id: user.id, go_public: isPublic }, { onConflict: "user_id" });
-      }
 
       toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
       navigate("/profile");
@@ -302,16 +280,6 @@ const EditProfile = () => {
           </Popover>
         </div>
 
-        {/* Public/Private Toggle */}
-        <div className="flex items-center justify-between py-2">
-          <div className="space-y-0.5">
-            <Label>Public Profile</Label>
-            <p className="text-xs text-muted-foreground">
-              When enabled, anyone can follow you without approval
-            </p>
-          </div>
-          <Switch checked={isPublic} onCheckedChange={setIsPublic} />
-        </div>
       </main>
     </div>
   );
