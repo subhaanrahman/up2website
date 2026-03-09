@@ -46,6 +46,7 @@ const ShareEventSheet = ({
   eventDate = "",
   eventLocation = "",
   eventImage,
+  eventId,
 }: ShareEventSheetProps) => {
   const shareText = `Check out ${eventTitle}!`;
   const storyRef = useRef<HTMLDivElement>(null);
