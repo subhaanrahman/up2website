@@ -1,0 +1,84 @@
+import { Link } from "react-router-dom";
+import { ChevronRight, QrCode } from "lucide-react";
+import { format } from "date-fns";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { Badge } from "@/components/ui/badge";
+
+export type TicketStatus = "purchased" | "going" | "pending" | "interested";
+
+interface TicketEventCardProps {
+  rsvpId: string;
+  eventId: string;
+  title?: string;
+  eventDate?: string;
+  isPast: boolean;
+  ticketStatus: TicketStatus;
+  onQrClick?: (e: React.MouseEvent) => void;
+}
+
+const statusConfig: Record<TicketStatus, { label: string; className: string }> = {
+  purchased: { label: "Purchased", className: "bg-primary/15 text-primary border-primary/30" },
+  going: { label: "RSVP'd", className: "bg-primary/10 text-primary border-primary/20" },
+  pending: { label: "RSVP Pending", className: "bg-accent/10 text-accent-foreground border-accent/20" },
+  interested: { label: "Interested", className: "bg-secondary text-muted-foreground border-border" },
+};
+
+const TicketEventCard = ({
+  rsvpId,
+  eventId,
+  title,
+  eventDate,
+  isPast,
+  ticketStatus,
+  onQrClick,
+}: TicketEventCardProps) => {
+  const cfg = statusConfig[ticketStatus];
+  const showQr = ticketStatus === "purchased" || ticketStatus === "going";
+
+  return (
+    <Link
+      to={`/events/${eventId}`}
+      className={`flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
+    >
+      <div className="w-28 h-28 flex-shrink-0">
+        <img
+          src={getEventFlyer(eventId)}
+          alt={title}
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      <div className="flex-1 px-4 py-3 min-w-0">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
+          {title}
+        </h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+            {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
+          </span>
+          <Badge variant="outline" className={`text-xs font-medium h-7 rounded-full px-3 ${cfg.className}`}>
+            {cfg.label}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 mr-3 flex-shrink-0">
+        {showQr && !isPast && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onQrClick?.(e);
+            }}
+            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
+          >
+            <QrCode className="h-4 w-4 text-foreground" />
+          </button>
+        )}
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </div>
+    </Link>
+  );
+};
+
+export default TicketEventCard;
