@@ -16,7 +16,9 @@ import {
   X,
   Search,
   Crown,
+  UserMinus,
 } from "lucide-react";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface GroupChatSettingsSheetProps {
@@ -197,6 +199,31 @@ const GroupChatSettingsSheet = ({
     });
   };
 
+  const handleRemoveMember = async (memberId: string) => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("group_chat_members")
+        .delete()
+        .eq("group_chat_id", chatId)
+        .eq("user_id", memberId);
+      if (error) throw error;
+
+      const newCount = Math.max(0, memberCount - 1);
+      await supabase.from("group_chats").update({ member_count: newCount }).eq("id", chatId);
+
+      queryClient.invalidateQueries({ queryKey: ["group-chat-members", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["group-chat", chatId] });
+      queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+      queryClient.invalidateQueries({ queryKey: ["group-chat-available-friends", chatId] });
+      toast({ title: "Member removed" });
+    } catch {
+      toast({ title: "Failed to remove member", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filteredFriends = availableFriends.filter((f) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase();
@@ -298,7 +325,7 @@ const GroupChatSettingsSheet = ({
                   className="flex items-center gap-2.5 px-2 py-2 rounded-lg"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={m.avatar_url || undefined} />
+                    <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
                     <AvatarFallback className="bg-muted text-[10px]">
                       {(m.display_name || m.username || "U")[0]}
                     </AvatarFallback>
@@ -319,6 +346,16 @@ const GroupChatSettingsSheet = ({
                     <span className="flex items-center gap-0.5 text-[10px] text-primary font-medium">
                       <Crown className="h-3 w-3" /> You
                     </span>
+                  )}
+                  {m.user_id !== user?.id && (
+                    <button
+                      onClick={() => handleRemoveMember(m.user_id)}
+                      disabled={saving}
+                      className="p-1.5 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="Remove member"
+                    >
+                      <UserMinus className="h-3.5 w-3.5" />
+                    </button>
                   )}
                 </div>
               ))}
@@ -372,7 +409,7 @@ const GroupChatSettingsSheet = ({
                         className="pointer-events-none"
                       />
                       <Avatar className="h-7 w-7">
-                        <AvatarImage src={f.avatar_url || undefined} />
+                        <AvatarImage src={getOptimizedUrl(f.avatar_url, 'AVATAR_SM') || undefined} />
                         <AvatarFallback className="text-[10px] bg-muted">
                           {(f.display_name || f.username || "U")[0]}
                         </AvatarFallback>
