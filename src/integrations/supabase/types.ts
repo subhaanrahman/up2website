@@ -457,6 +457,7 @@ export type Database = {
           group_chat_id: string
           id: string
           is_from_current_user: boolean
+          sender_id: string | null
           sender_name: string
         }
         Insert: {
@@ -465,6 +466,7 @@ export type Database = {
           group_chat_id: string
           id?: string
           is_from_current_user?: boolean
+          sender_id?: string | null
           sender_name: string
         }
         Update: {
@@ -473,6 +475,7 @@ export type Database = {
           group_chat_id?: string
           id?: string
           is_from_current_user?: boolean
+          sender_id?: string | null
           sender_name?: string
         }
         Relationships: [
