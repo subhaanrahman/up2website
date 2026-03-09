@@ -665,6 +665,7 @@ export type Database = {
           quantity: number
           reserved_at: string
           status: string
+          stripe_account_id: string | null
           stripe_payment_intent_id: string | null
           ticket_tier_id: string | null
           updated_at: string
@@ -683,6 +684,7 @@ export type Database = {
           quantity?: number
           reserved_at?: string
           status?: string
+          stripe_account_id?: string | null
           stripe_payment_intent_id?: string | null
           ticket_tier_id?: string | null
           updated_at?: string
@@ -701,6 +703,7 @@ export type Database = {
           quantity?: number
           reserved_at?: string
           status?: string
+          stripe_account_id?: string | null
           stripe_payment_intent_id?: string | null
           ticket_tier_id?: string | null
           updated_at?: string
@@ -843,6 +846,47 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      organiser_stripe_accounts: {
+        Row: {
+          charges_enabled: boolean
+          created_at: string
+          id: string
+          onboarding_complete: boolean
+          organiser_profile_id: string
+          payouts_enabled: boolean
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          charges_enabled?: boolean
+          created_at?: string
+          id?: string
+          onboarding_complete?: boolean
+          organiser_profile_id: string
+          payouts_enabled?: boolean
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          charges_enabled?: boolean
+          created_at?: string
+          id?: string
+          onboarding_complete?: boolean
+          organiser_profile_id?: string
+          payouts_enabled?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_stripe_accounts_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: true
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_events: {
         Row: {
