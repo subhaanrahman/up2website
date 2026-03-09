@@ -55,7 +55,7 @@ const AvatarWithProgress = ({ src, fallback, progress, size = 112 }: AvatarWithP
           className="border-2 border-background"
           style={{ width: avatarSize, height: avatarSize }}
         >
-          <AvatarImage src={src} />
+          <AvatarImage src={optimizedSrc} />
           <AvatarFallback className="text-2xl bg-card text-foreground font-bold">
             {fallback}
           </AvatarFallback>

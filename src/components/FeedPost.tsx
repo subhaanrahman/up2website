@@ -208,7 +208,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {!eventData && imageUrl && (
             <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
-              <img src={imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
+              <img src={getOptimizedUrl(imageUrl, 'FEED_IMAGE') || imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
           {gifUrl && (

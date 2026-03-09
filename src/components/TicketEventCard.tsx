@@ -43,9 +43,10 @@ const TicketEventCard = ({
     >
       <div className="w-28 h-28 flex-shrink-0">
         <img
-          src={getEventFlyer(eventId)}
+          src={getOptimizedUrl(getEventFlyer(eventId), 'EVENT_CARD') || getEventFlyer(eventId)}
           alt={title}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
       </div>
 

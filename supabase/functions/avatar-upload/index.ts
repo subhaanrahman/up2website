@@ -72,7 +72,22 @@ Deno.serve(async (req) => {
     );
 
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const safeName = `${user.id}/avatar.${ext}`;
+    // Path-based versioning: each upload gets a unique path so the CDN
+    // caches indefinitely until a new version is uploaded.
+    const safeName = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+    // Delete previous avatar files for this user (best-effort cleanup)
+    try {
+      const { data: existing } = await serviceClient.storage
+        .from('avatars')
+        .list(user.id, { limit: 20 });
+      if (existing && existing.length > 0) {
+        const toRemove = existing.map((f) => `${user.id}/${f.name}`);
+        await serviceClient.storage.from('avatars').remove(toRemove);
+      }
+    } catch {
+      // Non-fatal — old files stay but don't break anything
+    }
 
     // Upload to storage
     const { error: uploadError } = await serviceClient.storage
@@ -89,17 +104,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get public URL
+    // Get public URL — clean, no query-string cache-buster
     const { data: { publicUrl } } = serviceClient.storage
       .from('avatars')
       .getPublicUrl(safeName);
 
-    const avatarUrl = `${publicUrl}?t=${Date.now()}`;
-
     // Update profile with new avatar URL
     const { error: profileError } = await serviceClient
       .from('profiles')
-      .update({ avatar_url: avatarUrl })
+      .update({ avatar_url: publicUrl })
       .eq('user_id', user.id);
 
     if (profileError) {
@@ -109,7 +122,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ avatar_url: avatarUrl }), {
+    return new Response(JSON.stringify({ avatar_url: publicUrl }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

@@ -63,7 +63,7 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
               <div className="flex -space-x-2">
                 {friendsGoing.slice(0, 3).map((f, i) => (
                   <Avatar key={i} className="h-6 w-6 border-2 border-card">
-                    <AvatarImage src={f.avatarUrl || undefined} />
+                    <AvatarImage src={getOptimizedUrl(f.avatarUrl, 'AVATAR_SM') || undefined} />
                     <AvatarFallback className="text-[10px]">{(f.displayName || "?")[0]}</AvatarFallback>
                   </Avatar>
                 ))}

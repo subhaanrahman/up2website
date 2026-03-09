@@ -50,7 +50,7 @@ export default function MutualFriendsRow({ targetUserId }: { targetUserId: strin
         {shown.map((f) => (
           <Link key={f.user_id} to={`/user/${f.user_id}`}>
             <Avatar className="h-7 w-7 border-2 border-background">
-              <AvatarImage src={f.avatar_url || undefined} />
+              <AvatarImage src={getOptimizedUrl(f.avatar_url, 'AVATAR_SM') || undefined} />
               <AvatarFallback className="bg-secondary text-foreground text-[10px] font-semibold">
                 {f.display_name?.[0]?.toUpperCase() || "U"}
               </AvatarFallback>
