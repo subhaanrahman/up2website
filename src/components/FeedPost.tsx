@@ -19,6 +19,7 @@ interface FeedPostProps {
   imageUrl?: string | null;
   gifUrl?: string | null;
   repostedBy?: string;
+  isVerified?: boolean;
   eventData?: {
     id: string;
     title: string;
