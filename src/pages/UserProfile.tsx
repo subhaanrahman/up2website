@@ -146,9 +146,7 @@ const UserProfile = () => {
       }
 
       // Determine if target is public based on profile_tier
-      const targetProfile = profile;
-      // profile is already fetched above — check profile_tier
-      setTargetIsPublic(profileData?.profile_tier === 'professional');
+      setTargetIsPublic(profile?.profile_tier === 'professional');
 
       // Check connections
       const { data: connData } = await supabase
