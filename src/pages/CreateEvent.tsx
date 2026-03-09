@@ -34,6 +34,7 @@ const CreateEvent = () => {
 
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
+  const [publishAt, setPublishAt] = useState("");
 
   // Details state
   const [title, setTitle] = useState("");
