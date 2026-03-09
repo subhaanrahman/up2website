@@ -5,7 +5,7 @@ import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Badge } from "@/components/ui/badge";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 
-export type TicketStatus = "purchased" | "going" | "pending" | "interested";
+export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved";
 
 interface TicketEventCardProps {
   rsvpId: string;
@@ -22,6 +22,7 @@ const statusConfig: Record<TicketStatus, { label: string; className: string }> =
   going: { label: "RSVP'd", className: "bg-primary/10 text-primary border-primary/20" },
   pending: { label: "RSVP Pending", className: "bg-accent/10 text-accent-foreground border-accent/20" },
   interested: { label: "Interested", className: "bg-secondary text-muted-foreground border-border" },
+  saved: { label: "Saved", className: "bg-secondary text-muted-foreground border-border" },
 };
 
 const TicketEventCard = ({
