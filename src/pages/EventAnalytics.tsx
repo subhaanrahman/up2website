@@ -25,7 +25,8 @@ const EventAnalytics = () => {
   });
 
   const { data: analytics, isLoading } = useDashboardAnalytics(
-    event?.organiser_profile_id || undefined
+    event?.organiser_profile_id || undefined,
+    "all"
   );
 
   // Fetch event-specific ticket counts
