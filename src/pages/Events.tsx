@@ -171,7 +171,7 @@ const Events = () => {
   );
 
   const renderEventItem = (event: any) => (
-    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors">
+    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors relative">
       <div className="w-28 h-28 flex-shrink-0">
         {event.coverImage || event.cover_image ? (
           <img src={event.coverImage || event.cover_image} alt={event.title} className="w-full h-full object-cover" />
@@ -192,6 +192,15 @@ const Events = () => {
           )}
         </div>
       </div>
+      {user && (
+        <button
+          onClick={(e) => handleToggleSave(event.id, e)}
+          className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-card/90 backdrop-blur-sm hover:bg-card transition-colors"
+          aria-label={savedEventIds.has(event.id) ? "Unsave event" : "Save event"}
+        >
+          <Bookmark className={`h-4 w-4 ${savedEventIds.has(event.id) ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+        </button>
+      )}
     </Link>
   );
 
