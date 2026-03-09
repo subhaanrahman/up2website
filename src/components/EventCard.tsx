@@ -1,8 +1,13 @@
 import { Link } from "react-router-dom";
-import { Calendar, MapPin, Users } from "lucide-react";
+import { Calendar, MapPin, Users, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getOptimizedUrl } from "@/lib/imageUtils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 interface FriendGoingSummary {
   avatarUrl: string | null;
@@ -22,6 +27,51 @@ interface EventCardProps {
 }
 
 const EventCard = ({ id, title, date, time, location, image, attendees, category, friendsGoing }: EventCardProps) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const isUuid = id && id.length > 5;
+
+  const { data: savedStatus } = useQuery({
+    queryKey: ["saved-event", id, user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("saved_events")
+        .select("id")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user && !!isUuid,
+  });
+
+  const isSaved = !!savedStatus;
+
+  const handleSave = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !isUuid || saving) return;
+    setSaving(true);
+    try {
+      if (isSaved) {
+        await supabase.from("saved_events").delete().eq("event_id", id).eq("user_id", user.id);
+        toast({ title: "Removed from saved" });
+      } else {
+        await supabase.from("saved_events").insert({ user_id: user.id, event_id: id });
+        toast({ title: "Saved!" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["saved-event", id, user.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
+    } catch {
+      toast({ title: "Failed to update", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Link to={`/events/${id}`} className="group block">
       <div className="bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
@@ -37,6 +87,15 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
               {category}
             </Badge>
           </div>
+          {user && isUuid && (
+            <button
+              onClick={handleSave}
+              className="absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-card/90 backdrop-blur-sm hover:bg-card transition-colors"
+              aria-label={isSaved ? "Unsave event" : "Save event"}
+            >
+              <Bookmark className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-card-foreground"}`} />
+            </button>
+          )}
         </div>
         <div className="p-4">
           <h3 className="font-bold text-base text-card-foreground mb-2 line-clamp-1 tracking-tight group-hover:text-primary transition-colors capitalize">
