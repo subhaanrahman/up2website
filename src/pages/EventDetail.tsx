@@ -326,7 +326,7 @@ const EventDetail = () => {
   const displayHostName = organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
   const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
   const displayHostLink = organiserHost
-    ? `/user/${organiserHost.owner_id}`
+    ? `/user/${organiserHost.id}`
     : dbEvent?.hostId
       ? `/user/${dbEvent.hostId}`
       : "#";
