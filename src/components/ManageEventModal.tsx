@@ -16,6 +16,7 @@ interface ManageEventModalProps {
 const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEventModalProps) => {
   const navigate = useNavigate();
   const [shareOpen, setShareOpen] = useState(false);
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
 
   const goTo = (path: string) => {
     onOpenChange(false);
