@@ -17,6 +17,8 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
 
   const eventUrl = `${window.location.origin}/events/${eventId}`;
   const rsvpUrl = `${eventUrl}?action=rsvp`;
+  const embedUrl = `${window.location.origin}/embed/${eventId}`;
+  const embedCode = `<iframe src="${embedUrl}" width="400" height="520" frameborder="0" style="border-radius:16px;overflow:hidden;"></iframe>`;
 
   const copyToClipboard = async (url: string, label: string) => {
     await navigator.clipboard.writeText(url);
