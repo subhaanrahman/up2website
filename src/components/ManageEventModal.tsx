@@ -1,9 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Image, Crown, ScanLine, Share2, Settings, BarChart3 } from "lucide-react";
+import { ClipboardList, Image, Crown, ScanLine, Share2, Settings, BarChart3, Megaphone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import ShareEventLinksModal from "@/components/ShareEventLinksModal";
+import AttendeeBroadcastModal from "@/components/AttendeeBroadcastModal";
 
 interface ManageEventModalProps {
   open: boolean;
