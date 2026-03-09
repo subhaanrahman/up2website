@@ -2,7 +2,7 @@
 
 import { eventsRepository } from '../repositories/eventsRepository';
 import type { EventEntity, Rsvp } from '../domain/types';
-import type { EventFilter } from '../repositories/eventsRepository';
+import type { EventFilter, EventCategory } from '../repositories/eventsRepository';
 import { createLogger } from '@/infrastructure/logger';
 
 const logger = createLogger('events.service');
@@ -12,7 +12,7 @@ export const eventsService = {
     return eventsRepository.list(options);
   },
 
-  async searchEvents(options: { query?: string; filter?: EventFilter; limit?: number }): Promise<EventEntity[]> {
+  async searchEvents(options: { query?: string; filter?: EventFilter; category?: EventCategory; city?: string; limit?: number }): Promise<EventEntity[]> {
     return eventsRepository.search(options);
   },
 
