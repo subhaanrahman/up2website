@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, Plus } from "lucide-react";
@@ -5,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import CreateGroupChatModal from "@/components/CreateGroupChatModal";
 
 interface GroupChat {
   id: string;
@@ -119,6 +121,7 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
 const Dashboard = () => {
   const { loading } = useAuth();
   const { data: chats, isLoading } = useGroupChats();
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   if (loading || isLoading) {
     return (
@@ -144,11 +147,16 @@ const Dashboard = () => {
 
       <div className="fixed bottom-24 z-40 w-full md:max-w-[430px] md:left-1/2 md:-translate-x-1/2 left-0 pointer-events-none">
         <div className="flex justify-end px-4 pointer-events-auto w-fit ml-auto">
-          <button className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+          >
             <Plus className="h-7 w-7 text-primary-foreground" />
           </button>
         </div>
       </div>
+
+      <CreateGroupChatModal open={showCreateModal} onOpenChange={setShowCreateModal} />
 
       <BottomNav />
     </div>

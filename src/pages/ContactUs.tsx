@@ -7,9 +7,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ContactUs = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -19,12 +22,26 @@ const ContactUs = () => {
       toast({ title: "Please fill in all fields", variant: "destructive" });
       return;
     }
+    if (subject.length > 200 || message.length > 2000) {
+      toast({ title: "Message too long", variant: "destructive" });
+      return;
+    }
     setSending(true);
-    await new Promise((r) => setTimeout(r, 800));
-    setSending(false);
-    setSubject("");
-    setMessage("");
-    toast({ title: "Message sent!", description: "We'll get back to you within 24 hours." });
+    try {
+      const { error } = await supabase.from("contact_messages").insert({
+        user_id: user?.id || null,
+        subject: subject.trim(),
+        message: message.trim(),
+      });
+      if (error) throw error;
+      setSubject("");
+      setMessage("");
+      toast({ title: "Message sent!", description: "We'll get back to you within 24 hours." });
+    } catch {
+      toast({ title: "Failed to send message", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -39,7 +56,6 @@ const ContactUs = () => {
       </header>
 
       <main className="px-4 pt-6 space-y-6">
-        {/* Contact form */}
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
@@ -48,6 +64,7 @@ const ContactUs = () => {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="What's this about?"
+              maxLength={200}
             />
           </div>
 
@@ -59,6 +76,7 @@ const ContactUs = () => {
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Tell us more…"
               rows={5}
+              maxLength={2000}
             />
           </div>
 
@@ -71,7 +89,6 @@ const ContactUs = () => {
           </Button>
         </div>
 
-        {/* Quick links */}
         <div className="space-y-3 pt-4">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
             Or reach us directly

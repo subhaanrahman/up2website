@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
 
 const ManageAccount = () => {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ const ManageAccount = () => {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -40,17 +42,33 @@ const ManageAccount = () => {
       return;
     }
     setSaving(true);
-    // Mock — in production this would call an auth API
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    toast({ title: "Password updated successfully" });
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast({ title: "Password updated successfully" });
+    } catch (err: any) {
+      toast({ title: "Failed to update password", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteAccount = async () => {
-    toast({ title: "Account deletion requested", description: "Our team will process this within 48 hours." });
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("account-delete");
+      if (error) throw error;
+      toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+      await supabase.auth.signOut();
+      navigate("/auth");
+    } catch (err: any) {
+      toast({ title: "Failed to delete account", description: err?.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -164,7 +182,9 @@ const ManageAccount = () => {
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount}>Yes, delete my account</AlertDialogAction>
+                <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
+                  {deleting ? "Deleting…" : "Yes, delete my account"}
+                </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

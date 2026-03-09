@@ -1,11 +1,21 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin } from "lucide-react";
+import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin, Trash2, Flag, Ban } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
 import ReactionPicker from "@/components/ReactionPicker";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface FeedPostProps {
   postId: string;
@@ -31,9 +41,12 @@ interface FeedPostProps {
 }
 
 const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, isVerified, eventData, collaborators }: FeedPostProps) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
+  const isOwnPost = user?.id === authorId;
   const {
     likeCount = 0,
     repostCount = 0,
@@ -45,6 +58,47 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
     handleUnreact,
     toggleRepost,
   } = usePostInteractions(postId);
+
+  const handleDelete = async () => {
+    try {
+      const { error } = await supabase.from("posts").delete().eq("id", postId);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      toast({ title: "Post deleted" });
+    } catch {
+      toast({ title: "Failed to delete post", variant: "destructive" });
+    }
+  };
+
+  const handleReport = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from("reports").insert({
+        reporter_id: user.id,
+        reported_post_id: postId,
+        reported_user_id: authorId,
+        reason: "inappropriate",
+      });
+      if (error) throw error;
+      toast({ title: "Post reported", description: "We'll review this shortly." });
+    } catch {
+      toast({ title: "Failed to report", variant: "destructive" });
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from("blocked_users").insert({
+        blocker_id: user.id,
+        blocked_id: authorId,
+      });
+      if (error) throw error;
+      toast({ title: "User blocked", description: "You won't see their posts anymore." });
+    } catch {
+      toast({ title: "Failed to block user", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="px-4 py-3 border-b border-border">
@@ -74,9 +128,30 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <span className="text-muted-foreground text-[15px] shrink-0">·</span>
               <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 shrink-0">
-              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 shrink-0">
+                  <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isOwnPost && (
+                  <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />Delete Post
+                  </DropdownMenuItem>
+                )}
+                {!isOwnPost && (
+                  <>
+                    <DropdownMenuItem onClick={handleReport}>
+                      <Flag className="h-4 w-4 mr-2" />Report
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleBlock} className="text-destructive">
+                      <Ban className="h-4 w-4 mr-2" />Block User
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Collaborators line */}

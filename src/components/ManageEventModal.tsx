@@ -27,7 +27,7 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
     { icon: Share2, label: "Share & Ticket Links", description: "Copy event link, RSVP link & QR code", action: () => { onOpenChange(false); setShareOpen(true); } },
     { icon: Image, label: "Upload Media", description: "Add event photo gallery", action: () => goTo(`/events/${eventId}/manage`) },
     { icon: Settings, label: "Event Settings", description: "Edit event details", action: () => goTo(`/events/${eventId}/edit`) },
-    { icon: BarChart3, label: "Analytics — Coming Soon", description: "Views, sales & revenue tracking", action: () => {}, disabled: true },
+    { icon: BarChart3, label: "Analytics", description: "Views, sales & revenue tracking", action: () => goTo(`/events/${eventId}/analytics`) },
     { icon: Crown, label: "VIP Tables — Coming Soon", description: "Manage VIP table bookings", action: () => {}, disabled: true },
   ];
 
