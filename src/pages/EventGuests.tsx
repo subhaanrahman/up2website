@@ -54,6 +54,8 @@ const EventGuests = () => {
   const { user } = useAuth();
   const { data: event } = useEvent(id);
   const { data: guests = [], isLoading } = useEventGuests(id);
+  const { data: friendsGoing = [] } = useFriendsGoing(id);
+  const friendIds = new Set(friendsGoing.map(f => f.userId));
 
   const isHost = event && user && event.hostId === user.id;
   const goingCount = guests.filter(g => g.status === 'going').length;
