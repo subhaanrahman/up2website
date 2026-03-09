@@ -206,8 +206,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate platform fee (10%)
-    // NOTE: platform_fee_cents = service fee passed as application_fee_amount to Stripe
+    // platform_fee_cents = service fee (7%) passed as application_fee_amount to Stripe
     // amount_cents on the order = total customer charge (ticket + service fee)
     const platform_fee_cents = service_fee_cents;
 
