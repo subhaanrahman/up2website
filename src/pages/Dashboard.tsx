@@ -26,12 +26,27 @@ interface GroupChat {
 }
 
 const useGroupChats = () => {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["group-chats"],
+    queryKey: ["group-chats", user?.id],
+    enabled: !!user,
     queryFn: async (): Promise<GroupChat[]> => {
+      if (!user) return [];
+
+      // Get group chat IDs where the user is a member
+      const { data: memberships, error: memErr } = await supabase
+        .from("group_chat_members")
+        .select("group_chat_id")
+        .eq("user_id", user.id);
+
+      if (memErr || !memberships || memberships.length === 0) return [];
+
+      const chatIds = memberships.map((m) => m.group_chat_id);
+
       const { data: chats, error } = await supabase
         .from("group_chats")
         .select("*")
+        .in("id", chatIds)
         .order("updated_at", { ascending: false });
 
       if (error) throw error;
