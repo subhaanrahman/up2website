@@ -581,10 +581,12 @@ export type Database = {
           event_id: string
           expires_at: string
           id: string
+          platform_fee_cents: number
           quantity: number
           reserved_at: string
           status: string
           stripe_payment_intent_id: string | null
+          ticket_tier_id: string | null
           updated_at: string
           user_id: string
         }
@@ -597,10 +599,12 @@ export type Database = {
           event_id: string
           expires_at?: string
           id?: string
+          platform_fee_cents?: number
           quantity?: number
           reserved_at?: string
           status?: string
           stripe_payment_intent_id?: string | null
+          ticket_tier_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -613,10 +617,12 @@ export type Database = {
           event_id?: string
           expires_at?: string
           id?: string
+          platform_fee_cents?: number
           quantity?: number
           reserved_at?: string
           status?: string
           stripe_payment_intent_id?: string | null
+          ticket_tier_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -626,6 +632,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
             referencedColumns: ["id"]
           },
         ]
@@ -750,6 +763,41 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          order_id: string | null
+          payload: Json | null
+          stripe_event_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          order_id?: string | null
+          payload?: Json | null
+          stripe_event_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          order_id?: string | null
+          payload?: Json | null
+          stripe_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       point_transactions: {
         Row: {
@@ -1115,6 +1163,64 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tickets: {
+        Row: {
+          checked_in_at: string | null
+          created_at: string
+          event_id: string
+          id: string
+          order_id: string
+          qr_code: string
+          status: string
+          ticket_tier_id: string | null
+          user_id: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          order_id: string
+          qr_code: string
+          status?: string
+          ticket_tier_id?: string | null
+          user_id: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          order_id?: string
+          qr_code?: string
+          status?: string
+          ticket_tier_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_ticket_tier_id_fkey"
+            columns: ["ticket_tier_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_tiers"
             referencedColumns: ["id"]
           },
         ]
