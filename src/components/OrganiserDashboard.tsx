@@ -202,6 +202,13 @@ const OrganiserDashboard = () => {
         />
       </div>
 
+      {/* Revenue Chart */}
+      {activeProfile?.id && (
+        <div className="px-4 mb-6">
+          <RevenueChart organiserProfileId={activeProfile.id} />
+        </div>
+      )}
+
       {/* Main Tabs: Events / Followers / Activity */}
       <div className="px-4">
         <Tabs defaultValue="events" className="w-full">
