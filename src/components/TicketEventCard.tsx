@@ -34,7 +34,6 @@ const TicketEventCard = ({
   onQrClick,
 }: TicketEventCardProps) => {
   const cfg = statusConfig[ticketStatus];
-  const showQr = ticketStatus === "purchased" || ticketStatus === "going";
 
   return (
     <Link
@@ -65,7 +64,7 @@ const TicketEventCard = ({
       </div>
 
       <div className="flex items-center gap-1 mr-3 flex-shrink-0">
-        {showQr && !isPast && (
+        {!isPast && (
           <button
             onClick={(e) => {
               e.preventDefault();
