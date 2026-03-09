@@ -1,39 +1,39 @@
-## Plan: Feature Gaps & Stubbed Flows — All Batches
 
-### ✅ Batch 1 — COMPLETED
-- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
-- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
-- **F-03**: Change Password → `supabase.auth.updateUser()` 
-- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
-- **F-05**: Contact Us form → inserts into `contact_messages` table
-- **F-06**: Connect Music → persisted to `user_music_connections` table
-- **F-07**: Save/Interested → persisted to `saved_events` table
-- **F-08**: Map Preview → Google Maps embed iframe
-- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
-- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
-- P-05: Add to Calendar (.ics download)
-- P-06: "Who's going" friend highlights
-- P-07: RSVP with +1 guest count
-- P-10: Waitlist when full
-- P-19: "Going" friends on event cards
+## Plan: Unify Check-in Around User QR Code (Profile-Based)
 
-### Batch 3 — Ticketing & Orders
-- P-11: Order confirmation / success page
-- P-12: View purchased tickets with QR codes
-- P-14: Transfer tickets
-- P-15: Discount code validation
-- P-28: Linked payment methods
+### Current State
+- Each purchased ticket has its own `qr_code` field with a unique value
+- The Tickets page shows per-ticket QR codes via `TicketDetailModal`
+- For non-purchased (RSVP) events, clicking QR opens the profile QR modal
+- The check-in page (`EventCheckIn`) works by looking up users manually from an attendee list
+- The `checkin-toggle` edge function checks in by `user_id`, not by ticket QR — so the backend already supports this model
 
-### Batch 4 — Organiser Tools
-- P-21: Revenue / sales dashboard tab
-- P-23: Scheduled event publishing
-- P-24: Attendee blast notifications
-- P-25: Embed event widget
+### What Changes
 
-### ✅ Batch 5 — Discovery & Social (COMPLETED)
-- P-02: Location-based event discovery (city filtering from user profile)
-- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
-- P-18: Share event as post to feed (Post button in share sheet)
-- P-XX: Event category filtering (10 categories with emoji pills)
+**Concept**: A user's QR code is their profile URL (`/user/{user_id}`). Scanning it at any event looks up that user's tickets/RSVPs for the current event and checks them in. No per-ticket QR codes needed.
+
+### Changes
+
+**1. Tickets page — always show profile QR, not ticket QR**
+- `src/pages/Tickets.tsx`: Remove the `handleQrClick` branching logic that opens `TicketDetailModal` for purchased tickets. Always open `ProfileQrModal` when the QR button is tapped.
+- Remove `TicketDetailModal` import and usage from Tickets page (keep the component file — it may still be useful for ticket transfer flows later).
+- Remove the `purchasedTickets` query since it's no longer needed for QR display on this page.
+
+**2. TicketEventCard — show QR for all upcoming events (not just purchased/going)**
+- `src/components/TicketEventCard.tsx`: Show the QR button for all non-past events regardless of ticket status (the user's profile QR is universal).
+
+**3. EventCheckIn — add QR scan mode that resolves user from profile URL**
+- `src/pages/EventCheckIn.tsx`: The "QR Scan Mode" button is currently disabled. We won't build a native camera scanner (not possible in this stack), but we will add a **manual lookup field** where the organiser can paste/enter a user ID or profile URL, which then finds and checks in that user.
+- Add a text input mode behind the "QR Scan Mode" button that accepts a profile URL or user ID, extracts the user_id, and calls `checkin-toggle`.
+
+**4. No database changes needed**
+- The `check_ins` table already keys on `(event_id, user_id)` — no per-ticket reference needed.
+- The `checkin-toggle` edge function already accepts `user_id` + `event_id`.
+
+### Files to modify
+- `src/pages/Tickets.tsx` — simplify QR to always use ProfileQrModal
+- `src/components/TicketEventCard.tsx` — show QR for all non-past statuses
+- `src/pages/EventCheckIn.tsx` — add manual user ID/URL lookup for check-in
+- `src/components/TicketDetailModal.tsx` — no changes (keep for future transfer use)
+
