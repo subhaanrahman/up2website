@@ -4,12 +4,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Calendar, MapPin } from "lucide-react";
+import { Search } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchEvents } from "@/hooks/useEventsQuery";
-import type { EventFilter } from "@/features/events";
+import { useForYouEvents } from "@/hooks/useForYouEvents";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfileQuery";
+import type { EventFilter, EventCategory } from "@/features/events";
+import { EVENT_CATEGORIES } from "@/features/events";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
@@ -41,7 +45,7 @@ function mapOrganisers(rows: any[]): SearchResult[] {
   }));
 }
 
-const filters = [
+const timeFilters = [
   { value: "", label: "All" },
   { value: "tonight", label: "🌙 Tonight" },
   { value: "thisWeek", label: "📅 This Week" },
@@ -49,10 +53,26 @@ const filters = [
   { value: "free", label: "🎟️ Free" },
 ];
 
+const categoryLabels: Record<string, string> = {
+  party: "🎉 Party",
+  music: "🎵 Music",
+  networking: "🤝 Networking",
+  food: "🍕 Food",
+  sports: "⚽ Sports",
+  arts: "🎨 Arts",
+  charity: "💝 Charity",
+  festival: "🎪 Festival",
+  comedy: "😂 Comedy",
+  other: "📌 Other",
+};
+
 const Events = () => {
+  const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
   const [selectedFilter, setSelectedFilter] = useState<EventFilter | "">("");
+  const [selectedCategory, setSelectedCategory] = useState<EventCategory | "">("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,8 +80,17 @@ const Events = () => {
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
     filter: selectedFilter || undefined,
+    category: selectedCategory || undefined,
+    city: (!searchQuery.trim() && !selectedFilter && !selectedCategory && profile?.city) ? profile.city : undefined,
     limit: 30,
   });
+
+  const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
+
+  // Show "For You" when no search/filter active
+  const showForYou = !searchQuery.trim() && !selectedFilter && !selectedCategory;
+  const displayEvents = showForYou ? forYouEvents : eventResults;
+  const displayEventsLoading = showForYou ? forYouLoading : eventsLoading;
 
   // Load people suggestions on mount
   useEffect(() => {
@@ -126,7 +155,7 @@ const Events = () => {
       </div>
       <div className="flex-1 px-4 py-3 min-w-0">
         <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
             {format(new Date(event.eventDate || event.event_date), "EEE M/d - ha")}
           </span>
@@ -163,8 +192,9 @@ const Events = () => {
         <main className="px-4">
           {activeTab === "events" && (
             <>
+              {/* Time filters */}
               <div className="flex gap-2 overflow-x-auto py-3 -mx-4 px-4 no-scrollbar">
-                {filters.map(f => (
+                {timeFilters.map(f => (
                   <button
                     key={f.value}
                     onClick={() => setSelectedFilter(f.value as EventFilter | "")}
@@ -178,7 +208,40 @@ const Events = () => {
                   </button>
                 ))}
               </div>
-              {eventsLoading ? (
+
+              {/* Category filters */}
+              <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 no-scrollbar">
+                <button
+                  onClick={() => setSelectedCategory("")}
+                  className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                    !selectedCategory
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {EVENT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
+                    className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {categoryLabels[cat] || cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Section label */}
+              {showForYou && (
+                <p className="text-sm font-semibold text-muted-foreground mb-2">For You</p>
+              )}
+
+              {displayEventsLoading ? (
                 <div className="space-y-3 pt-2">
                   {[1, 2, 3].map(i => (
                     <div key={i} className="flex gap-3 py-3">
@@ -190,10 +253,10 @@ const Events = () => {
                     </div>
                   ))}
                 </div>
-              ) : eventResults.length === 0 ? (
+              ) : displayEvents.length === 0 ? (
                 <p className="text-center text-muted-foreground py-12">No upcoming events found</p>
               ) : (
-                <div className="space-y-3 pt-1">{eventResults.map(renderEventItem)}</div>
+                <div className="space-y-3 pt-1">{displayEvents.map(renderEventItem)}</div>
               )}
             </>
           )}
@@ -243,8 +306,8 @@ const Events = () => {
             </div>
 
             <TabsContent value="events">
-              <div className="flex gap-2 flex-wrap mb-6">
-                {filters.map(f => (
+              <div className="flex gap-2 flex-wrap mb-4">
+                {timeFilters.map(f => (
                   <button
                     key={f.value}
                     onClick={() => setSelectedFilter(f.value as EventFilter | "")}
@@ -258,12 +321,40 @@ const Events = () => {
                   </button>
                 ))}
               </div>
-              {eventsLoading ? (
+              <div className="flex gap-2 flex-wrap mb-6">
+                <button
+                  onClick={() => setSelectedCategory("")}
+                  className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                    !selectedCategory
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  All Categories
+                </button>
+                {EVENT_CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
+                    className={`px-4 py-2 rounded-full text-sm transition-colors ${
+                      selectedCategory === cat
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {categoryLabels[cat] || cat}
+                  </button>
+                ))}
+              </div>
+
+              {showForYou && <p className="text-sm font-semibold text-muted-foreground mb-3">For You</p>}
+
+              {displayEventsLoading ? (
                 <p className="text-muted-foreground">Loading...</p>
-              ) : eventResults.length === 0 ? (
+              ) : displayEvents.length === 0 ? (
                 <p className="text-muted-foreground py-12 text-center">No upcoming events found</p>
               ) : (
-                <div className="space-y-3 max-w-lg">{eventResults.map(renderEventItem)}</div>
+                <div className="space-y-3 max-w-lg">{displayEvents.map(renderEventItem)}</div>
               )}
             </TabsContent>
 

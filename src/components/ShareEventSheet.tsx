@@ -3,7 +3,7 @@ import {
   Drawer,
   DrawerContent,
 } from "@/components/ui/drawer";
-import { Copy, MessageCircle, Share2, Instagram, Twitter, Facebook, Mail, Camera, Search } from "lucide-react";
+import { Copy, MessageCircle, Share2, Instagram, Twitter, Facebook, Mail, Camera, Search, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import StoryCardPreview from "@/components/StoryCardPreview";
