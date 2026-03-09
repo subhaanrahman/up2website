@@ -162,8 +162,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <div className="flex items-center -space-x-1">
                 {collaborators.slice(0, 3).map((c, i) => (
                   <Link key={i} to={`/user/${c.user_id}`}>
-                    <Avatar className="h-4 w-4 border border-background">
-                      <AvatarImage src={c.avatar_url || undefined} />
+                     <Avatar className="h-4 w-4 border border-background">
+                      <AvatarImage src={getOptimizedUrl(c.avatar_url, 'AVATAR_SM') || undefined} />
                       <AvatarFallback className="text-[7px] bg-muted">{c.display_name[0]}</AvatarFallback>
                     </Avatar>
                   </Link>
