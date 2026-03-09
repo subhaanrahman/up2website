@@ -193,32 +193,7 @@ const Events = () => {
                 ))}
               </div>
 
-              {/* Category filters */}
-              <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 no-scrollbar">
-                <button
-                  onClick={() => setSelectedCategory("")}
-                  className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                    !selectedCategory
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  All Categories
-                </button>
-                {EVENT_CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCategory(cat === selectedCategory ? "" : cat)}
-                    className={`px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
-                      selectedCategory === cat
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary text-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {categoryLabels[cat] || cat}
-                  </button>
-                ))}
-              </div>
+
 
               {/* Section label */}
               {showForYou && (
