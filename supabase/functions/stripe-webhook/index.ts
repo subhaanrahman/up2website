@@ -129,12 +129,56 @@ Deno.serve(async (req) => {
             { onConflict: 'event_id,user_id' }
           );
 
-        // Award loyalty points
+        // Award loyalty points — use direct inserts since award_points RPC
+        // relies on auth.uid() which is NULL in service-role context
         try {
-          await serviceClient.rpc('award_points', {
-            p_action_type: 'buy_ticket',
-            p_description: `Purchased ${order.quantity} ticket(s)`,
-          });
+          const { data: userPoints } = await serviceClient
+            .from('user_points')
+            .select('total_points, current_rank')
+            .eq('user_id', order.user_id)
+            .maybeSingle();
+
+          const pointsToAward = 50; // buy_ticket action
+          const currentPoints = userPoints?.total_points ?? 0;
+          const newTotal = currentPoints + pointsToAward;
+
+          const rankThresholds: Array<[number, string]> = [
+            [4000, 'diamond'], [3000, 'platinum'], [2000, 'gold'], [1000, 'silver'],
+          ];
+          const newRank = rankThresholds.find(([t]) => newTotal >= t)?.[1] ?? 'bronze';
+          const oldRank = userPoints?.current_rank ?? 'bronze';
+
+          // Upsert user_points
+          await serviceClient
+            .from('user_points')
+            .upsert(
+              { user_id: order.user_id, total_points: newTotal, current_rank: newRank, updated_at: new Date().toISOString() },
+              { onConflict: 'user_id' },
+            );
+
+          // Record transaction
+          await serviceClient
+            .from('point_transactions')
+            .insert({
+              user_id: order.user_id,
+              points: pointsToAward,
+              action_type: 'buy_ticket',
+              description: `Purchased ${order.quantity} ticket(s)`,
+            });
+
+          // Award voucher on rank-up
+          if (newRank !== oldRank) {
+            await serviceClient
+              .from('user_vouchers')
+              .insert({
+                user_id: order.user_id,
+                code: 'REWARD-' + crypto.randomUUID().slice(0, 8).toUpperCase(),
+                value_cents: 500,
+                earned_at_rank: newRank,
+                status: 'available',
+                expires_at: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              });
+          }
         } catch (e) {
           // Non-critical — log but don't fail
           console.warn('Failed to award points:', e);
