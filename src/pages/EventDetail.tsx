@@ -634,6 +634,16 @@ const EventDetail = () => {
               <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
             </>
           ) : (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">From R{(lowestPriceCents / 100).toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">+ fees</p>
+              </div>
+              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>
+                Buy Tickets
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
