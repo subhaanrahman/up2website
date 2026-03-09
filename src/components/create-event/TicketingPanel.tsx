@@ -130,7 +130,7 @@ const TicketingPanel = ({
             </Button>
           </div>
         ))}
-        <Button variant="outline" size="sm" className="w-full border-dashed" onClick={() => { setEditingTier(null); setTierModalOpen(true); }}>
+        <Button variant="outline" size="sm" className="w-full border-dashed" onClick={() => { setEditingTier(null); setTierModalOpen(true); }} disabled={!payoutsReady}>
           <Plus className="h-4 w-4 mr-1" /> Add Ticket Tier
         </Button>
       </div>
