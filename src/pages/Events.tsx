@@ -57,12 +57,52 @@ const timeFilters = [
 const Events = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("events");
   const [selectedFilter, setSelectedFilter] = useState<EventFilter | "">("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [recentProfiles, setRecentProfiles] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  // Fetch all saved event IDs for current user
+  const { data: savedEventIds = new Set<string>() } = useQuery({
+    queryKey: ["saved-event-ids", user?.id],
+    queryFn: async () => {
+      if (!user) return new Set<string>();
+      const { data } = await supabase
+        .from("saved_events")
+        .select("event_id")
+        .eq("user_id", user.id);
+      return new Set((data || []).map(d => d.event_id));
+    },
+    enabled: !!user,
+  });
+
+  const handleToggleSave = useCallback(async (eventId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || savingId) return;
+    setSavingId(eventId);
+    try {
+      if (savedEventIds.has(eventId)) {
+        await supabase.from("saved_events").delete().eq("event_id", eventId).eq("user_id", user.id);
+        toast({ title: "Removed from saved" });
+      } else {
+        await supabase.from("saved_events").insert({ user_id: user.id, event_id: eventId });
+        toast({ title: "Saved!" });
+      }
+      queryClient.invalidateQueries({ queryKey: ["saved-event-ids", user.id] });
+      queryClient.invalidateQueries({ queryKey: ["saved-event", eventId, user.id] });
+      queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
+    } catch {
+      toast({ title: "Failed to update", variant: "destructive" });
+    } finally {
+      setSavingId(null);
+    }
+  }, [user, savingId, savedEventIds, queryClient, toast]);
 
   const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
     query: searchQuery,
