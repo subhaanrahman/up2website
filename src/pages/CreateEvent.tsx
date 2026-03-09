@@ -233,9 +233,27 @@ const CreateEvent = () => {
             <NotificationsPanel reminders={reminders} setReminders={setReminders} />
           )}
 
-          {/* Create button only on details tab */}
+          {/* Create + Schedule buttons on details tab */}
           {activeTab === "details" && (
-            <div className="pt-6">
+            <div className="pt-6 space-y-3">
+              {/* Schedule option */}
+              <div className="space-y-2">
+                <Label className="text-foreground text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" /> Schedule Publishing (optional)
+                </Label>
+                <Input
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                  className="h-12 bg-card border-border"
+                  placeholder="Leave empty to publish immediately"
+                />
+                {publishAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Event will auto-publish at the selected time
+                  </p>
+                )}
+              </div>
               <Button
                 type="button"
                 size="lg"
@@ -243,7 +261,7 @@ const CreateEvent = () => {
                 disabled={createEventMutation.isPending}
                 onClick={handleSubmit}
               >
-                {createEventMutation.isPending ? "Creating..." : "Create Event"}
+                {createEventMutation.isPending ? "Creating..." : publishAt ? "Schedule Event" : "Create Event"}
               </Button>
             </div>
           )}
