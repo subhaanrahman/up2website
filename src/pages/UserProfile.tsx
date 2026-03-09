@@ -300,6 +300,41 @@ const UserProfile = () => {
   const isOrg = !!profile?._isOrganiser;
   const vibeTags: string[] = profile?._tags || [];
 
+  // DM handler for organiser profiles
+  const [dmLoading, setDmLoading] = useState(false);
+  const handleDm = useCallback(async () => {
+    if (!user || !userId || !isOrg) return;
+    setDmLoading(true);
+    try {
+      // Check if thread already exists
+      const { data: existing } = await supabase
+        .from("dm_threads")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("organiser_profile_id", userId)
+        .maybeSingle();
+
+      if (existing) {
+        navigate(`/messages/dm/${existing.id}`);
+        return;
+      }
+
+      // Create new thread
+      const { data: newThread, error } = await supabase
+        .from("dm_threads")
+        .insert({ user_id: user.id, organiser_profile_id: userId })
+        .select()
+        .single();
+
+      if (error) throw error;
+      navigate(`/messages/dm/${newThread.id}`);
+    } catch {
+      toast.error("Failed to start conversation");
+    } finally {
+      setDmLoading(false);
+    }
+  }, [user, userId, isOrg, navigate]);
+
   // ── Event visibility gating ──
   // Personal profiles: upcoming only visible if friends or public profile
   // Organiser profiles: always show all events
