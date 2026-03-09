@@ -13,17 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
 import { useProfile } from "@/hooks/useProfileQuery";
+import { useTicketTiers } from "@/hooks/useTicketTiers";
+import { useOrderFlow } from "@/hooks/useOrderFlow";
 import { format, isPast } from "date-fns";
-import { events as mockEvents, Event as MockEvent } from "@/data/events";
+import { events as mockEvents } from "@/data/events";
 import { rsvpApi } from "@/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
-const mockTicketTiers = [
-  { id: "ga", name: "General Admission", price: 49.99, description: "Standard entry" },
-  { id: "vip", name: "VIP Access", price: 99.99, description: "Priority entry + VIP area" },
-  { id: "premium", name: "Premium Package", price: 149.99, description: "All VIP perks + drink tickets" },
-];
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -37,6 +33,8 @@ const EventDetail = () => {
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
 
+  const { reserving } = useOrderFlow();
+
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
   const isMock = !!foundMockEvent;
@@ -48,11 +46,16 @@ const EventDetail = () => {
   // Fetch host profile for DB events
   const { data: host } = useProfile(dbEvent?.hostId);
 
+  // Fetch real ticket tiers from DB
+  const { data: ticketTiers = [] } = useTicketTiers(dbEvent?.id);
+
+  // Determine if this is a paid event based on DB ticket tiers
+  const hasPaidTiers = ticketTiers.length > 0 && ticketTiers.some(t => t.priceCents > 0);
+
   // Fetch organiser profile if event has one
   const { data: organiserHost } = useQuery({
     queryKey: ["organiser-profile", dbEvent?.id],
     queryFn: async () => {
-      // Access the raw DB row to get organiser_profile_id
       if (!dbEvent) return null;
       const { data } = await supabase
         .from("events")
@@ -86,7 +89,7 @@ const EventDetail = () => {
     enabled: !!id && !!user && !isMock,
   });
 
-  // Fetch attendees (profiles of people who RSVP'd) for this event
+  // Fetch attendees
   const { data: attendeeProfiles } = useQuery({
     queryKey: ["event-attendees", id],
     queryFn: async () => {
@@ -123,21 +126,20 @@ const EventDetail = () => {
   };
 
   const handleCheckout = (tierId: string, quantity: number, discountCode?: string) => {
-    const event = foundMockEvent || dbEvent;
-    if (!event) return;
-    const tier = mockTicketTiers.find(t => t.id === tierId);
+    if (!dbEvent) return;
+    const tier = ticketTiers.find(t => t.id === tierId);
     if (!tier) return;
 
     setShowPurchaseModal(false);
     navigate("/checkout", {
       state: {
-        eventTitle: event.title,
-        eventDate: foundMockEvent 
-          ? foundMockEvent.date 
-          : format(new Date(dbEvent!.eventDate), "EEEE, MMM d • h:mm a"),
-        eventLocation: foundMockEvent?.location || dbEvent?.location || "TBD",
+        eventId: dbEvent.id,
+        eventTitle: dbEvent.title,
+        eventDate: format(new Date(dbEvent.eventDate), "EEEE, MMM d • h:mm a"),
+        eventLocation: dbEvent.location || "TBD",
+        tierId: tier.id,
         tierName: tier.name,
-        tierPrice: tier.price,
+        tierPriceCents: tier.priceCents,
         quantity,
         discountCode,
       },
@@ -186,15 +188,14 @@ const EventDetail = () => {
   }
 
   const event = foundMockEvent || dbEvent;
-  const isFreeEvent = !foundMockEvent;
-  // Host = direct host_id match OR owner of the organiser profile
+  // Paid event = has ticket tiers with price > 0 (DB events only)
+  const isFreeEvent = !isMock && !hasPaidTiers;
   const isHost = user && dbEvent && (
     dbEvent.hostId === user.id ||
     (organiserHost && organiserHost.owner_id === user.id)
   );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
-  // Determine display host: organiser profile takes priority, then DB host, then mock host
   const displayHostName = organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
   const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
   const displayHostLink = organiserHost
@@ -218,7 +219,6 @@ const EventDetail = () => {
   const eventTitle = foundMockEvent?.title || dbEvent?.title || "";
   const eventImage = foundMockEvent?.image || dbEvent?.coverImage || (id ? getEventFlyer(id) : undefined);
   
-  // Format dates — use UTC-aware formatting to avoid timezone shift issues
   const startDate = dbEvent ? new Date(dbEvent.eventDate) : null;
   const endDateObj = dbEvent?.endDate ? new Date(dbEvent.endDate) : null;
   
@@ -226,7 +226,6 @@ const EventDetail = () => {
     if (foundMockEvent) return foundMockEvent.date;
     if (!startDate) return "";
     const startStr = format(startDate, "EEEE, MMM d");
-    // Multi-day: show range
     if (endDateObj && format(endDateObj, "yyyy-MM-dd") !== format(startDate, "yyyy-MM-dd")) {
       return `${startStr} – ${format(endDateObj, "EEEE, MMM d")}`;
     }
@@ -244,6 +243,11 @@ const EventDetail = () => {
   const eventDescription = foundMockEvent?.description || dbEvent?.description || "";
   const attendees = foundMockEvent?.attendees || 0;
   const guests = foundMockEvent?.guests || [];
+
+  // Lowest tier price for display
+  const lowestPriceCents = hasPaidTiers
+    ? Math.min(...ticketTiers.filter(t => t.priceCents > 0).map(t => t.priceCents))
+    : 0;
 
   return (
     <div className="min-h-screen bg-background pb-40">
@@ -401,29 +405,42 @@ const EventDetail = () => {
                 {rsvpLoading ? "..." : "Cancel RSVP"}
               </Button>
             </>
-          ) : isFreeEvent ? (
+          ) : isMock ? (
+            // Mock events — static display only
+            <div className="w-full text-center py-2">
+              <p className="font-semibold text-muted-foreground">Demo event</p>
+            </div>
+          ) : hasPaidTiers ? (
             <>
-              <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
-              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
+              <div>
+                <p className="font-semibold text-foreground">From R{(lowestPriceCents / 100).toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">+ fees</p>
+              </div>
+              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>
+                Buy Tickets
+              </Button>
             </>
           ) : (
             <>
-              <div><p className="font-semibold text-foreground">From $49.99</p><p className="text-sm text-muted-foreground">+ fees</p></div>
-              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>Buy Tickets</Button>
+              <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
+              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
             </>
           )}
         </div>
       </div>
 
-      <PurchaseModal
-        open={showPurchaseModal}
-        onOpenChange={setShowPurchaseModal}
-        eventTitle={eventTitle}
-        eventDate={`${eventDate} • ${eventTime}`}
-        eventLocation={eventAddress || eventLocation}
-        ticketTiers={mockTicketTiers}
-        onCheckout={handleCheckout}
-      />
+      {dbEvent && (
+        <PurchaseModal
+          open={showPurchaseModal}
+          onOpenChange={setShowPurchaseModal}
+          eventTitle={eventTitle}
+          eventDate={`${eventDate} • ${eventTime}`}
+          eventLocation={eventAddress || eventLocation}
+          ticketTiers={ticketTiers}
+          loading={reserving}
+          onCheckout={handleCheckout}
+        />
+      )}
 
       <ShareEventSheet
         open={showShareSheet}
