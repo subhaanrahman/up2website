@@ -100,17 +100,18 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Check tier-level inventory
+      // Check tier-level inventory — SUM(quantity) not COUNT(*)
       if (tier.available_quantity !== null) {
-        const { count: tierSold } = await serviceClient
+        const { data: soldRows } = await serviceClient
           .from('orders')
-          .select('id', { count: 'exact', head: true })
+          .select('quantity')
           .eq('event_id', event_id)
           .eq('ticket_tier_id', ticket_tier_id)
           .in('status', ['reserved', 'confirmed'])
           .gt('expires_at', new Date().toISOString());
 
-        if ((tierSold ?? 0) + quantity > tier.available_quantity) {
+        const tierSoldQty = (soldRows ?? []).reduce((sum: number, r: any) => sum + (r.quantity ?? 0), 0);
+        if (tierSoldQty + quantity > tier.available_quantity) {
           return new Response(JSON.stringify({ error: 'This ticket tier is sold out' }), {
             status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
