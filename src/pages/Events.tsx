@@ -52,19 +52,6 @@ const timeFilters = [
   { value: "free", label: "🎟️ Free" },
 ];
 
-const categoryLabels: Record<string, string> = {
-  party: "🎉 Party",
-  music: "🎵 Music",
-  networking: "🤝 Networking",
-  food: "🍕 Food",
-  sports: "⚽ Sports",
-  arts: "🎨 Arts",
-  charity: "💝 Charity",
-  festival: "🎪 Festival",
-  comedy: "😂 Comedy",
-  other: "📌 Other",
-};
-
 const Events = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
