@@ -30,6 +30,7 @@ import ContactUs from "./pages/ContactUs";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
 import MessageThread from "./pages/MessageThread";
+import DmThread from "./pages/DmThread";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
