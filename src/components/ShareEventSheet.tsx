@@ -21,6 +21,7 @@ interface ShareEventSheetProps {
   eventDate?: string;
   eventLocation?: string;
   eventImage?: string;
+  eventId?: string;
 }
 
 interface FriendProfile {
