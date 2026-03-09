@@ -102,13 +102,6 @@ const EditProfile = () => {
         instagramHandle: formData.instagram_handle || null,
       });
 
-      // Upsert privacy setting
-      if (user) {
-        await supabase
-          .from("privacy_settings")
-          .upsert({ user_id: user.id, go_public: isPublic }, { onConflict: "user_id" });
-      }
-
       toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
       navigate("/profile");
     } catch (error: any) {
