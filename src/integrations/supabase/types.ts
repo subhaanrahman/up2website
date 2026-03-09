@@ -1197,6 +1197,7 @@ export type Database = {
         Row: {
           created_at: string
           event_id: string
+          guest_count: number
           id: string
           status: string
           updated_at: string
@@ -1205,6 +1206,7 @@ export type Database = {
         Insert: {
           created_at?: string
           event_id: string
+          guest_count?: number
           id?: string
           status: string
           updated_at?: string
@@ -1213,6 +1215,7 @@ export type Database = {
         Update: {
           created_at?: string
           event_id?: string
+          guest_count?: number
           id?: string
           status?: string
           updated_at?: string
@@ -1471,6 +1474,41 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          notified_at: string | null
+          position: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          notified_at?: string | null
+          position?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          notified_at?: string | null
+          position?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1531,10 +1569,16 @@ export type Database = {
       }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
       purge_expired_notifications: { Args: never; Returns: undefined }
-      rsvp_join: {
-        Args: { p_event_id: string; p_status?: string }
-        Returns: Json
-      }
+      rsvp_join:
+        | { Args: { p_event_id: string; p_status?: string }; Returns: Json }
+        | {
+            Args: {
+              p_event_id: string
+              p_guest_count?: number
+              p_status?: string
+            }
+            Returns: Json
+          }
       rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
     }
     Enums: {
