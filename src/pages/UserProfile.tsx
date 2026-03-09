@@ -523,6 +523,18 @@ const UserProfile = () => {
 
           <div className="flex items-center justify-center gap-2 mb-5">
             {renderFriendButton()}
+            {/* DM button — only on organiser profiles, not own profile */}
+            {isOrg && !isOwnProfile && (
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-11 w-11 rounded-full"
+                onClick={handleDm}
+                disabled={dmLoading}
+              >
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+            )}
             {profile.instagram_handle ? (
               <Button
                 variant="secondary"
