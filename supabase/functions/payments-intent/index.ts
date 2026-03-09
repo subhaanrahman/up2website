@@ -127,8 +127,32 @@ Deno.serve(async (req) => {
       customerId = customer.id;
     }
 
-    // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
+    // Look up the organiser's connected Stripe account for destination charges
+    const { data: event } = await serviceClient
+      .from('events')
+      .select('organiser_profile_id')
+      .eq('id', order.event_id)
+      .single();
+
+    let stripeAccountId: string | null = null;
+    if (event?.organiser_profile_id) {
+      const { data: stripeAccount } = await serviceClient
+        .from('organiser_stripe_accounts')
+        .select('stripe_account_id, charges_enabled')
+        .eq('organiser_profile_id', event.organiser_profile_id)
+        .maybeSingle();
+
+      if (stripeAccount?.charges_enabled) {
+        stripeAccountId = stripeAccount.stripe_account_id;
+      } else if (stripeAccount && !stripeAccount.charges_enabled) {
+        return new Response(JSON.stringify({ error: 'Organiser has not completed payout setup' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Create payment intent — with destination charge if connected account exists
+    const intentParams: any = {
       amount: order.amount_cents,
       currency: order.currency,
       customer: customerId,
@@ -139,12 +163,22 @@ Deno.serve(async (req) => {
         quantity: String(order.quantity),
       },
       automatic_payment_methods: { enabled: true },
-    });
+    };
 
-    // Store payment intent ID on the order
+    if (stripeAccountId) {
+      intentParams.application_fee_amount = order.platform_fee_cents;
+      intentParams.transfer_data = { destination: stripeAccountId };
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(intentParams);
+
+    // Store payment intent ID and stripe account on the order
     await serviceClient
       .from('orders')
-      .update({ stripe_payment_intent_id: paymentIntent.id })
+      .update({
+        stripe_payment_intent_id: paymentIntent.id,
+        stripe_account_id: stripeAccountId,
+      })
       .eq('id', order_id);
 
     return new Response(JSON.stringify({

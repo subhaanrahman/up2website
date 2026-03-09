@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import PayoutSetupSection from "@/components/PayoutSetupSection";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,6 +46,7 @@ const TAG_SUGGESTIONS = {
 const EditOrganiserProfile = () => {
   const navigate = useNavigate();
   const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles } = useActiveProfile();
+  const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [newTag, setNewTag] = useState("");
 
@@ -310,6 +313,12 @@ const EditOrganiserProfile = () => {
             </div>
           </div>
         )}
+
+        {/* Payouts Section */}
+        <PayoutSetupSection
+          organiserProfileId={activeOrg.id}
+          isOwner={activeOrg.ownerId === (user?.id || '')}
+        />
       </main>
     </div>
   );

@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit2, Info } from "lucide-react";
+import { Plus, Edit2, Info, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import TicketTierModal, { type TicketTier } from "./TicketTierModal";
 import DiscountCodeModal, { type DiscountCode } from "./DiscountCodeModal";
 
@@ -26,6 +27,7 @@ interface TicketingPanelProps {
   setSoldOutMessageEnabled: (v: boolean) => void;
   soldOutMessage: string;
   setSoldOutMessage: (v: string) => void;
+  payoutsReady?: boolean;
 }
 
 const TicketingPanel = ({
@@ -37,6 +39,7 @@ const TicketingPanel = ({
   ticketsAvailableFrom, setTicketsAvailableFrom,
   soldOutMessageEnabled, setSoldOutMessageEnabled,
   soldOutMessage, setSoldOutMessage,
+  payoutsReady = false,
 }: TicketingPanelProps) => {
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
@@ -63,6 +66,15 @@ const TicketingPanel = ({
 
   return (
     <div className="space-y-6 animate-in fade-in-0 duration-200">
+      {/* Payout setup warning */}
+      {!payoutsReady && (
+        <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            Set up payouts in your organiser profile settings before creating paid ticket tiers.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Capacity */}
       <div className="space-y-2">
         <Label className="text-foreground">Capacity</Label>
@@ -118,7 +130,7 @@ const TicketingPanel = ({
             </Button>
           </div>
         ))}
-        <Button variant="outline" size="sm" className="w-full border-dashed" onClick={() => { setEditingTier(null); setTierModalOpen(true); }}>
+        <Button variant="outline" size="sm" className="w-full border-dashed" onClick={() => { setEditingTier(null); setTierModalOpen(true); }} disabled={!payoutsReady}>
           <Plus className="h-4 w-4 mr-1" /> Add Ticket Tier
         </Button>
       </div>

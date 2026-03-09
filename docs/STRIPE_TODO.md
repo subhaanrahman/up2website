@@ -5,7 +5,7 @@
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Phase 1 | ✅ Done | Real payment completion |
-| Phase 2 | ⏳ Pending | Payout architecture (Stripe Connect) |
+| Phase 2 | ✅ Done | Payout architecture (Stripe Connect) |
 | Phase 3 | ⏳ Pending | Refunds, cleanup, audit |
 
 ---
@@ -44,7 +44,7 @@ Up2 is a marketplace. Organisers/venues are the payout recipients. This phase ad
 
 ### 2.1 Database
 
-- [ ] Create `organiser_stripe_accounts` table:
+- [x] Create `organiser_stripe_accounts` table:
   ```
   organiser_profile_id (FK → organiser_profiles, UNIQUE)
   stripe_account_id (text, acct_xxx)
@@ -53,30 +53,19 @@ Up2 is a marketplace. Organisers/venues are the payout recipients. This phase ad
   payouts_enabled (boolean)
   created_at, updated_at
   ```
-- [ ] Add `stripe_account_id` column to `orders` — records which connected account received funds
+- [x] Add `stripe_account_id` column to `orders` — records which connected account received funds
 
 ### 2.2 Edge Functions
 
-- [ ] `stripe-connect-onboard` — creates a Stripe Express connected account for an organiser profile, returns an Account Link URL for onboarding
-- [ ] `stripe-connect-status` — fetches and updates `charges_enabled` / `payouts_enabled` from Stripe for a connected account
-- [ ] `stripe-connect-dashboard` — creates a Stripe login link so organisers can view their payouts
+- [x] `stripe-connect-onboard` — creates a Stripe Express connected account for an organiser profile, returns an Account Link URL for onboarding
+- [x] `stripe-connect-status` — fetches and updates `charges_enabled` / `payouts_enabled` from Stripe for a connected account
+- [x] `stripe-connect-dashboard` — creates a Stripe login link so organisers can view their payouts
 
 ### 2.3 Payment Flow Changes
 
-- [ ] Update `payments-intent` to use **destination charges**:
-  ```typescript
-  stripe.paymentIntents.create({
-    amount: order.amount_cents,
-    currency: order.currency,
-    application_fee_amount: order.platform_fee_cents,
-    transfer_data: {
-      destination: organiserStripeAccountId,
-    },
-    ...
-  });
-  ```
-- [ ] Before allowing ticket sales, check that the organiser's connected account has `charges_enabled = true`
-- [ ] Store `stripe_account_id` on the order for audit
+- [x] Update `payments-intent` to use **destination charges** with `application_fee_amount` and `transfer_data.destination`
+- [x] Before allowing ticket sales, check that the organiser's connected account has `charges_enabled = true`
+- [x] Store `stripe_account_id` on the order for audit
 
 ### 2.4 Webhook Updates
 
@@ -85,9 +74,9 @@ Up2 is a marketplace. Organisers/venues are the payout recipients. This phase ad
 
 ### 2.5 UI
 
-- [ ] Add "Set up payouts" button/flow on organiser profile settings
-- [ ] Show payout status indicator on organiser dashboard
-- [ ] Block ticket creation/sales if organiser hasn't completed Stripe onboarding
+- [x] Add "Set up payouts" button/flow on organiser profile settings
+- [x] Show payout status indicator on organiser dashboard settings
+- [x] Block paid ticket tier creation if organiser hasn't completed Stripe onboarding
 
 ---
 

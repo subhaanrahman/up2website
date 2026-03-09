@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useCreateEvent } from "@/hooks/useEventsQuery";
+import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
 import EventDetailsForm from "@/components/create-event/EventDetailsForm";
 import TicketingPanel from "@/components/create-event/TicketingPanel";
 import GuestlistPanel from "@/components/create-event/GuestlistPanel";
@@ -72,6 +73,11 @@ const CreateEvent = () => {
 
   // Ticketing is only available when actively using a business (organiser) profile
   const hasOrganiserProfile = isOrganiser;
+
+  // Check if the active organiser has Stripe Connect set up for paid tickets
+  const activeOrgId = isOrganiser ? activeProfile?.id : undefined;
+  const { data: connectStatus } = useStripeConnectStatus(activeOrgId);
+  const payoutsReady = connectStatus?.charges_enabled ?? false;
 
   useEffect(() => {
     if (loading || profileLoading) return;
@@ -224,6 +230,7 @@ const CreateEvent = () => {
               ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
+              payoutsReady={payoutsReady}
             />
           )}
           {activeTab === "guestlist" && (
