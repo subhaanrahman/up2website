@@ -67,6 +67,7 @@ const Index = () => {
           username={username}
           avatarUrl={avatarUrl}
           organiserProfileId={isOrganiser && activeOrg ? activeOrg.id : undefined}
+          isVerified={isOrganiser || profile?.isVerified || false}
           onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
         />
 
@@ -113,6 +114,7 @@ const Index = () => {
             imageUrl={post.image_url}
             gifUrl={post.gif_url}
             repostedBy={post.reposted_by_name}
+            isVerified={post.author_is_verified}
             eventData={post.event_data}
             collaborators={post.collaborators}
           />

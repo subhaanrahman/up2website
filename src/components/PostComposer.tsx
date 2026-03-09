@@ -14,10 +14,11 @@ interface PostComposerProps {
   username: string;
   avatarUrl: string;
   organiserProfileId?: string;
+  isVerified?: boolean;
   onPostCreated?: () => void;
 }
 
-const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, onPostCreated }: PostComposerProps) => {
+const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, isVerified, onPostCreated }: PostComposerProps) => {
   const { user } = useAuth();
   const [isComposing, setIsComposing] = useState(false);
   const [postText, setPostText] = useState("");
@@ -168,7 +169,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, on
             <Link to="/profile" className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
               {displayName}
             </Link>
-            <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
             <span className="text-muted-foreground text-[13px]">@{username}</span>
           </div>
 

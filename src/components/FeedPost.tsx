@@ -19,6 +19,7 @@ interface FeedPostProps {
   imageUrl?: string | null;
   gifUrl?: string | null;
   repostedBy?: string;
+  isVerified?: boolean;
   eventData?: {
     id: string;
     title: string;
@@ -29,7 +30,7 @@ interface FeedPostProps {
   collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
 }
 
-const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, isVerified, eventData, collaborators }: FeedPostProps) => {
   const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
@@ -68,7 +69,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
               <Link to={profileLink} className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
                 {firstName}
               </Link>
-              <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />
+              {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />}
               <span className="text-muted-foreground text-[15px] truncate">@{username || "user"}</span>
               <span className="text-muted-foreground text-[15px] shrink-0">·</span>
               <span className="text-muted-foreground text-[15px] shrink-0">{timeAgo}</span>

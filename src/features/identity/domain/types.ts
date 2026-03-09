@@ -13,6 +13,7 @@ export interface UserProfile {
   city: string | null;
   pageClassification: string | null;
   instagramHandle: string | null;
+  isVerified: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -29,6 +29,7 @@ export interface PostWithAuthor {
   author_display_name: string | null;
   author_username: string | null;
   author_avatar_url: string | null;
+  author_is_verified: boolean;
   reposted_by_name?: string;
   event_data?: PostEventData | null;
   collaborators?: PostCollaborator[];
@@ -52,7 +53,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
   const authorIds = [...new Set(data.map((p) => p.author_id))];
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", authorIds);
   const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
 
@@ -108,6 +109,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
     let author_display_name: string | null = null;
     let author_username: string | null = null;
     let author_avatar_url: string | null = null;
+    let author_is_verified = false;
 
     if (post.organiser_profile_id) {
       const org = orgMap.get(post.organiser_profile_id);
@@ -115,6 +117,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
         author_display_name = org.display_name;
         author_username = org.username;
         author_avatar_url = org.avatar_url;
+        author_is_verified = true; // organiser profiles are always verified
       }
     }
     if (!author_display_name) {
@@ -122,6 +125,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
       author_display_name = prof?.display_name || null;
       author_username = prof?.username || null;
       author_avatar_url = prof?.avatar_url || null;
+      author_is_verified = prof?.is_verified ?? false;
     }
 
     return {
@@ -129,6 +133,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
       author_display_name,
       author_username,
       author_avatar_url,
+      author_is_verified,
       event_data: post.event_id ? eventMap.get(post.event_id) || null : null,
       collaborators: collabMap.get(post.id) || [],
     };
@@ -165,7 +170,7 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
   const repostAuthorIds = [...new Set(repostedPosts.map((p) => p.author_id))];
   const { data: repostAuthorProfiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", repostAuthorIds);
   const repostAuthorMap = new Map((repostAuthorProfiles || []).map((p) => [p.user_id, p]));
   const repostedPostMap = new Map(repostedPosts.map((p) => [p.id, p]));
@@ -188,6 +193,7 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
         author_display_name: author?.display_name || null,
         author_username: author?.username || null,
         author_avatar_url: author?.avatar_url || null,
+        author_is_verified: author?.is_verified ?? false,
         reposted_by_name: reposter?.display_name || reposter?.username || "Someone",
         event_data: null,
         collaborators: [],
@@ -277,7 +283,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
   const repostAuthorIds = [...new Set(repostedPosts.map((p) => p.author_id))];
   const { data: repostAuthorProfiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", repostAuthorIds);
   const repostAuthorMap = new Map((repostAuthorProfiles || []).map((p) => [p.user_id, p]));
 
@@ -313,6 +319,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
       let author_display_name: string | null = null;
       let author_username: string | null = null;
       let author_avatar_url: string | null = null;
+      let author_is_verified = false;
 
       if (originalPost.organiser_profile_id) {
         const org = orgMap.get(originalPost.organiser_profile_id);
@@ -320,6 +327,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
           author_display_name = org.display_name;
           author_username = org.username;
           author_avatar_url = org.avatar_url;
+          author_is_verified = true;
         }
       }
       if (!author_display_name) {
@@ -327,6 +335,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
         author_display_name = author?.display_name || null;
         author_username = author?.username || null;
         author_avatar_url = author?.avatar_url || null;
+        author_is_verified = author?.is_verified ?? false;
       }
 
       return {
@@ -341,6 +350,7 @@ async function fetchUserFeedWithReposts(userId: string): Promise<PostWithAuthor[
         author_display_name,
         author_username,
         author_avatar_url,
+        author_is_verified,
         reposted_by_name: reposterName,
         event_data: originalPost.event_id ? eventMap.get(originalPost.event_id) || null : null,
         collaborators: [],

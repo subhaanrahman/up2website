@@ -466,7 +466,9 @@ const UserProfile = () => {
             <h2 className="text-xl font-bold tracking-wide text-foreground uppercase font-display">
               {displayName}
             </h2>
-            <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            {(profile?._isOrganiser || profile?.is_verified) && (
+              <BadgeCheck className="h-5 w-5 text-primary fill-primary [&>path:last-child]:text-primary-foreground" />
+            )}
           </div>
 
           <p className="text-muted-foreground text-sm mb-4">@{username}</p>
@@ -698,6 +700,7 @@ const UserProfileFeedTab = ({ userId, isOrganiser }: { userId: string; isOrganis
           imageUrl={post.image_url}
           gifUrl={post.gif_url}
           repostedBy={post.reposted_by_name}
+          isVerified={post.author_is_verified}
           eventData={post.event_data}
           collaborators={post.collaborators}
         />
