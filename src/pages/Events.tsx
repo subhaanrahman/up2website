@@ -12,8 +12,7 @@ import { useSearchEvents } from "@/hooks/useEventsQuery";
 import { useForYouEvents } from "@/hooks/useForYouEvents";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
-import type { EventFilter, EventCategory } from "@/features/events";
-import { EVENT_CATEGORIES } from "@/features/events";
+import type { EventFilter } from "@/features/events";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
