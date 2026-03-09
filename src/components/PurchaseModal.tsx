@@ -35,7 +35,7 @@ interface PurchaseModalProps {
   onCheckout: (tierId: string, quantity: number, discountCode?: string) => void;
 }
 
-const SERVICE_FEE_RATE = 0.1; // 10%
+const SERVICE_FEE_RATE = 0.07; // 7% — must match orders-reserve
 
 const PurchaseModal = ({
   open,
