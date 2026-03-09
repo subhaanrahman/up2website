@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -13,6 +13,9 @@ import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
 import ProfileQrModal from "@/components/ProfileQrModal";
+import TicketDetailModal from "@/components/TicketDetailModal";
+import { callEdgeFunction } from "@/infrastructure/api-client";
+import { useToast } from "@/hooks/use-toast";
 
 interface TicketEvent {
   rsvpId: string;
@@ -25,11 +28,16 @@ interface TicketEvent {
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
+  const [ticketDetailOpen, setTicketDetailOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [transferLoading, setTransferLoading] = useState(false);
   const { user } = useAuth();
   const { isOrganiser } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const dividerRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Fetch RSVPs + orders in parallel
   const { data: ticketEvents, isLoading } = useQuery({
@@ -79,6 +87,57 @@ const Tickets = () => {
     },
     enabled: !!user?.id,
   });
+
+  // Fetch actual purchased tickets with QR codes
+  const { data: purchasedTickets = [] } = useQuery({
+    queryKey: ["purchased-tickets", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from("tickets")
+        .select("id, qr_code, status, event_id, ticket_tier_id, events(title, event_date), ticket_tiers(name)")
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+  });
+
+  const handleQrClick = (eventId: string) => {
+    // Find ticket for this event
+    const ticket = purchasedTickets.find((t: any) => t.event_id === eventId);
+    if (ticket) {
+      setSelectedTicket({
+        id: ticket.id,
+        qrCode: ticket.qr_code,
+        status: ticket.status,
+        tierName: (ticket as any).ticket_tiers?.name,
+        eventTitle: (ticket as any).events?.title,
+        eventDate: (ticket as any).events?.event_date
+          ? format(new Date((ticket as any).events.event_date), "EEE, MMM d · h:mm a")
+          : undefined,
+      });
+      setTicketDetailOpen(true);
+    } else {
+      setQrOpen(true);
+    }
+  };
+
+  const handleTransfer = async (ticketId: string, recipientUsername: string) => {
+    setTransferLoading(true);
+    try {
+      await callEdgeFunction('ticket-transfer', {
+        body: { ticket_id: ticketId, recipient_username: recipientUsername },
+      });
+      toast({ title: "Ticket Transferred!", description: `Ticket sent to @${recipientUsername}` });
+      queryClient.invalidateQueries({ queryKey: ["purchased-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["user-tickets"] });
+    } catch (err: any) {
+      toast({ title: "Transfer Failed", description: err?.message || "Could not transfer ticket", variant: "destructive" });
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   const now = new Date();
 
@@ -170,10 +229,10 @@ const Tickets = () => {
                   eventId={t.eventId}
                   title={t.title}
                   eventDate={t.eventDate}
-                  isPast
-                  ticketStatus={t.ticketStatus}
-                  onQrClick={() => setQrOpen(true)}
-                />
+                   isPast
+                   ticketStatus={t.ticketStatus}
+                   onQrClick={() => handleQrClick(t.eventId)}
+                 />
               ))}
 
               {pastEvents.length > 0 && (
@@ -192,10 +251,10 @@ const Tickets = () => {
                     eventId={t.eventId}
                     title={t.title}
                     eventDate={t.eventDate}
-                    isPast={false}
-                    ticketStatus={t.ticketStatus}
-                    onQrClick={() => setQrOpen(true)}
-                  />
+                     isPast={false}
+                     ticketStatus={t.ticketStatus}
+                     onQrClick={() => handleQrClick(t.eventId)}
+                   />
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
@@ -237,10 +296,10 @@ const Tickets = () => {
                   eventId={t.eventId}
                   title={t.title}
                   eventDate={t.eventDate}
-                  isPast={new Date(t.eventDate) < now}
-                  ticketStatus={t.ticketStatus}
-                  onQrClick={() => setQrOpen(true)}
-                />
+                   isPast={new Date(t.eventDate) < now}
+                   ticketStatus={t.ticketStatus}
+                   onQrClick={() => handleQrClick(t.eventId)}
+                 />
               ))}
             </div>
           ) : (
@@ -259,6 +318,14 @@ const Tickets = () => {
         username={username}
         avatarUrl={avatarUrl || undefined}
         profileUrl={profileUrl}
+      />
+
+      <TicketDetailModal
+        open={ticketDetailOpen}
+        onOpenChange={setTicketDetailOpen}
+        ticket={selectedTicket}
+        onTransfer={handleTransfer}
+        transferLoading={transferLoading}
       />
 
       <BottomNav />

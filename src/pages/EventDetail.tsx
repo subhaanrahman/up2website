@@ -654,6 +654,7 @@ const EventDetail = () => {
           eventTitle={eventTitle}
           eventDate={`${eventDate} • ${eventTime}`}
           eventLocation={eventAddress || eventLocation}
+          eventId={dbEvent.id}
           ticketTiers={ticketTiers}
           loading={reserving}
           onCheckout={handleCheckout}

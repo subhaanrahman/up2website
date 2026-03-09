@@ -42,6 +42,8 @@ import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EmailVerification from "./pages/EmailVerification";
 import EventAnalytics from "./pages/EventAnalytics";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import PaymentMethods from "./pages/PaymentMethods";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +95,8 @@ const App = () => (
               <Route path="/settings/email-verification" element={<ProtectedRoute><EmailVerification /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+              <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+              <Route path="/settings/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
