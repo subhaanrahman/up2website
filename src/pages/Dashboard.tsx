@@ -7,6 +7,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
+import { getOptimizedUrl } from "@/lib/imageUtils";
+
+interface MemberPreview {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface GroupChat {
   id: string;
@@ -15,6 +22,7 @@ interface GroupChat {
   last_message?: string;
   last_message_time?: string;
   unread: number;
+  memberPreviews: MemberPreview[];
 }
 
 const useGroupChats = () => {
@@ -28,15 +36,20 @@ const useGroupChats = () => {
 
       if (error) throw error;
 
-      // Fetch latest message per chat
+      // Fetch latest message + member avatars per chat
       const enriched = await Promise.all(
         (chats ?? []).map(async (chat) => {
-          const { data: msgs } = await supabase
-            .from("group_chat_messages")
-            .select("sender_name, content, created_at")
-            .eq("group_chat_id", chat.id)
-            .order("created_at", { ascending: false })
-            .limit(1);
+          const [{ data: msgs }, { data: memberProfiles }] = await Promise.all([
+            supabase
+              .from("group_chat_messages")
+              .select("sender_name, content, created_at")
+              .eq("group_chat_id", chat.id)
+              .order("created_at", { ascending: false })
+              .limit(1),
+            supabase.rpc("get_group_chat_member_profiles", {
+              p_group_chat_id: chat.id,
+            }),
+          ]);
 
           const lastMsg = msgs?.[0];
           const timeDiff = lastMsg
@@ -51,7 +64,8 @@ const useGroupChats = () => {
               ? `${lastMsg.sender_name}: ${lastMsg.content}`
               : undefined,
             last_message_time: timeDiff,
-            unread: 0, // placeholder
+            unread: 0,
+            memberPreviews: ((memberProfiles as MemberPreview[]) || []).slice(0, 4),
           };
         })
       );
@@ -80,14 +94,21 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
 
     {/* Stacked avatars */}
     <div className="relative flex -space-x-2">
-      {Array.from({ length: Math.min(3, chat.member_count) }).map((_, i) => (
-        <Avatar key={i} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
-          <AvatarImage src="" />
+      {chat.memberPreviews.slice(0, 3).map((m) => (
+        <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
+          <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+            {(m.display_name || "?")[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      {chat.memberPreviews.length === 0 && (
+        <Avatar className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
           <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
             {chat.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
           </AvatarFallback>
         </Avatar>
-      ))}
+      )}
       {chat.member_count > 3 && (
         <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-secondary text-[10px] font-bold text-muted-foreground ring-1 ring-border/30">
           +{chat.member_count - 3}
