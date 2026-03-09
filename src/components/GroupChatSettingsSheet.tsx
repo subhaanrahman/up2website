@@ -61,20 +61,14 @@ const GroupChatSettingsSheet = ({
   const { data: members = [] } = useQuery({
     queryKey: ["group-chat-members", chatId],
     queryFn: async (): Promise<MemberProfile[]> => {
-      const { data: memberRows } = await supabase
-        .from("group_chat_members")
-        .select("user_id")
-        .eq("group_chat_id", chatId);
-
-      if (!memberRows || memberRows.length === 0) return [];
-
-      const userIds = memberRows.map((m) => m.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .in("user_id", userIds);
-
-      return (profiles as MemberProfile[]) || [];
+      const { data, error } = await supabase.rpc("get_group_chat_member_profiles", {
+        p_group_chat_id: chatId,
+      });
+      if (error) {
+        console.error("Failed to fetch group members:", error);
+        return [];
+      }
+      return (data as MemberProfile[]) || [];
     },
     enabled: open,
   });
