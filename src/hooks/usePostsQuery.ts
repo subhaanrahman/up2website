@@ -53,7 +53,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
   const authorIds = [...new Set(data.map((p) => p.author_id))];
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("user_id, display_name, username, avatar_url")
+    .select("user_id, display_name, username, avatar_url, is_verified")
     .in("user_id", authorIds);
   const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
 
