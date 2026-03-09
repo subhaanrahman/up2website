@@ -1,33 +1,39 @@
+## Plan: Feature Gaps & Stubbed Flows — All Batches
 
+### ✅ Batch 1 — COMPLETED
+- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
+- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
+- **F-03**: Change Password → `supabase.auth.updateUser()` 
+- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
+- **F-05**: Contact Us form → inserts into `contact_messages` table
+- **F-06**: Connect Music → persisted to `user_music_connections` table
+- **F-07**: Save/Interested → persisted to `saved_events` table
+- **F-08**: Map Preview → Google Maps embed iframe
+- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
+- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-## Plan: Fix Group Chat — Add Members on Creation
+### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
+- P-05: Add to Calendar (.ics download)
+- P-06: "Who's going" friend highlights
+- P-07: RSVP with +1 guest count
+- P-10: Waitlist when full
+- P-19: "Going" friends on event cards
 
-### Problem
-The `CreateGroupChatModal` only has a name field. There's no way to search/select friends to add to the group chat. The backend tables (`group_chats`, `group_chat_members`) and RLS policies are already set up correctly — the issue is purely a missing UI flow.
+### Batch 3 — Ticketing & Orders
+- P-11: Order confirmation / success page
+- P-12: View purchased tickets with QR codes
+- P-14: Transfer tickets
+- P-15: Discount code validation
+- P-28: Linked payment methods
 
-### Changes
+### Batch 4 — Organiser Tools
+- P-21: Revenue / sales dashboard tab
+- P-23: Scheduled event publishing
+- P-24: Attendee blast notifications
+- P-25: Embed event widget
 
-**1. Enhance `CreateGroupChatModal` — add friend picker**
-- After entering a group name, show a searchable list of the user's accepted friends (from `connections` table + `profiles`)
-- Allow toggling friends on/off with checkboxes
-- On "Create Group", insert the group chat, then batch-insert `group_chat_members` rows for the creator + all selected friends
-- Update `member_count` to reflect actual count (creator + selected)
-
-**2. Update `group_chats` RLS — allow creator to update member_count**
-- Currently `group_chats` has no UPDATE policy. Add one so the creator (or members) can update `member_count` when members are added.
-- Alternatively, skip tracking `member_count` manually and compute it from `group_chat_members` count — simpler and more reliable.
-
-**3. Fix `group_chat_members` RLS for adding others**
-- The current INSERT policy allows: `auth.uid() = user_id` OR user is already a member of the group. This means the creator can add themselves, then add others since they're a member. This should work as-is, but the current code inserts the creator first, so subsequent inserts for other members should pass RLS. We'll batch the creator insert first, then insert the rest.
-
-### Implementation Details
-
-- Query friends: `SELECT` from `connections` where `status = 'accepted'`, then fetch matching `profiles` for display names/avatars
-- UI: Scrollable checklist below the name input, with a search/filter field
-- On create: insert group → insert creator as member → insert selected friends as members → update `member_count`
-- Add a DB migration to allow members to UPDATE `group_chats` (for `member_count`) or compute count dynamically
-
-### Files Modified
-- `src/components/CreateGroupChatModal.tsx` — major rewrite with friend picker UI
-- Migration SQL — add UPDATE policy on `group_chats` for members
-
+### ✅ Batch 5 — Discovery & Social (COMPLETED)
+- P-02: Location-based event discovery (city filtering from user profile)
+- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
+- P-18: Share event as post to feed (Post button in share sheet)
+- P-XX: Event category filtering (10 categories with emoji pills)
