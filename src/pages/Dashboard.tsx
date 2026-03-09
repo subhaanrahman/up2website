@@ -7,6 +7,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
+import { getOptimizedUrl } from "@/lib/imageUtils";
+
+interface MemberPreview {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
 
 interface GroupChat {
   id: string;
@@ -15,6 +22,7 @@ interface GroupChat {
   last_message?: string;
   last_message_time?: string;
   unread: number;
+  memberPreviews: MemberPreview[];
 }
 
 const useGroupChats = () => {
