@@ -125,13 +125,38 @@ const PurchaseModal = ({
           </div>
 
           {showCodeInput && (
-            <div className="mt-3">
-              <Input
-                placeholder="Discount code"
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                className="uppercase"
-              />
+            <div className="mt-3 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Discount code"
+                  value={discountCode}
+                  onChange={(e) => {
+                    setDiscountCode(e.target.value.toUpperCase());
+                    setDiscountResult(null);
+                    setDiscountError("");
+                  }}
+                  className="uppercase flex-1"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleValidateCode}
+                  disabled={!discountCode.trim() || validatingCode}
+                >
+                  {validatingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                </Button>
+              </div>
+              {discountResult?.valid && (
+                <p className="text-xs text-primary flex items-center gap-1">
+                  <Check className="h-3 w-3" />
+                  {discountResult.discount_type === 'percentage'
+                    ? `${discountResult.discount_value}% off applied`
+                    : `R${(discountResult.discount_value / 100).toFixed(2)} off applied`}
+                </p>
+              )}
+              {discountError && (
+                <p className="text-xs text-destructive">{discountError}</p>
+              )}
             </div>
           )}
         </div>
