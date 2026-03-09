@@ -281,7 +281,7 @@ function SectionDivider({ label }: { label: string }) {
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
-  const { isOrganiser, activeOrganiserProfileId } = useActiveProfile();
+  const { isOrganiser, organiserProfiles } = useActiveProfile();
   const { data: chats, isLoading: chatsLoading } = useGroupChats();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
