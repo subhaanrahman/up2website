@@ -585,12 +585,55 @@ const EventDetail = () => {
                 Buy Tickets
               </Button>
             </>
-          ) : (
+          ) : capacityInfo?.isFull && !hasPaidTiers ? (
+            // P-10: Waitlist when at capacity
+            waitlistStatus ? (
+              <>
+                <div>
+                  <p className="font-semibold text-foreground">On Waitlist #{waitlistStatus.position}</p>
+                  <p className="text-sm text-muted-foreground">We'll notify you if a spot opens</p>
+                </div>
+                <Button variant="secondary" size="lg" onClick={handleLeaveWaitlist} disabled={rsvpLoading}>
+                  {rsvpLoading ? "..." : "Leave Waitlist"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="font-semibold text-foreground">Event Full</p>
+                  <p className="text-sm text-muted-foreground">Join the waitlist</p>
+                </div>
+                <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else handleJoinWaitlist(); }} disabled={rsvpLoading}>
+                  {rsvpLoading ? "..." : "Join Waitlist"}
+                </Button>
+              </>
+            )
+          ) : !hasPaidTiers ? (
             <>
-              <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
+              <div>
+                <p className="font-semibold text-foreground">Free Event</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-muted-foreground">Guests:</span>
+                  <button
+                    onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                    className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center"
+                    disabled={guestCount <= 1}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="text-sm font-medium text-foreground w-4 text-center">{guestCount}</span>
+                  <button
+                    onClick={() => setGuestCount(Math.min(5, guestCount + 1))}
+                    className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center"
+                    disabled={guestCount >= 5}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
               <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
             </>
-          )}
+          ) : (
         </div>
       </div>
 
