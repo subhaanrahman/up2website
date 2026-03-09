@@ -55,12 +55,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, event_id, status } = parsed.data;
+    const { action, event_id, status, guest_count } = parsed.data;
 
     if (action === 'join') {
       const { data, error } = await supabase.rpc('rsvp_join', {
         p_event_id: event_id,
         p_status: status,
+        p_guest_count: guest_count,
       });
 
       if (error) {
