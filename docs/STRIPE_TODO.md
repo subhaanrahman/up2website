@@ -5,7 +5,7 @@
 | Phase | Status | Description |
 |-------|--------|-------------|
 | Phase 1 | ✅ Done | Real payment completion |
-| Phase 2 | ⏳ Pending | Payout architecture (Stripe Connect) |
+| Phase 2 | ✅ Done | Payout architecture (Stripe Connect) |
 | Phase 3 | ⏳ Pending | Refunds, cleanup, audit |
 
 ---
