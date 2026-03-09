@@ -45,6 +45,7 @@ const TAG_SUGGESTIONS = {
 const EditOrganiserProfile = () => {
   const navigate = useNavigate();
   const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles } = useActiveProfile();
+  const { user } = useAuth();
   const [saving, setSaving] = useState(false);
   const [newTag, setNewTag] = useState("");
 
