@@ -109,6 +109,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
     let author_display_name: string | null = null;
     let author_username: string | null = null;
     let author_avatar_url: string | null = null;
+    let author_is_verified = false;
 
     if (post.organiser_profile_id) {
       const org = orgMap.get(post.organiser_profile_id);
@@ -116,6 +117,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
         author_display_name = org.display_name;
         author_username = org.username;
         author_avatar_url = org.avatar_url;
+        author_is_verified = true; // organiser profiles are always verified
       }
     }
     if (!author_display_name) {
@@ -123,6 +125,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
       author_display_name = prof?.display_name || null;
       author_username = prof?.username || null;
       author_avatar_url = prof?.avatar_url || null;
+      author_is_verified = prof?.is_verified ?? false;
     }
 
     return {
@@ -130,6 +133,7 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
       author_display_name,
       author_username,
       author_avatar_url,
+      author_is_verified,
       event_data: post.event_id ? eventMap.get(post.event_id) || null : null,
       collaborators: collabMap.get(post.id) || [],
     };
