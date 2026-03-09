@@ -1093,6 +1093,7 @@ export type Database = {
           last_name: string | null
           page_classification: string | null
           phone: string | null
+          profile_tier: string
           updated_at: string
           user_id: string
           username: string | null
@@ -1112,6 +1113,7 @@ export type Database = {
           last_name?: string | null
           page_classification?: string | null
           phone?: string | null
+          profile_tier?: string
           updated_at?: string
           user_id: string
           username?: string | null
@@ -1131,6 +1133,7 @@ export type Database = {
           last_name?: string | null
           page_classification?: string | null
           phone?: string | null
+          profile_tier?: string
           updated_at?: string
           user_id?: string
           username?: string | null
