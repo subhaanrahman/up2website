@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, MoreVertical } from "lucide-react";
+import GroupChatSettingsSheet from "@/components/GroupChatSettingsSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +26,7 @@ const MessageThread = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
 
   const { data: chat } = useQuery({
     queryKey: ["group-chat", id],
@@ -105,7 +107,7 @@ const MessageThread = () => {
           <p className="font-semibold text-foreground text-sm capitalize">{displayChatName}</p>
           <p className="text-xs text-muted-foreground">{chat?.member_count ?? 0} members</p>
         </div>
-        <button className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
+        <button onClick={() => setShowSettings(true)} className="p-2 text-muted-foreground"><MoreVertical className="h-5 w-5" /></button>
       </header>
 
       {/* Messages */}
@@ -147,6 +149,15 @@ const MessageThread = () => {
           <Send className="h-4 w-4" />
         </Button>
       </div>
+      {chat && (
+        <GroupChatSettingsSheet
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          chatId={chat.id}
+          chatName={chat.name}
+          memberCount={chat.member_count}
+        />
+      )}
     </div>
   );
 };
