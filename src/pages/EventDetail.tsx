@@ -669,6 +669,7 @@ const EventDetail = () => {
         eventDate={`${eventDate} • ${eventTime}`}
         eventLocation={eventAddress || eventLocation}
         eventImage={eventImage}
+        eventId={dbEvent?.id}
       />
 
       <BottomNav />
