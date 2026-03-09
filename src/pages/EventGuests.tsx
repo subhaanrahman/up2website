@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 
 interface GuestWithProfile {
   id: string;
@@ -53,6 +54,8 @@ const EventGuests = () => {
   const { user } = useAuth();
   const { data: event } = useEvent(id);
   const { data: guests = [], isLoading } = useEventGuests(id);
+  const { data: friendsGoing = [] } = useFriendsGoing(id);
+  const friendIds = new Set(friendsGoing.map(f => f.userId));
 
   const isHost = event && user && event.hostId === user.id;
   const goingCount = guests.filter(g => g.status === 'going').length;
@@ -101,7 +104,7 @@ const EventGuests = () => {
               {guests.map(guest => (
                 <div
                   key={guest.id}
-                  className="flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer"
+                  className={`flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer ${friendIds.has(guest.userId) ? 'bg-primary/5 border border-primary/10' : ''}`}
                   onClick={() => navigate(`/user/${guest.userId}`)}
                 >
                   <Avatar className="h-12 w-12">
@@ -111,7 +114,12 @@ const EventGuests = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground truncate">{guest.displayName || guest.username || "User"}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground truncate">{guest.displayName || guest.username || "User"}</p>
+                      {friendIds.has(guest.userId) && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Friend</Badge>
+                      )}
+                    </div>
                     {guest.username && <p className="text-sm text-muted-foreground">@{guest.username}</p>}
                   </div>
                   <Badge variant="outline" className={statusColors[guest.status] || statusColors.pending}>

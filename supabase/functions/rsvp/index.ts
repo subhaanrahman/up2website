@@ -12,6 +12,7 @@ const rsvpSchema = z.object({
   action: z.enum(['join', 'leave']),
   event_id: z.string().uuid('event_id must be a valid UUID'),
   status: z.enum(['going', 'maybe']).optional().default('going'),
+  guest_count: z.number().int().min(1).max(5).optional().default(1),
 });
 
 Deno.serve(async (req) => {
@@ -54,12 +55,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, event_id, status } = parsed.data;
+    const { action, event_id, status, guest_count } = parsed.data;
 
     if (action === 'join') {
       const { data, error } = await supabase.rpc('rsvp_join', {
         p_event_id: event_id,
         p_status: status,
+        p_guest_count: guest_count,
       });
 
       if (error) {

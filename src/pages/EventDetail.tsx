@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck
+  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck, Minus, Plus
 } from "lucide-react";
+import { downloadIcsFile } from "@/lib/calendarUtils";
+import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
 import ShareEventSheet from "@/components/ShareEventSheet";
@@ -32,6 +34,7 @@ const EventDetail = () => {
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
+  const [guestCount, setGuestCount] = useState(1);
 
   const { reserving } = useOrderFlow();
 
@@ -111,6 +114,47 @@ const EventDetail = () => {
     enabled: !!id && !isMock,
   });
 
+  // P-06: Friends going to this event
+  const { data: friendsGoing = [] } = useFriendsGoing(isUuid && !isMock ? id : undefined);
+
+  // P-10: Waitlist & capacity check
+  const { data: capacityInfo } = useQuery({
+    queryKey: ["event-capacity", id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data: ev } = await supabase
+        .from("events")
+        .select("max_guests")
+        .eq("id", id)
+        .single();
+      if (!ev?.max_guests) return { isFull: false, maxGuests: null };
+      const { data: rsvps } = await supabase
+        .from("rsvps")
+        .select("guest_count")
+        .eq("event_id", id)
+        .eq("status", "going");
+      const totalGuests = (rsvps || []).reduce((sum, r) => sum + ((r as any).guest_count || 1), 0);
+      return { isFull: totalGuests >= ev.max_guests, maxGuests: ev.max_guests, currentCount: totalGuests };
+    },
+    enabled: !!id && !isMock,
+  });
+
+  // P-10: User's waitlist status
+  const { data: waitlistStatus, refetch: refetchWaitlist } = useQuery({
+    queryKey: ["waitlist-status", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data } = await supabase
+        .from("waitlist")
+        .select("id, position")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = () => {
@@ -181,11 +225,64 @@ const EventDetail = () => {
 
     setRsvpLoading(true);
     try {
-      await rsvpApi.join(id);
+      await rsvpApi.join(id, 'going', guestCount);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
-      toast({ title: "RSVP Submitted!", description: "You're going to this event!" });
+      queryClient.invalidateQueries({ queryKey: ["event-capacity", id] });
+      toast({ title: "RSVP Submitted!", description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ''}!` });
+    } catch (err: any) {
+      const msg = err?.message?.includes('capacity') ? 'Event is at capacity' : 'Something went wrong, please try again.';
+      toast({ title: "RSVP Failed", description: msg, variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  // P-05: Add to Calendar
+  const handleAddToCalendar = () => {
+    if (!dbEvent) return;
+    downloadIcsFile({
+      title: dbEvent.title,
+      description: dbEvent.description,
+      location: dbEvent.location,
+      startDate: new Date(dbEvent.eventDate),
+      endDate: dbEvent.endDate ? new Date(dbEvent.endDate) : null,
+    });
+    toast({ title: "Calendar file downloaded", description: "Import the .ics file into your calendar app" });
+  };
+
+  // P-10: Join waitlist
+  const handleJoinWaitlist = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      // Get current waitlist count for position
+      const { count } = await supabase
+        .from("waitlist")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", id);
+      await supabase.from("waitlist").insert({
+        event_id: id,
+        user_id: user.id,
+        position: (count || 0) + 1,
+      });
+      refetchWaitlist();
+      toast({ title: "Joined Waitlist", description: `You're #${(count || 0) + 1} on the waitlist` });
     } catch {
-      toast({ title: "RSVP Failed", description: "Something went wrong, please try again.", variant: "destructive" });
+      toast({ title: "Failed", description: "Could not join waitlist", variant: "destructive" });
+    } finally {
+      setRsvpLoading(false);
+    }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    if (!user || !id) return;
+    setRsvpLoading(true);
+    try {
+      await supabase.from("waitlist").delete().eq("event_id", id).eq("user_id", user.id);
+      refetchWaitlist();
+      toast({ title: "Left Waitlist" });
+    } catch {
+      toast({ title: "Failed", variant: "destructive" });
     } finally {
       setRsvpLoading(false);
     }
@@ -396,6 +493,33 @@ const EventDetail = () => {
           </Link>
         )}
 
+        {/* P-06: Friends going highlight */}
+        {friendsGoing.length > 0 && (
+          <div className="flex items-center gap-2 py-1">
+            <div className="flex -space-x-2">
+              {friendsGoing.slice(0, 4).map((f) => (
+                <Avatar key={f.userId} className="h-7 w-7 border-2 border-background">
+                  <AvatarImage src={f.avatarUrl || undefined} />
+                  <AvatarFallback className="text-xs">{(f.displayName || "?")[0]}</AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {friendsGoing.length === 1
+                ? `${friendsGoing[0].displayName || 'A friend'} is going`
+                : `${friendsGoing.length} friends going`}
+            </span>
+          </div>
+        )}
+
+        {/* P-05: Add to Calendar */}
+        {dbEvent && !isPastEvent && (
+          <Button variant="secondary" className="w-full" onClick={handleAddToCalendar}>
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            Add to Calendar
+          </Button>
+        )}
+
         {/* Venue / Map */}
         <div className="bg-card rounded-xl p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
@@ -461,10 +585,63 @@ const EventDetail = () => {
                 Buy Tickets
               </Button>
             </>
+          ) : capacityInfo?.isFull && !hasPaidTiers ? (
+            // P-10: Waitlist when at capacity
+            waitlistStatus ? (
+              <>
+                <div>
+                  <p className="font-semibold text-foreground">On Waitlist #{waitlistStatus.position}</p>
+                  <p className="text-sm text-muted-foreground">We'll notify you if a spot opens</p>
+                </div>
+                <Button variant="secondary" size="lg" onClick={handleLeaveWaitlist} disabled={rsvpLoading}>
+                  {rsvpLoading ? "..." : "Leave Waitlist"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <p className="font-semibold text-foreground">Event Full</p>
+                  <p className="text-sm text-muted-foreground">Join the waitlist</p>
+                </div>
+                <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else handleJoinWaitlist(); }} disabled={rsvpLoading}>
+                  {rsvpLoading ? "..." : "Join Waitlist"}
+                </Button>
+              </>
+            )
+          ) : !hasPaidTiers ? (
+            <>
+              <div>
+                <p className="font-semibold text-foreground">Free Event</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-muted-foreground">Guests:</span>
+                  <button
+                    onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
+                    className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center"
+                    disabled={guestCount <= 1}
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="text-sm font-medium text-foreground w-4 text-center">{guestCount}</span>
+                  <button
+                    onClick={() => setGuestCount(Math.min(5, guestCount + 1))}
+                    className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center"
+                    disabled={guestCount >= 5}
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
+            </>
           ) : (
             <>
-              <div><p className="font-semibold text-foreground">Free Event</p><p className="text-sm text-muted-foreground">RSVP required</p></div>
-              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
+              <div>
+                <p className="font-semibold text-foreground">From R{(lowestPriceCents / 100).toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">+ fees</p>
+              </div>
+              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>
+                Buy Tickets
+              </Button>
             </>
           )}
         </div>
