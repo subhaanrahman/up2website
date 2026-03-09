@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 
 interface ChatMessage {
   id: string;
@@ -77,6 +78,29 @@ const MessageThread = () => {
 
     queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
     queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+
+    // Notify other group members
+    const { data: members } = await supabase
+      .from("group_chat_members")
+      .select("user_id")
+      .eq("group_chat_id", id!)
+      .neq("user_id", user.id);
+
+    if (members && members.length > 0) {
+      const chatLabel = chatName || "Group Chat";
+      members.forEach((m) => {
+        callEdgeFunction("notifications-send", {
+          body: {
+            type: "group_message",
+            recipient_user_id: m.user_id,
+            title: chatLabel,
+            message: `${senderDisplayName}: ${content.length > 80 ? content.slice(0, 80) + "…" : content}`,
+            avatar_url: profile?.avatarUrl || null,
+            link: `/messages/${id}`,
+          },
+        }).catch(() => {}); // fire-and-forget
+      });
+    }
   };
 
   const formatTime = (dateStr: string) => {
