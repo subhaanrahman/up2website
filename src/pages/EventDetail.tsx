@@ -399,9 +399,21 @@ const EventDetail = () => {
         {/* Venue / Map */}
         <div className="bg-card rounded-xl p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
-          <div className="aspect-video bg-secondary rounded-lg mb-3 flex items-center justify-center">
-            <MapPin className="h-8 w-8 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground ml-2">Map Preview</span>
+          <div className="aspect-video rounded-lg mb-3 overflow-hidden">
+            {eventAddress ? (
+              <iframe
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(eventAddress)}&output=embed&z=15`}
+                className="w-full h-full border-0"
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                title="Event location map"
+              />
+            ) : (
+              <div className="w-full h-full bg-secondary flex items-center justify-center">
+                <MapPin className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground ml-2">No address provided</span>
+              </div>
+            )}
           </div>
           <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
           <p className="text-sm text-muted-foreground">{eventAddress || "Full address"}</p>

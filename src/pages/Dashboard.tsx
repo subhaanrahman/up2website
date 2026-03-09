@@ -147,11 +147,16 @@ const Dashboard = () => {
 
       <div className="fixed bottom-24 z-40 w-full md:max-w-[430px] md:left-1/2 md:-translate-x-1/2 left-0 pointer-events-none">
         <div className="flex justify-end px-4 pointer-events-auto w-fit ml-auto">
-          <button className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors"
+          >
             <Plus className="h-7 w-7 text-primary-foreground" />
           </button>
         </div>
       </div>
+
+      <CreateGroupChatModal open={showCreateModal} onOpenChange={setShowCreateModal} />
 
       <BottomNav />
     </div>
