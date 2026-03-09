@@ -70,7 +70,8 @@ const CreateEvent = () => {
   // Notifications state
   const [reminders, setReminders] = useState<string[]>(["1_day"]);
 
-  const hasOrganiserProfile = isOrganiser || organiserProfiles.length > 0;
+  // Ticketing is only available when actively using a business (organiser) profile
+  const hasOrganiserProfile = isOrganiser;
 
   useEffect(() => {
     if (loading || profileLoading) return;
