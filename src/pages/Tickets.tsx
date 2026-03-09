@@ -296,10 +296,10 @@ const Tickets = () => {
                   eventId={t.eventId}
                   title={t.title}
                   eventDate={t.eventDate}
-                  isPast={new Date(t.eventDate) < now}
-                  ticketStatus={t.ticketStatus}
-                  onQrClick={() => setQrOpen(true)}
-                />
+                   isPast={new Date(t.eventDate) < now}
+                   ticketStatus={t.ticketStatus}
+                   onQrClick={() => handleQrClick(t.eventId)}
+                 />
               ))}
             </div>
           ) : (
