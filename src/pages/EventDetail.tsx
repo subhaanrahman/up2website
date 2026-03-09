@@ -117,12 +117,41 @@ const EventDetail = () => {
     setShowShareSheet(true);
   };
 
-  const handleInterested = () => {
-    setIsInterested(!isInterested);
-    toast({
-      title: isInterested ? "Removed from saved" : "Saved!",
-      description: isInterested ? "Event removed from your saved list" : "Event added to your saved list",
-    });
+  // F-07: Saved events query
+  const { data: savedStatus, refetch: refetchSaved } = useQuery({
+    queryKey: ["saved-event", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data } = await supabase
+        .from("saved_events")
+        .select("id")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
+
+  const isInterested = !!savedStatus;
+
+  const handleInterested = async () => {
+    if (!user || !id) return;
+    setSavingEvent(true);
+    try {
+      if (isInterested) {
+        await supabase.from("saved_events").delete().eq("event_id", id).eq("user_id", user.id);
+        toast({ title: "Removed from saved", description: "Event removed from your saved list" });
+      } else {
+        await supabase.from("saved_events").insert({ user_id: user.id, event_id: id });
+        toast({ title: "Saved!", description: "Event added to your saved list" });
+      }
+      refetchSaved();
+    } catch {
+      toast({ title: "Failed to update", variant: "destructive" });
+    } finally {
+      setSavingEvent(false);
+    }
   };
 
   const handleCheckout = (tierId: string, quantity: number, discountCode?: string) => {
