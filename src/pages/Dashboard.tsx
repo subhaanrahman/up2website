@@ -94,14 +94,21 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
 
     {/* Stacked avatars */}
     <div className="relative flex -space-x-2">
-      {Array.from({ length: Math.min(3, chat.member_count) }).map((_, i) => (
-        <Avatar key={i} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
-          <AvatarImage src="" />
+      {chat.memberPreviews.slice(0, 3).map((m) => (
+        <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
+          <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
+            {(m.display_name || "?")[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+      {chat.memberPreviews.length === 0 && (
+        <Avatar className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
           <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
             {chat.name.split(" ").map(w => w[0]).join("").slice(0, 2)}
           </AvatarFallback>
         </Avatar>
-      ))}
+      )}
       {chat.member_count > 3 && (
         <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-secondary text-[10px] font-bold text-muted-foreground ring-1 ring-border/30">
           +{chat.member_count - 3}
