@@ -6,10 +6,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfileQuery } from "@/hooks/useProfileQuery";
 
 interface ChatMessage {
   id: string;
   sender_name: string;
+  sender_id: string | null;
   content: string;
   is_from_current_user: boolean;
   created_at: string;
@@ -19,6 +22,8 @@ const MessageThread = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { data: profile } = useProfileQuery();
   const [message, setMessage] = useState("");
 
   const { data: chat } = useQuery({
@@ -44,7 +49,7 @@ const MessageThread = () => {
         .eq("group_chat_id", id!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as ChatMessage[];
     },
     enabled: !!id,
   });
@@ -53,16 +58,19 @@ const MessageThread = () => {
   const displayChatName = chatName.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
   const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
 
+  const senderDisplayName = profile?.display_name || profile?.username || "You";
+
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || !user) return;
     const content = message.trim();
     setMessage("");
 
     await supabase.from("group_chat_messages").insert({
       group_chat_id: id!,
-      sender_name: "You",
+      sender_name: senderDisplayName,
+      sender_id: user.id,
       content,
-      is_from_current_user: true,
+      is_from_current_user: true, // legacy field, kept for compat
     });
 
     queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
@@ -72,6 +80,12 @@ const MessageThread = () => {
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const isOwnMessage = (msg: ChatMessage) => {
+    // Use sender_id if available, fall back to legacy field
+    if (msg.sender_id && user) return msg.sender_id === user.id;
+    return msg.is_from_current_user;
   };
 
   return (
@@ -96,25 +110,28 @@ const MessageThread = () => {
 
       {/* Messages */}
       <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {(messages ?? []).map((msg) => (
-          <div key={msg.id} className={`flex ${msg.is_from_current_user ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                msg.is_from_current_user
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-secondary text-foreground rounded-bl-md"
-              }`}
-            >
-              {!msg.is_from_current_user && (
-                <p className="text-[10px] font-semibold text-primary mb-0.5">{msg.sender_name}</p>
-              )}
-              <p className="text-sm">{msg.content}</p>
-              <p className={`text-[10px] mt-1 ${msg.is_from_current_user ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                {formatTime(msg.created_at)}
-              </p>
+        {(messages ?? []).map((msg) => {
+          const own = isOwnMessage(msg);
+          return (
+            <div key={msg.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                  own
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-secondary text-foreground rounded-bl-md"
+                }`}
+              >
+                {!own && (
+                  <p className="text-[10px] font-semibold text-primary mb-0.5">{msg.sender_name}</p>
+                )}
+                <p className="text-sm">{msg.content}</p>
+                <p className={`text-[10px] mt-1 ${own ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                  {formatTime(msg.created_at)}
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </main>
 
       {/* Input */}
