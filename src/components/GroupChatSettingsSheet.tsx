@@ -16,7 +16,9 @@ import {
   X,
   Search,
   Crown,
+  UserMinus,
 } from "lucide-react";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface GroupChatSettingsSheetProps {
