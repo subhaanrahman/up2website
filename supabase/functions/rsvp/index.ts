@@ -12,6 +12,7 @@ const rsvpSchema = z.object({
   action: z.enum(['join', 'leave']),
   event_id: z.string().uuid('event_id must be a valid UUID'),
   status: z.enum(['going', 'maybe']).optional().default('going'),
+  guest_count: z.number().int().min(1).max(5).optional().default(1),
 });
 
 Deno.serve(async (req) => {
