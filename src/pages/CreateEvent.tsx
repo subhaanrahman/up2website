@@ -77,11 +77,8 @@ const CreateEvent = () => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to create an event" });
       navigate("/auth");
-    } else if (!hasOrganiserProfile) {
-      toast({ title: "Organiser account required", description: "Create an organiser profile first to create events.", variant: "destructive" });
-      navigate("/profile");
     }
-  }, [user, loading, profileLoading, hasOrganiserProfile, navigate, toast]);
+  }, [user, loading, profileLoading, navigate, toast]);
 
   const hasData = title || date || location || description;
 
