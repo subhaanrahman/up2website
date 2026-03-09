@@ -30,7 +30,7 @@ interface FeedPostProps {
   collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
 }
 
-const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, eventData, collaborators }: FeedPostProps) => {
+const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username, avatarUrl, content, createdAt, imageUrl, gifUrl, repostedBy, isVerified, eventData, collaborators }: FeedPostProps) => {
   const profileLink = organiserProfileId ? `/user/${organiserProfileId}` : `/user/${authorId}`;
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: false });
   const firstName = (displayName || username || "User").split(" ")[0];
