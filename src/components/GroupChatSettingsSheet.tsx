@@ -409,7 +409,7 @@ const GroupChatSettingsSheet = ({
                         className="pointer-events-none"
                       />
                       <Avatar className="h-7 w-7">
-                        <AvatarImage src={f.avatar_url || undefined} />
+                        <AvatarImage src={getOptimizedUrl(f.avatar_url, 'AVATAR_SM') || undefined} />
                         <AvatarFallback className="text-[10px] bg-muted">
                           {(f.display_name || f.username || "U")[0]}
                         </AvatarFallback>
