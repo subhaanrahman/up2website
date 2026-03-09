@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck
+  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck, Minus, Plus
 } from "lucide-react";
+import { downloadIcsFile } from "@/lib/calendarUtils";
+import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
 import ShareEventSheet from "@/components/ShareEventSheet";
