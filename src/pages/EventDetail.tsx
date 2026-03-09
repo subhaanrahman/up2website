@@ -28,10 +28,10 @@ const EventDetail = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   
-  const [isInterested, setIsInterested] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [savingEvent, setSavingEvent] = useState(false);
 
   const { reserving } = useOrderFlow();
 
