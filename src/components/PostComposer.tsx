@@ -18,7 +18,7 @@ interface PostComposerProps {
   onPostCreated?: () => void;
 }
 
-const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, onPostCreated }: PostComposerProps) => {
+const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, isVerified, onPostCreated }: PostComposerProps) => {
   const { user } = useAuth();
   const [isComposing, setIsComposing] = useState(false);
   const [postText, setPostText] = useState("");
