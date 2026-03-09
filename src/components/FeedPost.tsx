@@ -112,7 +112,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
       <div className="flex gap-3">
         <Link to={profileLink}>
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={avatarUrl || ""} />
+            <AvatarImage src={getOptimizedUrl(avatarUrl, 'AVATAR_MD') || ""} />
             <AvatarFallback className="bg-card text-foreground font-bold text-sm">
               {(displayName || "?")[0]?.toUpperCase()}
             </AvatarFallback>
