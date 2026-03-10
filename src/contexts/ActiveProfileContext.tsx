@@ -124,7 +124,14 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       if (stored) {
         try {
           const parsed = JSON.parse(stored) as ActiveProfile;
+          // Restore personal profile immediately
           if (parsed.type === "personal" && parsed.id === user.id) {
+            setActiveProfile(parsed);
+            setIsLoading(false);
+            return;
+          }
+          // Restore organiser profile — will be validated/synced by the next effect
+          if (parsed.type === "organiser") {
             setActiveProfile(parsed);
             setIsLoading(false);
             return;
