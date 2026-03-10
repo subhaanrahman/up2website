@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, QrCode } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Badge } from "@/components/ui/badge";
@@ -65,18 +65,6 @@ const TicketEventCard = ({
       </div>
 
       <div className="flex items-center gap-1 mr-3 flex-shrink-0">
-        {!isPast && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onQrClick?.(e);
-            }}
-            className="h-9 w-9 rounded-full bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors"
-          >
-            <QrCode className="h-4 w-4 text-foreground" />
-          </button>
-        )}
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </div>
     </Link>
