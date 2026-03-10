@@ -61,15 +61,15 @@ export function useUnreadMessages() {
         await Promise.all(
           chatIds.map(async (chatId) => {
             const lastRead = lastReadMap[chatId];
+            // No stored timestamp = user hasn't visited yet, don't count as unread
+            if (!lastRead) return;
+
             let q = supabase
               .from("group_chat_messages")
               .select("id", { count: "exact", head: true })
               .eq("group_chat_id", chatId)
-              .neq("sender_id", user.id);
-
-            if (lastRead) {
-              q = q.gt("created_at", lastRead);
-            }
+              .neq("sender_id", user.id)
+              .gt("created_at", lastRead);
 
             const { count } = await q;
             const unread = count || 0;
