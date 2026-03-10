@@ -1,508 +1,172 @@
-# Architecture Overview
+# Up2 Platform — Architecture Overview
 
-> Last updated: 2026-03-10
-
-Social Soirée is a mobile-first event discovery, ticketing, and social platform built with **React + Vite + TypeScript + Tailwind CSS** on the frontend and **Supabase (Postgres + Edge Functions + Storage + Auth)** on the backend via Lovable Cloud.
-
----
-
-## Table of Contents
-
-1. [Modular Monolith](#modular-monolith)
-2. [Directory Structure](#directory-structure)
-3. [Import Rules](#import-rules)
-4. [Data Flow](#data-flow)
-5. [Authentication & Identity](#authentication--identity)
-6. [Profile System](#profile-system)
-7. [Events & RSVPs](#events--rsvps)
-8. [Ticketing & Payments](#ticketing--payments)
-9. [Loyalty & Gamification](#loyalty--gamification)
-10. [Social & Feed](#social--feed)
-11. [Messaging](#messaging)
-12. [Notifications](#notifications)
-13. [Navigation & Routing](#navigation--routing)
-14. [Infrastructure](#infrastructure)
-15. [Database Schema](#database-schema)
-16. [Edge Functions](#edge-functions)
-17. [Storage](#storage)
-18. [Security](#security)
-19. [Environment & Config](#environment--config)
+> Last updated: 2026-03-10  
+> Status: Codebase-grounded reference. Every claim references actual files.
 
 ---
 
-## Modular Monolith
+## 1. Frontend Architecture
 
-The codebase follows a **modular monolith** pattern with strict feature boundaries. Each feature module exposes a public API via its `index.ts` barrel file.
+### Tech Stack
+React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui (Radix primitives).  
+Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments: `@stripe/react-stripe-js`.
 
-### Feature Modules
+### Key Pages (~45 routes in `src/App.tsx`)
 
-| Module | Status | Exports |
-|--------|--------|---------|
-| `identity` | ✅ Active | `identityService`, `identityRepository`, `UserProfile`, `UpdateProfileInput` |
-| `events` | ✅ Active | `eventsService`, `eventsRepository`, `EventEntity`, `CreateEventInput`, `UpdateEventInput`, `Rsvp`, `EventFilter`, `EventCategory`, `EVENT_CATEGORIES` |
-| `loyalty` | ✅ Active | `loyaltyService`, `loyaltyRepository`, all domain types (`UserRank`, `PointAction`, `Voucher`, etc.) |
-| `social` | ✅ Active | `getSuggestedFriends`, `buildFeedContext`, `fetchFeedPage`, `fetchPublicFeedPage`, `fetchNearbyEvents` |
-| `orders` | 🔲 Scaffold | Empty — order logic handled via Edge Functions and webhook-driven state machine |
-| `notifications` | ✅ Active | `useNotifications`, `useUnreadCount`, `useMarkNotificationRead`, `useMarkAllRead` |
+| Page | Route | Purpose |
+|------|-------|---------|
+| `Index` | `/` | Home feed (personalized or public), post composer, nearby events, suggested friends |
+| `Events` | `/search` | Event discovery with search, filters, categories, city |
+| `EventDetail` | `/events/:id`, `/search/:id` | Full event view, RSVP, ticket purchase entry point |
+| `Tickets` | `/events` | "My Plans" (RSVP/purchased/saved) + "My Events" (created). Organiser profiles see `OrganiserDashboard` instead |
+| `Dashboard` | `/messages` | Messaging hub: group chats, organiser DMs, broadcast (coming soon) |
+| `Profile` | `/profile` | Active profile view (personal or organiser), posts feed, stats |
+| `UserProfile` | `/user/:userId` | Other user's profile with friend/follow actions |
+| `CreateEvent` | `/create` | Multi-step event creation with ticketing, guestlist, notifications panels |
+| `EditEvent` | `/events/:id/edit` | Event editing (host-only) |
+| `ManageEvent` | `/events/:id/manage` | Orders, guestlist CSV, refunds, attendee broadcast |
+| `EventCheckIn` | `/events/:id/checkin` | Attendee list with manual toggle + QR scan mode |
+| `EventAnalytics` | `/events/:id/analytics` | Event-level analytics |
+| `Checkout` | `/checkout` | Stripe Elements payment form |
+| `CheckoutSuccess` | `/checkout/success` | Post-payment confirmation |
+| `Auth` | `/auth` | Phone → OTP → Password/Register flow |
+| `Settings` | `/settings/*` | Notifications, privacy, help, about, account, music, contact, email verification, payment methods |
+| `CreateOrganiserProfile` | `/profile/create-organiser` | Organiser profile creation |
+| `EditOrganiserProfile` | `/profile/edit-organiser` | Organiser profile editing |
+| `OrganiserTeam` | `/profile/organiser-team` | Team member management |
+| `FriendsFollowing` | `/profile/friends` | Friends list |
+| `MessageThread` | `/messages/:id` | Group chat thread |
+| `DmThread` | `/messages/dm/:id` | Direct message thread (user ↔ organiser) |
+| `EventEmbed` | `/embed/:id` | Embeddable event widget for external sites |
 
----
+### Route Protection
+- `<ProtectedRoute>` wraps all authenticated routes, redirects to `/auth` with return URL.
+- Public routes: `/`, `/auth`, `/search`, `/search/:id`, `/user/:userId`, `/terms`, `/privacy`, `/events/:id`, `/embed/:id`, `/events/:id/guests`.
 
-## Directory Structure
+### Contexts / Providers (wrap order in `App.tsx`)
 
 ```
-src/
-├── api/                    # Client API wrappers (thin layer calling Edge Functions for writes)
-│   └── index.ts            # loyaltyApi, eventsApi, rsvpApi, settingsApi, profileApi, referralsApi
-├── components/             # Shared UI components
-│   ├── ui/                 # shadcn/ui primitives (button, dialog, sheet, etc.)
-│   ├── auth/               # Auth step components (PhoneStep, OtpStep, PasswordStep, RegisterStep)
-│   ├── create-event/       # Event creation sub-panels
-│   ├── notifications/      # NotificationItem
-│   └── organiser-dashboard/# Dashboard sub-components
-├── contexts/
-│   ├── AuthContext.tsx      # Auth state, phone+password login, OTP, register, dev-login
-│   └── ActiveProfileContext.tsx  # Personal ↔ organiser profile switching
-├── features/               # Domain modules (see above)
-│   ├── identity/           # Auth, session, profiles
-│   │   ├── domain/types.ts
-│   │   ├── repositories/identityRepository.ts
-│   │   └── services/identityService.ts, authorization.ts
-│   ├── events/             # Events, RSVP, search
-│   │   ├── domain/types.ts
-│   │   ├── repositories/eventsRepository.ts
-│   │   └── services/eventsService.ts
-│   ├── loyalty/            # Points, ranks, vouchers
-│   │   ├── domain/types.ts
-│   │   ├── repositories/loyaltyRepository.ts
-│   │   └── services/loyaltyService.ts
-│   ├── social/             # Feed, recommendations
-│   │   └── services/feedService.ts, recommendationService.ts
-│   ├── orders/             # Scaffold
-│   └── notifications/      # Re-exports from hooks
-├── hooks/                  # React Query hooks (server-state management)
-├── infrastructure/         # Config, logging, errors, supabase client, queue
-│   ├── api-client.ts       # Generic Edge Function caller with auth token
-│   ├── config.ts           # VITE_* env resolution
-│   ├── errors.ts           # AppError hierarchy
-│   ├── logger.ts           # Structured JSON logging
-│   ├── queue.ts            # In-memory queue (frontend)
-│   └── supabase.ts         # Re-export of auto-generated client
-├── lib/                    # Utility functions (calendar, image, stripe, gamification)
-├── pages/                  # Route-level page components (~45 pages)
-└── data/                   # Static data (cities, mock events)
-
-supabase/
-├── config.toml             # Auto-managed Supabase config
-└── functions/              # Edge Functions (40+ endpoints)
-    ├── _shared/            # Shared: avatar.ts, password.ts, rate-limit.ts, queue.ts, job-handlers.ts
-    └── [function-name]/    # Individual edge functions
+QueryClientProvider
+  └── AuthProvider           (src/contexts/AuthContext.tsx)
+       └── ActiveProfileProvider (src/contexts/ActiveProfileContext.tsx)
+            └── GamificationProvider (src/hooks/useGamification.tsx)
+                 └── TooltipProvider → Router → PhoneFrame → Routes
 ```
 
----
+| Context | File | Owns |
+|---------|------|------|
+| **AuthProvider** | `src/contexts/AuthContext.tsx` | `user`, `session`, `loading`, auth methods: `checkPhone`, `sendOtp`, `verifyOtp`, `register`, `login`, `signOut`, `devLogin` |
+| **ActiveProfileProvider** | `src/contexts/ActiveProfileContext.tsx` | `activeProfile` (personal or organiser), `switchProfile`, `organiserProfiles[]`, `isOrganiser`, `refetchOrganiserProfiles` |
+| **GamificationProvider** | `src/hooks/useGamification.tsx` | `points`, `rank`, `vouchers`, `transactions`, `awardPoints()`, `refreshData()` |
 
-## Import Rules
+### Major Hooks
 
-| Layer | May Import | Must NOT Import |
-|-------|-----------|-----------------|
-| Pages / Components | Services, `src/api`, hooks, contexts | Repositories, Supabase client |
-| Services | Repositories | Supabase client directly |
-| Repositories | `infrastructure/supabase` | Services, API wrappers |
-| `src/api` wrappers | `infrastructure/api-client` | Repositories, Services |
-| Edge Functions | `_shared/*`, Deno std, Supabase SDK | Frontend code |
+| Hook | File | Purpose |
+|------|------|---------|
+| `useProfile` / `useUpdateProfile` / `useUploadAvatar` | `src/hooks/useProfileQuery.ts` | Identity reads/writes |
+| `useEvents` / `useSearchEvents` / `useEvent` | `src/hooks/useEventsQuery.ts` | Event listing, search, detail |
+| `useCreateEvent` / `useUpdateEvent` / `useDeleteEvent` | `src/hooks/useEventsQuery.ts` | Event mutations via API |
+| `useRsvpJoin` / `useRsvpLeave` | `src/hooks/useEventsQuery.ts` | RSVP mutations via API |
+| `usePaginatedFeed` / `useFeedContext` / `useNearbyEvents` | `src/hooks/useFeedQuery.ts` | v1 personalized infinite feed |
+| `useFeedPosts` / `useUserPosts` / `useOrganiserPosts` / `useUserFeedWithReposts` | `src/hooks/usePostsQuery.ts` | Legacy/profile-level post queries |
+| `useUserPlannedEvents` / `useUserCreatedEvents` | `src/hooks/useUserEventsQuery.ts` | Tickets page data |
+| `useForYouEvents` | `src/hooks/useForYouEvents.ts` | "For You" event recommendations (city, friends, followed orgs) |
+| `useOrderFlow` | `src/hooks/useOrderFlow.ts` | Reserve → PaymentIntent → checkout state machine |
+| `usePostInteractions` | `src/hooks/usePostInteractions.ts` | Like, repost, delete actions |
+| `useLoyaltyQuery` | `src/hooks/useLoyaltyQuery.ts` | Points/vouchers/transactions |
+| `useNotificationsQuery` | `src/hooks/useNotificationsQuery.ts` | Notifications list, unread count, mark read |
+| `useNotificationSettings` / `usePrivacySettings` | `src/hooks/useNotificationSettings.ts`, `usePrivacySettings.ts` | Settings CRUD |
+| `useDashboardAnalytics` | `src/hooks/useDashboardAnalytics.ts` | Organiser analytics |
+| `useTicketTiers` | `src/hooks/useTicketTiers.ts` | Event ticket tier management |
+| `useFriendsGoing` | `src/hooks/useFriendsGoing.ts` | Friends attending a specific event |
+| `useStripeConnectStatus` | `src/hooks/useStripeConnectStatus.ts` | Organiser Stripe onboarding status |
+| `useAdminMutations` | `src/hooks/useAdminMutations.ts` | Admin moderation actions |
 
----
+### Active Profile Switching
+Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on profile tab. Persisted in `localStorage` under `active_profile`. On init: fetches owned organiser profiles AND accepted team memberships in parallel, then restores or defaults to personal. Syncs metadata (name/avatar) when org profile data changes.
 
-## Data Flow
+### Feed Rendering
+- **Home feed** (`src/pages/Index.tsx`): Uses `usePaginatedFeed()` from `src/hooks/useFeedQuery.ts` → calls `fetchFeedPage()` from `src/features/social/services/feedService.ts`.
+- **Infinite scroll**: `IntersectionObserver` on a sentinel div with 200px rootMargin.
+- **Realtime**: Supabase channel on `posts` and `post_reposts` tables invalidates `['feed-posts']` query key.
+- **Profile feed** (`src/pages/Profile.tsx`): Uses `useUserFeedWithReposts()` from `src/hooks/usePostsQuery.ts` — separate, non-paginated path (limit 50).
 
-```
-Reads:  UI → React Query hook → Service → Repository → Supabase (direct client read)
-Writes: UI → React Query mutation → src/api wrapper → Edge Function → DB (via RPC or direct)
-```
-
-- **Reads** are direct Supabase client queries, filtered by RLS policies.
-- **Writes** always go through Edge Functions for server-side validation, authorization, and side effects (notifications, loyalty points, etc.).
-
----
-
-## Authentication & Identity
-
-### Phone-Primary Auth
-- Authentication is **strictly phone-primary** using Supabase Auth with `signInWithPassword`.
-- Users register with phone + password + name + username.
-- Phone numbers use internal `@phone.local` email identifiers within Supabase Auth.
-- OTP verification via Twilio Verify (send-otp / verify-otp edge functions).
-- Email is optional and verified separately via `email-verify-send` / `email-verify-confirm`.
-
-### Auth Flow
-1. **Check Phone** → `check-phone` edge function (does phone exist?)
-2. **Send OTP** → `send-otp` (Twilio Verify)
-3. **Verify OTP** → `verify-otp` (confirms phone ownership)
-4. **Register** → `register` edge function (creates auth user + profile + initials avatar)
-5. **Login** → `login` edge function (password auth, lazy PBKDF2 migration)
-
-### Auth Context (`AuthContext.tsx`)
-- Provides: `user`, `session`, `loading`, `checkPhone`, `sendOtp`, `verifyOtp`, `register`, `login`, `signOut`, `devLogin`
-- Deduplication guard prevents double `onAuthStateChange` + `getSession` updates.
-- Public endpoints (`check-phone`, `login`, `register`, `send-otp`, `verify-otp`, `dev-login`, `health`) skip `getSession()` for ~100-200ms latency savings.
-
-### Login Performance (3-Phase Bootstrap)
-- **Phase A (Auth)**: Skip redundant session calls; one-time PBKDF2 migration check.
-- **Phase B (Session)**: Dedup guard prevents double auth state updates.
-- **Phase C (Bootstrap)**: Parallelizes organiser profile + membership queries. Gamification data is deferred/non-blocking.
+### Events & Checkout Flow
+1. `EventDetail` → User selects ticket tier → navigates to `/checkout` with state (`eventId`, `tierId`, `quantity`, etc.)
+2. `Checkout` (`src/pages/Checkout.tsx`) → calls `useOrderFlow().reserve()` → `orders-reserve` edge function → gets `order_id` + `amount_cents`
+3. Then calls `useOrderFlow().createPaymentIntent()` → `payments-intent` edge function → gets `client_secret`
+4. Renders `<Elements>` with Stripe `<PaymentElement>` → `stripe.confirmPayment()` → redirects to `/checkout/success`
+5. Webhook (`stripe-webhook`) processes `payment_intent.succeeded` → confirms order, issues tickets, auto-RSVPs, awards loyalty points.
 
 ---
 
-## Profile System
-
-### Three-Tier Identity Model
-
-| Tier | Description | Public | Dashboard |
-|------|-------------|--------|-----------|
-| **Personal** | Mandatory, always exists | No (private) | No |
-| **Professional** | Upgraded personal (DJ, Artist, Promoter) | Yes | No |
-| **Business/Organiser** | Separate entity with management tools | Yes | Yes |
-
-- **Personal profiles** (`profiles` table): Linked to `auth.users` via `user_id`. Always have an `avatar_url` (initials SVG generated on registration).
-- **Professional profiles**: Same `profiles` row with `profile_tier = 'professional'` and a `page_classification`. Toggled via Settings.
-- **Organiser profiles** (`organiser_profiles` table): Separate entities owned by a user (`owner_id`). Support teams via `organiser_members`.
-
-### Active Profile Context (`ActiveProfileContext.tsx`)
-- Manages switching between personal and organiser identities via long-press gesture on profile tab.
-- Persists selection in `localStorage`.
-- Auto-syncs metadata (display name, avatar) when underlying profile data changes.
-- Fetches owned profiles AND accepted memberships in parallel on init.
-- Posts, events, and feed attribution respect the active profile.
-
-### Profile Visibility
-- `is_profile_public` database function controls visibility.
-- Personal profiles are always private; Professional/Business are public.
-- Privacy settings table controls granular sharing (going events, saved events).
-
----
-
-## Events & RSVPs
-
-### Event Lifecycle
-1. **Create**: Via `events-create` edge function. Supports scheduled publishing (`publish_at`).
-2. **Edit**: Via `events-update` edge function. Host-only authorization.
-3. **Cancel/Delete**: Via `events-update` with `action: 'delete'`. Host-only.
-4. **Multi-day**: `event_date` + `end_date` range support.
-5. **Co-hosts**: `event_cohosts` table supports personal profiles and organiser accounts as co-hosts.
-
-### RSVP System
-- Atomic Postgres functions: `rsvp_join(event_id, status, guest_count)` and `rsvp_leave(event_id)`.
-- `FOR UPDATE` row-level locking prevents race conditions.
-- `UNIQUE(event_id, user_id)` constraint prevents duplicates.
-- Composite index on `(event_id, status)` for fast capacity counts.
-- `SECURITY DEFINER` with internal auth + access checks.
-- Guest counts: +1 to +5, clamped server-side.
-- Private events require host or invite membership.
-
-### Capacity & Waitlist
-- When capacity is reached, new RSVPs are blocked.
-- Waitlist table tracks user position and manages notifications when spots open.
-
-### Event Search & Filters
-- Filters: `all`, `tonight`, `thisWeek`, `thisMonth`, `free`
-- Categories: `party`, `music`, `networking`, `food`, `sports`, `arts`, `charity`, `festival`, `comedy`, `other`
-- City-based filtering via location `ilike`.
-- Free events filter: `ticket_price_cents = 0` AND no paid ticket tiers.
-
-### Event Ordering
-- **Upcoming events**: Ascending by `event_date` (soonest first).
-- **Past events**: Descending by `event_date` (most recent first).
-
-### Guestlist
-- Optional guestlist with approval workflow (`guestlist_enabled`, `guestlist_require_approval`).
-- Deadline enforcement (`guestlist_deadline`).
-- Separate max capacity (`guestlist_max_capacity`).
-
----
-
-## Ticketing & Payments
-
-### Stripe Connect Marketplace
-- **Model**: Destination charges with Express Connect accounts.
-- **Pricing**: `ticket_price + 7% service_fee`. Organiser receives full ticket price; platform retains `application_fee_amount`.
-- **Onboarding**: `stripe-connect-onboard` generates account links. `stripe-connect-status` checks `charges_enabled` and `payouts_enabled` via Stripe API.
-- **Hard Block**: Paid ticket creation disabled until organiser completes Stripe onboarding.
-
-### Ticket Tiers
-- `ticket_tiers` table: name, price_cents, available_quantity, sort_order per event.
-- Managed by event host via RLS policies.
-
-### Order Lifecycle (Webhook-Driven)
-1. `orders-reserve` → Creates order with 15-min expiry, `status = 'reserved'`.
-2. `payments-intent` → Creates Stripe PaymentIntent with destination charge.
-3. `stripe-webhook` monitors:
-   - `payment_intent.succeeded` → Confirms order, issues tickets, auto-RSVPs, awards points.
-   - `payment_intent.payment_failed` → Marks order failed.
-   - `charge.refunded` → Processes refund.
-4. Inventory tracking: Server-side `SUM(quantity)` prevents overselling.
-
-### Discount Codes
-- Per-event discount codes with percentage/fixed amount types.
-- Ticket limit controls (unlimited, per-code, per-user).
-- Optional hidden ticket reveal capability.
-- Validation via `validate-discount` edge function.
-
-### Ticket Features
-- QR code per ticket for check-in.
-- Transfer support via `ticket-transfer` edge function.
-- Check-in via `checkin-toggle` edge function (manual toggle or QR scan).
-
----
-
-## Loyalty & Gamification
-
-### Points System
-- Server-side `award_points` Postgres function (SECURITY DEFINER).
-- Row-level locking prevents race conditions on point updates.
-
-### Point Actions & Values
-| Action | Points |
-|--------|--------|
-| `add_friend` | 5 |
-| `save_event` | 5 |
-| `like_post` | 5 |
-| `follow_organiser` | 10 |
-| `share_event` | 10 |
-| `rsvp_event` | 25 |
-| `buy_ticket` | 50 |
-| `create_event` | 50 |
-| `app_review` | 50 |
-
-### Rank Tiers
-| Rank | Threshold |
-|------|-----------|
-| Bronze | 0 |
-| Silver | 1,000 |
-| Gold | 2,000 |
-| Platinum | 3,000 |
-| Diamond | 4,000 |
-
-### Rewards
-- Automatic voucher issuance on rank-up: `REWARD-{uuid}`, 500 cents value, 90-day expiry.
-- `user_vouchers` table tracks availability, usage, and expiration.
-
-### Gamification Context
-- `GamificationProvider` wraps app, loads points/vouchers/transactions in parallel.
-- Non-blocking on initial load (starts with `loading = false`).
-- Real-time subscription to point changes via Supabase Realtime (where enabled).
-
----
-
-## Social & Feed
-
-### Feed Algorithm (v1 Deterministic)
-Five source buckets ranked by weight:
-1. **Friends/followed users posts** (weight 100)
-2. **Followed organiser profile posts** (weight 80)
-3. **Reposts by friends** (weight 60)
-4. **Organisers that friends follow** (weight 40)
-5. **Public content fallback** (weight 10)
-
-Within each bucket: newest-first. Final sort: weight DESC, then recency DESC.
-Designed to be swapped for ML-backed scoring later.
-
-### Friend Recommendations
-- Current: Most recently created profiles, excluding self and existing connections.
-- Future: Mutual-friend scoring, event co-attendance, city proximity.
-
-### Posts
-- Content types: text, image, GIF (via `gif-search` edge function).
-- Post attribution respects active profile (personal or organiser).
-- Collaborators via `post_collaborators` table.
-- Reactions: `post_likes` with `reaction_type` field.
-- Reposts: `post_reposts` table.
-- Validation trigger: Must have content, image, or GIF.
-
-### Connections (Friends)
-- Request/accept model via `connections` table.
-- Statuses: `pending`, `accepted`.
-- Mute support per connection.
-- Mutual friends via `get_mutual_friends` database function.
-- Block support via `blocked_users` table.
-
----
-
-## Messaging
-
-### Architecture
-- **Group Chats**: 3+ members, available to personal and professional accounts.
-  - `group_chats` → `group_chat_members` → `group_chat_messages`.
-  - Membership checked via `is_group_chat_member` function.
-- **Direct Messages (DMs)**: User ↔ Business/Organiser only.
-  - `dm_threads` → `dm_messages`.
-  - Thread scoped to `user_id` + `organiser_profile_id`.
-  - Access: thread user OR organiser owner/member.
-
-### Message Alignment
-- Determined by comparing `sender_id` to authenticated user ID (own messages on right).
-
-### Dashboard Views
-- **Organisers section**: User-to-organiser DMs.
-- **Inbox**: Organiser incoming messages.
-- **Broadcast Channels**: Coming soon.
-
----
-
-## Notifications
-
-### System
-- `notifications` table with auto-expiry (20-day default via `expires_at`).
-- Types: general, event, social, etc.
-- Rich metadata: `avatar_url`, `event_image`, `link`, `organiser_profile_id`.
-- Cleanup via `purge_expired_notifications` function.
-
-### Settings
-- Per-user `notification_settings` table.
-- Granular toggles: push, email, event reminders, friend activity, new events, promotions, messages, mentions.
-
-### Processing
-- `notifications-send` edge function for individual notifications.
-- `notifications-process` for batch processing.
-- Routed through queue abstraction for future Cloud Tasks migration.
-
----
-
-## Navigation & Routing
-
-### Mobile (5-Tab Bottom Nav)
-| Tab | Route | Label | Notes |
-|-----|-------|-------|-------|
-| 1 | `/` | Home | Feed |
-| 2 | `/search` | Search | Event discovery |
-| 3 | `/events` | Events/Dashboard | Switches to "Dashboard" for organiser profiles |
-| 4 | `/messages` | Messages | Group chats + DMs |
-| 5 | `/profile` | Profile | Long-press for profile switching |
-
-### Desktop
-- Vertical left sidebar replaces bottom nav.
-- Feed stays centered.
-
-### Route Categories
-- **Public**: `/`, `/auth`, `/search`, `/search/:id`, `/user/:userId`, `/terms`, `/privacy`, `/events/:id`, `/embed/:id`
-- **Protected**: Everything else (wrapped in `<ProtectedRoute>`)
-- **Event Management**: `/events/:id/manage`, `/events/:id/checkin`, `/events/:id/analytics`, `/events/:id/edit`
-- **Settings**: `/settings/*` (notifications, privacy, help, about, account, music, contact, email-verification, payment-methods)
-
----
-
-## Infrastructure
-
-### API Client (`api-client.ts`)
-- Generic `callEdgeFunction<T>(name, options)` — attaches auth token, parses errors.
-- Public functions set skips `getSession()` for performance.
-- Returns typed responses.
-
-### Error Hierarchy (`errors.ts`)
-```
-AppError (base)
-├── ValidationError (400)
-├── AuthError (401)
-├── ForbiddenError (403)
-├── NotFoundError (404)
-└── ApiError (generic HTTP error)
-```
-`parseApiError()` converts Edge Function JSON errors into typed `AppError` instances.
-
-### Logger (`logger.ts`)
-- Structured JSON logging with context namespaces.
-- Dev: readable console output. Prod: JSON strings.
-- Levels: debug, info, warn, error.
-
-### Queue Abstraction
-- **Frontend** (`src/infrastructure/queue.ts`): In-memory `QueueAdapter` with handler registry.
-- **Edge Functions** (`supabase/functions/_shared/queue.ts`): In-process execution with retry (max 3 attempts).
-- Both designed for single-file swap to Cloud Tasks.
-
-### Job Types
-`notification.send`, `notification.process_batch`, `loyalty.award_points`, `loyalty.rank_up_voucher`, `rsvp.auto_mark_going`, `tickets.issue`, `referral.track`, `cleanup.expired_orders`, `cleanup.expired_notifications`
-
----
-
-## Database Schema
-
-### Core Tables (30+)
-
-| Table | Purpose |
-|-------|---------|
-| `profiles` | Personal user profiles (linked to `auth.users` via `user_id`) |
-| `organiser_profiles` | Business/organiser profiles (owned via `owner_id`) |
-| `organiser_members` | Team membership with roles (editor, etc.) and invite status |
-| `organiser_followers` | User follows for organiser profiles |
-| `organiser_stripe_accounts` | Stripe Connect account linkage |
-| `events` | Event listings with full metadata |
-| `event_cohosts` | Co-host assignments (personal or organiser) |
-| `event_media` | Additional event media files |
-| `event_messages` | Event chat/discussion |
-| `event_reminders` | Configurable reminder types |
-| `rsvps` | RSVP records with guest counts |
-| `saved_events` | User-saved/bookmarked events |
-| `waitlist` | Capacity overflow waitlist |
-| `invites` | Event invitations |
-| `ticket_tiers` | Ticket pricing tiers per event |
-| `tickets` | Issued tickets with QR codes |
-| `orders` | Order records with Stripe integration |
-| `discount_codes` | Per-event discount codes |
-| `payment_events` | Stripe webhook audit log |
-| `refunds` | Refund tracking |
-| `posts` | Social feed posts |
-| `post_likes` | Reactions with type |
-| `post_reposts` | Repost records |
-| `post_collaborators` | Post co-authors |
-| `connections` | Friend request/accept model |
-| `blocked_users` | User blocks |
-| `dm_threads` | Direct message threads (user ↔ organiser) |
-| `dm_messages` | DM content |
-| `group_chats` | Group chat rooms |
-| `group_chat_members` | Group membership |
-| `group_chat_messages` | Group messages |
-| `notifications` | In-app notifications with expiry |
-| `notification_settings` | Per-user notification preferences |
-| `privacy_settings` | Per-user privacy controls |
-| `user_points` | Loyalty points and rank |
-| `point_transactions` | Point earning history |
-| `user_vouchers` | Reward vouchers |
-| `user_badges` | Achievement badges |
-| `user_roles` | Admin roles (super_admin, moderator, support) |
-| `user_music_connections` | Music service integrations |
-| `contact_messages` | Contact form submissions |
-| `reports` | Content/user reports |
-| `moderation_actions` | Admin action audit log |
-| `support_requests` | Help desk tickets |
-| `rate_limits` | API rate limiting |
-| `check_ins` | Event check-in records |
-
-### Enums
-- `app_role`: `super_admin`, `moderator`, `support`
-- `user_rank`: `bronze`, `silver`, `gold`, `platinum`, `diamond`
-
-### Key Database Functions
-| Function | Purpose |
-|----------|---------|
-| `rsvp_join` / `rsvp_leave` | Atomic RSVP with capacity locking |
-| `award_points` | Points + rank calculation + voucher issuance |
-| `has_role` / `is_admin` | Role-based access checks (SECURITY DEFINER) |
-| `is_organiser_owner` / `is_organiser_member` | Organiser authorization |
-| `is_group_chat_member` | Chat access control |
-| `is_profile_public` | Profile visibility check |
-| `get_mutual_friends` | Mutual friend lookup |
-| `get_friend_count` / `get_friends_and_following_count` | Social counts |
-| `get_organiser_*_count` | Organiser analytics (followers, attendees, past events) |
-| `get_personal_combined_event_count` | Personal event history count |
-| `get_group_chat_member_profiles` | Chat member info |
-| `check_rate_limit` | Rate limiting with sliding window |
-| `purge_expired_notifications` | Notification cleanup |
-| `handle_new_user` | Trigger: auto-create profile on auth signup |
-| `validate_post_content` | Trigger: ensure post has content/image/GIF |
-
----
-
-## Edge Functions
-
-### 40+ Endpoints
+## 2. Backend Architecture
+
+### Supabase Tables (46 tables)
+
+**Core Identity**
+- `profiles` — Personal user profiles (linked to auth.users via user_id)
+- `organiser_profiles` — Business/organiser entities (owner_id → user)
+- `organiser_members` — Team membership (role, status, invited_by)
+- `organiser_followers` — User follows for organisers
+- `user_roles` — Admin roles (super_admin, moderator, support)
+- `user_music_connections` — Music service integrations
+- `privacy_settings` — Per-user privacy controls
+- `notification_settings` — Per-user notification preferences
+
+**Social**
+- `connections` — Friend request/accept (requester_id, addressee_id, status)
+- `blocked_users` — User blocks
+- `posts` — Feed posts (content, image_url, gif_url, event_id, organiser_profile_id)
+- `post_likes` — Reactions with reaction_type
+- `post_reposts` — Repost records
+- `post_collaborators` — Post co-authors
+
+**Events**
+- `events` — Event listings (host_id, organiser_profile_id, status, capacity, guestlist, scheduling)
+- `event_cohosts` — Co-host assignments
+- `event_media` — Additional media files
+- `event_messages` — Event chat
+- `event_reminders` — Configurable reminder types
+- `rsvps` — RSVP records with guest_count
+- `saved_events` — Bookmarked events
+- `waitlist` — Capacity overflow
+- `invites` — Event invitations
+
+**Ticketing & Payments**
+- `ticket_tiers` — Pricing tiers per event
+- `tickets` — Issued tickets with QR codes
+- `orders` — Order records with Stripe integration, 15-min expiry
+- `discount_codes` — Per-event discount codes
+- `organiser_stripe_accounts` — Stripe Connect account linkage
+- `payment_events` — Stripe webhook audit log
+- `refunds` — Refund tracking
+
+**Loyalty**
+- `user_points` — Points balance and rank
+- `point_transactions` — Point earning history
+- `user_vouchers` — Reward vouchers
+- `user_badges` — Achievement badges
+
+**Messaging**
+- `dm_threads` — DM threads (user ↔ organiser)
+- `dm_messages` — DM content
+- `group_chats` — Group chat rooms
+- `group_chat_members` — Group membership
+- `group_chat_messages` — Group messages
+
+**Admin & Moderation**
+- `reports` — Content/user reports
+- `moderation_actions` — Admin action audit log (no client writes)
+- `support_requests` — Help desk tickets
+- `contact_messages` — Contact form submissions
+
+**Infrastructure**
+- `rate_limits` — API rate limiting
+- `check_ins` — Event check-in records
+- `notifications` — In-app notifications with 20-day expiry
+
+### Edge Functions (40 endpoints in `supabase/functions/`)
 
 | Category | Functions |
 |----------|-----------|
@@ -522,96 +186,474 @@ AppError (base)
 | **Analytics** | `dashboard-analytics` |
 | **Infra** | `health` |
 
-### Shared Utilities (`_shared/`)
-- `avatar.ts` — Initials SVG generation
-- `password.ts` — PBKDF2 password hashing/verification (legacy migration)
-- `rate-limit.ts` — Rate limiting via `check_rate_limit` DB function
-- `queue.ts` — In-process job queue with retry
-- `job-handlers.ts` — Handler registry for queue job types
+### Postgres Functions / RPCs
+
+| Function | Type | Purpose |
+|----------|------|---------|
+| `rsvp_join(event_id, status, guest_count)` | SECURITY DEFINER | Atomic RSVP with capacity locking, FOR UPDATE, conflict upsert |
+| `rsvp_leave(event_id)` | SECURITY DEFINER | RSVP deletion |
+| `award_points(action_type, description)` | SECURITY DEFINER | Points + rank calc + voucher issuance with row lock |
+| `has_role(user_id, role)` / `is_admin(user_id)` | SECURITY DEFINER | Role checks (used in RLS policies) |
+| `is_organiser_owner(profile_id, user_id)` | SECURITY DEFINER | Organiser ownership check |
+| `is_organiser_member(profile_id, user_id)` | SECURITY DEFINER | Accepted team member check |
+| `is_group_chat_member(group_id, user_id)` | SECURITY DEFINER | Chat membership check |
+| `is_profile_public(user_id)` | SECURITY DEFINER | **⚠️ Currently hardcoded to return `true` — does NOT check profile_tier** |
+| `get_mutual_friends(user_a, user_b)` | SECURITY DEFINER | Mutual friend lookup |
+| `get_friend_count(user_id)` | SECURITY DEFINER | Friend count |
+| `get_friends_and_following_count(user_id)` | SECURITY DEFINER | Same as get_friend_count (doesn't count organiser follows) |
+| `get_organiser_follower_count(id)` | SECURITY DEFINER | Follower count |
+| `get_organiser_attendee_count(id)` | SECURITY DEFINER | Unique attendee count |
+| `get_organiser_past_event_count(id)` | SECURITY DEFINER | Past event count |
+| `get_personal_combined_event_count(user_id)` | SECURITY DEFINER | Past attended count |
+| `get_group_chat_member_profiles(group_id)` | SECURITY DEFINER | Chat member profiles |
+| `check_rate_limit(endpoint, user_id, ip, max, window)` | SECURITY DEFINER | Sliding window rate limiter |
+| `cleanup_old_rate_limits()` | SECURITY DEFINER | Rate limit cleanup |
+| `purge_expired_notifications()` | SECURITY DEFINER | Notification cleanup |
+| `handle_new_user()` | Trigger on auth.users | Auto-creates profile row on signup |
+| `validate_post_content()` | Trigger on posts | Ensures post has content/image/GIF |
+| `update_updated_at_column()` | Trigger | Auto-updates `updated_at` timestamps |
+
+### Write Path: Edge Functions vs Client-Side
+
+| Operation | Path | Why |
+|-----------|------|-----|
+| Auth (login, register, OTP) | Edge Function | Service role needed for auth.users access |
+| Profile update | Edge Function (`profile-update`) | Server-side validation |
+| Avatar upload | Edge Function (`avatar-upload`) | File validation, storage access |
+| Event create/update/delete | Edge Function (`events-create`, `events-update`) | Authorization, side effects |
+| RSVP join/leave | Edge Function → RPC (`rsvp_join`, `rsvp_leave`) | Atomic capacity enforcement |
+| Order reserve | Edge Function (`orders-reserve`) | Inventory check, expiry management |
+| Payment intent | Edge Function (`payments-intent`) | Stripe secret key required |
+| Ticket issuance | Edge Function (`stripe-webhook`) | Webhook-driven, service role |
+| Points award | Edge Function → RPC (`award_points`) | Race condition prevention |
+| Post creation | **Client-side direct insert** | RLS: `auth.uid() = author_id` |
+| Post like/unlike | **Client-side direct insert/delete** | RLS: `auth.uid() = user_id` |
+| Post repost | **Client-side direct insert/delete** | RLS: `auth.uid() = user_id` |
+| Connection request/accept | **Client-side direct** | RLS: `auth.uid() = requester_id/addressee_id` |
+| Saved events | **Client-side direct** | RLS: `auth.uid() = user_id` |
+| Group chat messages | **Client-side direct insert** | RLS: permissive authenticated |
+| Notification mark read | **Client-side direct update** | RLS: `auth.uid() = user_id` |
+| Settings (privacy, notifications) | Edge Function (`settings-upsert`) | Upsert logic |
+| Report creation | Edge Function (`report-create`) | Validation |
+| Organiser profile create/update | Edge Function | Avatar generation, validation |
+
+### Queue Abstraction
+
+**Edge Functions** (`supabase/functions/_shared/queue.ts`):
+- In-process execution with 3-attempt retry.
+- `enqueue(type, payload, options)` — fire-and-forget by default.
+- `enqueueBatch(type, payloads[])` — parallel dispatch.
+- Creates service role client per job execution.
+- Handler registry via `registerHandler()`.
+
+**Frontend** (`src/infrastructure/queue.ts`):
+- Mirror types but in-memory, no retry.
+- `QueueAdapter` interface ready for Cloud Tasks swap.
+- **Currently unused** — no frontend code calls `queue.enqueue()`.
+
+**Where queue is used**: `stripe-webhook` dispatches ticket issuance, RSVP auto-join, and loyalty points via queue. `notifications-process` batches notification sends. Other edge functions dispatch notifications via queue.
 
 ---
 
-## Storage
+## 3. Modular Monolith Structure
 
-### Buckets (all public)
-| Bucket | Purpose |
-|--------|---------|
-| `avatars` | Profile and organiser avatar images |
-| `post-images` | Social feed post images |
-| `event-flyers` | Event cover images |
-| `event-media` | Additional event media (gallery) |
+### Feature Modules
 
----
+| Module | Path | Status | Owns |
+|--------|------|--------|------|
+| **identity** | `src/features/identity/` | ✅ Active | `identityService` (getProfile, updateProfile, uploadAvatar), `identityRepository` (getProfile with dev-login fallback), `authorization.ts` (requireAuth, requireEventOwner — designed for edge functions but lives in frontend src) |
+| **events** | `src/features/events/` | ✅ Active | `eventsService` (list, search, getEvent, getHostEvents, getRsvps, getUserRsvp), `eventsRepository` (direct Supabase queries with date/category/city/free filters), domain types |
+| **loyalty** | `src/features/loyalty/` | ✅ Active | `loyaltyService` (getUserPoints, getVouchers, getTransactions, subscribeToPoints), `loyaltyRepository` (reads + realtime subscription), domain types (ranks, thresholds, action labels) |
+| **social** | `src/features/social/` | ✅ Active | `feedService` (buildFeedContext, fetchFeedPage, fetchPublicFeedPage, fetchNearbyEvents), `recommendationService` (getSuggestedFriends) — no repository layer |
+| **orders** | `src/features/orders/` | 🔲 **Empty scaffold** | `export {}` — order logic lives in `useOrderFlow` hook + edge functions |
+| **notifications** | `src/features/notifications/` | ⚠️ **Re-export only** | Re-exports hooks from `src/hooks/useNotificationsQuery.ts` — no service or repository |
 
-## Security
+### Repository/Service Boundary Compliance
 
-### Row-Level Security (RLS)
-- Enabled on ALL tables.
-- Patterns:
-  - **Own data**: `auth.uid() = user_id` for personal CRUD.
-  - **Host authorization**: `EXISTS (SELECT 1 FROM events WHERE host_id = auth.uid())` for event management.
-  - **Organiser authorization**: `is_organiser_owner()` / `is_organiser_member()` functions.
-  - **Admin access**: `is_admin()` / `has_role()` SECURITY DEFINER functions.
-  - **No client writes**: `false` policies on sensitive tables (user_roles, moderation_actions, organiser_stripe_accounts writes).
-  - **Public reads**: Events with `is_public = true`, organiser profiles for authenticated users.
+| Module | Repository | Service | Boundary Followed? |
+|--------|-----------|---------|---------------------|
+| identity | ✅ | ✅ | ⚠️ Mostly — service has fallback direct supabase write for mock login |
+| events | ✅ | ✅ | ✅ Yes — reads through repo, writes through API |
+| loyalty | ✅ | ✅ | ✅ Yes |
+| social | ❌ No repo | ❌ feedService imports supabase directly | ❌ **Violates architecture** — feedService directly uses `@/integrations/supabase/client` instead of `@/infrastructure/supabase` |
+| orders | ❌ | ❌ | N/A — not implemented |
+| notifications | ❌ | ❌ | ❌ All logic in hooks |
 
-### Admin & Moderation
-- Roles stored in separate `user_roles` table (never on profiles).
-- `app_role` enum: `super_admin`, `moderator`, `support`.
-- Reports system: users, posts, events with status tracking.
-- Immutable `moderation_actions` audit log (no client writes).
-- Support requests with category and resolution tracking.
-
-### Rate Limiting
-- Database-backed sliding window rate limiter.
-- Per-user and per-IP tracking.
-- Configurable window and max requests per endpoint.
-- Auto-cleanup of expired windows (5% probabilistic trigger).
-
-### Edge Function Authorization
-- Service role client used for operations requiring elevated access.
-- Manual authorization checks before data access.
-- Host/organiser verification before returning protected data.
+**Key violations**:
+- `src/features/social/services/feedService.ts` imports from `@/integrations/supabase/client` directly (line 17), bypassing `@/infrastructure/supabase`.
+- `src/features/identity/services/authorization.ts` is designed for edge function use but lives in frontend `src/` — dead code on the client side.
+- Many hooks (`useUserEventsQuery`, `useForYouEvents`, `useFriendsGoing`, `usePostsQuery`) query Supabase directly, bypassing the repository layer entirely.
+- The `social` module has no repository at all — service does direct DB access.
 
 ---
 
-## Environment & Config
+## 4. Auth and Identity Model
 
-### Frontend Config (`src/infrastructure/config.ts`)
-```typescript
-config.env          // 'development' | 'staging' | 'production'
-config.supabase.url // VITE_SUPABASE_URL
-config.supabase.anonKey  // VITE_SUPABASE_PUBLISHABLE_KEY
-config.supabase.projectId // VITE_SUPABASE_PROJECT_ID
-config.functionsUrl // ${supabase.url}/functions/v1
-config.isDev / config.isProd
+### Personal Auth Model
+- Phone-primary using Supabase Auth `signInWithPassword`.
+- Phone → internal `@phone.local` email identifier in auth.users.
+- OTP via Twilio Verify for phone ownership verification.
+- Password stored in Supabase Auth (with lazy PBKDF2 migration from legacy hashing).
+- Registration: `register` edge function creates auth user → `handle_new_user` trigger creates profile → edge function generates initials avatar.
+- Login: `login` edge function does `signInWithPassword`, returns tokens → client calls `supabase.auth.setSession()`.
+
+### Organiser Profile Model
+- Separate `organiser_profiles` table, owned via `owner_id`.
+- Created via `organiser-profile-create` edge function (with auto initials avatar).
+- Team members via `organiser_members` table (roles: editor; status: pending/accepted).
+- One user can own multiple organiser profiles.
+- Each organiser profile can have its own Stripe Connect account (`organiser_stripe_accounts`).
+
+### Active Profile Switching
+- `ActiveProfileContext` in `src/contexts/ActiveProfileContext.tsx`.
+- Stores selection in `localStorage` under `active_profile`.
+- On init: parallel fetch of owned + accepted-member organiser profiles.
+- Validates stored organiser profile still exists; falls back to personal if not.
+- Long-press gesture on profile tab triggers `switchProfile()`.
+- Active profile determines: post attribution, event ownership context, dashboard access, notification filtering.
+
+### Ownership / Actor Context Semantics
+- **Personal events**: `events.host_id = user_id` AND `organiser_profile_id IS NULL`.
+- **Organiser events**: `events.organiser_profile_id = org_id` (host_id is still the creating user).
+- **Post attribution**: When `organiser_profile_id` is set, feed shows organiser name/avatar instead of personal.
+- **Dashboard access**: Gated by `activeProfile.type === 'organiser'` — simply owning an organiser profile doesn't grant dashboard access if in personal mode.
+
+### Risks / Inconsistencies
+1. **`is_profile_public()` is hardcoded to `return true`** — the privacy tier system (personal=private, professional=public) is NOT enforced at the DB level despite being implemented in the UI.
+2. **`get_friends_and_following_count()` doesn't count organiser follows** — it's identical to `get_friend_count()`, which is misleading.
+3. **`authorization.ts` lives in frontend but is designed for edge functions** — it's importable by frontend code but useless there (uses server patterns). Not actually shared with edge functions which have their own inline auth checks.
+4. **Dev-login fallback in `identityRepository`** calls `dev-profile` edge function when RLS blocks profile reads — this masks real auth issues in development.
+
+---
+
+## 5. Feed Architecture
+
+### Current Feed Algorithm (`src/features/social/services/feedService.ts`)
+Deterministic weighted scoring, no ML.
+
+### Source Buckets / Weights
+
+| Priority | Source | Weight |
+|----------|--------|--------|
+| 1 | Friends / followed users posts | 100 |
+| 2 | Followed organiser profile posts | 80 |
+| 3 | Reposts by friends | 60 |
+| 4 | Organisers that friends follow | 40 |
+| 5 | Public content fallback | 10 |
+
+Within each bucket: newest-first. Final sort: weight DESC → recency DESC.
+
+### Feed Context
+`buildFeedContext(userId)` — called once per session, cached 5 minutes by React Query.
+- Fetches connections (accepted friends) and organiser follows in parallel.
+- Then fetches organisers that friends follow (capped at 50 friends).
+- Returns `FeedContext { userId, friendIds, followedOrgIds, friendFollowedOrgIds }`.
+
+### Authenticated vs Unauthenticated
+- **Authenticated**: `fetchFeedPage(ctx, cursor)` — weighted scoring with all 5 buckets.
+- **Unauthenticated**: `fetchPublicFeedPage(cursor)` — everything gets weight 10 (public fallback), sorted by recency.
+- Both use cursor-based pagination (20 posts per page).
+
+### Pagination Strategy
+- Cursor = ISO timestamp of last post's `created_at`.
+- Over-fetches by 10 posts to account for repost merging.
+- `useInfiniteQuery` with `getNextPageParam` from `hasMore` flag.
+- Sentinel div with `IntersectionObserver` (200px rootMargin) triggers `fetchNextPage()`.
+
+### Nearby Events
+`fetchNearbyEvents(city, limit)` in `feedService.ts`:
+- Queries upcoming public events matching user's city via `ilike`.
+- If city returns < 2 results, backfills with any upcoming events.
+- Hook: `useNearbyEvents()` in `useFeedQuery.ts`, stale time 2 minutes.
+
+### Known Gaps / Bugs
+1. **Duplicate feed systems**: `useFeedPosts()` in `usePostsQuery.ts` (legacy, non-paginated, limit 50) coexists with `usePaginatedFeed()` in `useFeedQuery.ts`. The Index page uses the new one; profile pages use the old one. Both subscribe to the same realtime channel, causing double invalidations.
+2. **Repost deduplication is imperfect**: Same post can appear as both original and repost if the repost timestamp falls in a different cursor window than the original.
+3. **No blocked user filtering in feed**: `blocked_users` table exists but feed queries don't filter out posts from blocked users.
+4. **No muted connection filtering**: `connections.muted` column exists but isn't used in feed scoring.
+5. **Friend-followed-org lookup is capped at 50 friends** — silently drops data for users with large friend networks.
+
+---
+
+## 6. Events Architecture
+
+### Free Personal Events
+- Created by personal profiles: `host_id = user_id`, `organiser_profile_id = NULL`.
+- `ticket_price_cents = 0` by default, no ticket tiers required.
+- RSVP-based attendance (join/leave via RPC).
+
+### Organiser Events
+- Created by organiser profiles: `organiser_profile_id = org_id`, `host_id = creating_user_id`.
+- Can have ticket tiers with pricing.
+- Paid events gated by Stripe Connect onboarding completion.
+- Co-hosts via `event_cohosts` table.
+
+### My Plans vs My Events (Tickets page — `src/pages/Tickets.tsx` / `src/hooks/useUserEventsQuery.ts`)
+
+**My Plans** (`useUserPlannedEvents`):
+- Aggregates from 3 sources in parallel: RSVPs (going/interested/pending), confirmed orders, saved events.
+- Deduplicates by event_id.
+- Each event tagged with `ticketStatus`: going | pending | interested | purchased | saved.
+- Sorted chronologically with "Today" divider, past events above, upcoming below.
+- Scroll anchoring to "Today" divider via `useLayoutEffect`.
+
+**My Events** (`useUserCreatedEvents`):
+- Personal profile: `host_id = userId AND organiser_profile_id IS NULL`.
+- Organiser profile: `organiser_profile_id = activeProfileId`.
+- Only shown when active profile type is personal; organiser profiles see `OrganiserDashboard` instead.
+
+### RSVP / Ticket / Reservation Relationships
+```
+Event
+├── rsvps (free attendance — via rsvp_join/rsvp_leave RPCs)
+├── ticket_tiers (pricing structure)
+│   └── orders (reservation → payment → confirmation)
+│       └── tickets (issued post-payment via webhook)
+├── saved_events (bookmarks)
+└── waitlist (capacity overflow)
 ```
 
-### Edge Function Secrets
-| Secret | Purpose |
-|--------|---------|
-| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | DB access |
-| `SUPABASE_ANON_KEY` / `SUPABASE_PUBLISHABLE_KEY` | Client-facing keys |
-| `SUPABASE_DB_URL` | Direct DB connection |
-| `STRIPE_SECRET_KEY` | Stripe server-side API |
-| `STRIPE_WEBHOOK_SECRET` | Webhook signature verification |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_VERIFY_SERVICE_SID` | Phone OTP |
-| `LOVABLE_API_KEY` | Lovable AI integration |
+- Free events: RSVP directly, no order/ticket.
+- Paid events: Order → Payment → Ticket + auto-RSVP (going).
+- Guest counts: RSVP supports +1 to +5, clamped server-side.
 
-### Key Dependencies
-- **React 18** + **React Router 6** + **TypeScript**
-- **Vite** (build tool)
-- **Tailwind CSS** + **tailwindcss-animate**
-- **shadcn/ui** (Radix primitives)
-- **@tanstack/react-query** (server state)
-- **@supabase/supabase-js** (DB client)
-- **@stripe/stripe-js** + **@stripe/react-stripe-js** (payments)
-- **date-fns** (date utilities)
-- **recharts** (analytics charts)
-- **react-hook-form** + **zod** (form validation)
-- **lucide-react** (icons)
-- **sonner** (toast notifications)
-- **qrcode.react** (QR code generation)
-- **html-to-image** (screenshot/export)
-- **react-international-phone** (phone input)
-- **vaul** (drawer)
+### Remaining Logic Problems
+1. **Waitlist is schema-only**: Table exists, but no code actually enqueues users to waitlist when events reach capacity. `rsvp_join` raises an exception at capacity — it doesn't redirect to waitlist.
+2. **`event_reminders` has no processing logic**: Reminders can be created/managed by hosts, but there's no scheduled job that actually sends them.
+3. **Guestlist approval workflow incomplete**: `guestlist_require_approval` and `guestlist_deadline` columns exist, but the approval UI and enforcement logic aren't fully wired.
+4. **`publish_at` scheduling is not enforced**: Events with future `publish_at` are still queryable — no filter excludes unpublished events from public listings.
+5. **Event `status` field** defaults to `'published'` but draft/cancelled statuses aren't consistently filtered in queries.
+
+---
+
+## 7. Payments Architecture
+
+### Current Order Flow (`src/hooks/useOrderFlow.ts`)
+1. **Reserve**: `useOrderFlow().reserve()` → `orders-reserve` edge function → creates order with 15-min expiry, `status = 'reserved'`.
+2. **Payment Intent**: `useOrderFlow().createPaymentIntent()` → `payments-intent` edge function → creates Stripe PaymentIntent with destination charge (organiser's connected account).
+3. **Checkout UI**: `src/pages/Checkout.tsx` — Stripe Elements `<PaymentElement>` → `stripe.confirmPayment()` → redirect to `/checkout/success`.
+4. **Webhook Processing**: `stripe-webhook` edge function handles:
+   - `payment_intent.succeeded` → confirms order, issues tickets, auto-RSVPs going, awards loyalty points.
+   - `payment_intent.payment_failed` → marks order failed.
+   - `charge.refunded` → processes refund.
+
+### Stripe Connect Model
+- Express accounts with destination charges.
+- `ticket_price + 7% service_fee` charged to customer.
+- `application_fee_amount` = service fee retained by platform.
+- Organiser receives full ticket price.
+- Onboarding: `stripe-connect-onboard` → generates account link. `stripe-connect-status` → checks `charges_enabled` / `payouts_enabled`.
+- Hard block: Paid ticket tiers can't be created until organiser completes onboarding.
+
+### Inventory Control
+- Server-side `SUM(quantity)` in `orders-reserve` checks available inventory against `ticket_tiers.available_quantity`.
+- 15-minute reservation expiry prevents inventory lockup.
+
+### Discount Codes
+- `validate-discount` edge function: checks code validity, event match, usage limits.
+- Types: percentage or fixed amount.
+- Can reveal hidden ticket tiers.
+
+### What's Implemented vs Missing
+
+| Feature | Status |
+|---------|--------|
+| Order reservation with expiry | ✅ Implemented |
+| Stripe PaymentIntent creation | ✅ Implemented |
+| Webhook order confirmation | ✅ Implemented |
+| Ticket issuance (QR) | ✅ Implemented (via webhook queue) |
+| Auto-RSVP on purchase | ✅ Implemented (via webhook queue) |
+| Loyalty points on purchase | ✅ Implemented (via webhook queue) |
+| Refund processing | ✅ Schema + webhook handler |
+| Discount code validation | ✅ Implemented |
+| Ticket transfer | ✅ Edge function exists |
+| Expired order cleanup | ⚠️ Job type defined but **no scheduled trigger** |
+| Multi-currency | ⚠️ `currency` column exists (default 'zar') but no UI for selection |
+| Stripe publishable key | ⚠️ **Hardcoded in `src/lib/stripe.ts`** — should be env var |
+| Order listing for hosts | ✅ `orders-list` edge function with host authorization |
+
+---
+
+## 8. Admin / Moderation Architecture
+
+### Schema
+
+| Table | RLS | Client Access |
+|-------|-----|---------------|
+| `user_roles` | Admin read only, no client writes (`false` policy) | Read via `is_admin()` |
+| `reports` | Users insert own + view own; admins manage all | Insert + select |
+| `moderation_actions` | Admin select only, no client writes | Read only |
+| `support_requests` | No RLS policies visible for user access | Insert via edge function |
+
+### What's Wired vs Schema-Only
+
+| Feature | Status |
+|---------|--------|
+| Role-based access (super_admin, moderator, support) | ✅ Schema + DB functions (`has_role`, `is_admin`) |
+| RLS policies using roles | ✅ Reports, moderation_actions use `is_admin()` |
+| User report submission | ✅ `report-create` edge function |
+| Support request submission | ✅ `support-request-create` edge function |
+| Admin dashboard UI | ❌ **Not implemented** — no admin pages exist |
+| Report review/resolution | ❌ **Schema only** — `assigned_admin_id`, `resolution_notes`, `status` columns exist but no UI |
+| Moderation action recording | ❌ **Schema only** — table has no-write policy, nothing writes to it |
+| User suspension/ban | ❌ **Not implemented** |
+| Content takedown | ❌ **Not implemented** |
+| Admin role assignment | ❌ **Manual DB only** — no UI or edge function |
+
+---
+
+## 9. Async / Queue Architecture
+
+### Queue Abstraction
+
+**Edge Functions** (`supabase/functions/_shared/queue.ts`):
+
+```typescript
+type JobType =
+  | 'notification.send'
+  | 'notification.process_batch'
+  | 'loyalty.award_points'
+  | 'loyalty.rank_up_voucher'
+  | 'rsvp.auto_mark_going'
+  | 'tickets.issue'
+  | 'referral.track'
+  | 'cleanup.expired_orders'
+  | 'cleanup.expired_notifications';
+```
+
+- In-process execution: handler runs immediately in same invocation.
+- 3-attempt retry with error logging.
+- `fireAndForget = true` by default (errors logged, not propagated).
+- Service role client created per job.
+- Handler registry via `registerHandler()` + `_shared/job-handlers.ts`.
+
+### What Currently Dispatches Through Queue
+- `stripe-webhook`: dispatches `tickets.issue`, `rsvp.auto_mark_going`, `loyalty.award_points` after successful payment.
+- `notifications-process`: dispatches `notification.send` for batch processing.
+- Various edge functions dispatch `notification.send` for user alerts.
+
+### What Runs Inline (Not Queued)
+- `loyalty-award-points`: directly calls `award_points` RPC, no queue.
+- `events-create` / `events-update`: direct DB writes, no queue.
+- `rsvp`: direct RPC call, no queue.
+- All client-side writes (posts, likes, connections): inline Supabase client calls.
+
+### Cloud Tasks Readiness
+- Both frontend and edge function queue modules document the swap path.
+- `QueueAdapter` interface exists for frontend.
+- Edge function queue has clear `dispatch()` seam.
+- **Gap**: No DLQ (dead letter queue), no job persistence, no visibility into failed jobs beyond console.error.
+- **Gap**: Frontend `queue.ts` is completely unused — no code imports or calls it.
+
+---
+
+## 10. Environment / Deployment State
+
+### Lovable Platform
+- Source of truth for Supabase project (Lovable Cloud).
+- Auto-manages: `supabase/config.toml`, `src/integrations/supabase/client.ts`, `src/integrations/supabase/types.ts`, `.env`.
+- Edge functions auto-deployed on push.
+- Preview URL: `https://id-preview--{id}.lovable.app`.
+- Published URL: `https://social-soiree-site.lovable.app`.
+
+### GitHub
+- CI workflow in `.github/workflows/ci.yml`.
+- Git-based version control.
+
+### Environment Config (`src/infrastructure/config.ts`)
+```typescript
+config.env       // 'development' | 'staging' | 'production' (from import.meta.env.MODE)
+config.isDev     // boolean
+config.isProd    // boolean
+config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
+```
+
+### Secrets (Edge Functions)
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_DB_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID`, `LOVABLE_API_KEY`.
+
+### Missing for Staging/Prod Readiness
+1. **No staging environment** — single Supabase project for all environments.
+2. **No database migrations CI** — migrations managed via Lovable UI, not reviewable in PRs.
+3. **Stripe publishable key hardcoded** in `src/lib/stripe.ts` — should be `VITE_STRIPE_PUBLISHABLE_KEY`.
+4. **No CORS configuration** for production domain in edge functions (using `*` wildcard).
+5. **No error monitoring** (Sentry, LogRocket, etc.).
+6. **No performance monitoring** (no Web Vitals tracking).
+7. **No E2E tests** — only CI lint/typecheck.
+8. **Logger uses `import.meta.env.PROD`** for JSON toggle — works but no structured log aggregation service.
+
+---
+
+## 11. Architecture Risks and Inconsistencies
+
+### Critical
+
+1. **`is_profile_public()` returns `true` unconditionally** (`SELECT true`)
+   - File: DB function `is_profile_public`
+   - Impact: The entire privacy tier system (personal=private, professional=public) is unenforced at the database level. Any authenticated user can view any profile regardless of `profile_tier` or `privacy_settings.go_public`.
+
+2. **Stripe publishable key hardcoded**
+   - File: `src/lib/stripe.ts` (line 3)
+   - Impact: Can't switch between test/live keys without code change. Risk of accidentally shipping test key to production or vice versa.
+
+3. **No expired order cleanup**
+   - Job type `cleanup.expired_orders` is defined but no cron or trigger invokes it. Reserved orders that expire after 15 minutes remain in `status = 'reserved'` indefinitely, potentially blocking inventory.
+
+4. **`publish_at` scheduling not enforced**
+   - Events with future `publish_at` timestamps appear in all public queries. No filter in `eventsRepository.list()` or `eventsRepository.search()` excludes them.
+
+### Architectural Mismatches
+
+5. **Dual feed systems**
+   - `usePostsQuery.ts` → `useFeedPosts()` (legacy, limit 50, no pagination, no scoring)
+   - `useFeedQuery.ts` → `usePaginatedFeed()` (v1 personalized, paginated, scored)
+   - Both subscribe to same realtime channel. Index page uses new system; profile pages use old system. Should consolidate.
+
+6. **Social module bypasses infrastructure layer**
+   - `src/features/social/services/feedService.ts` imports `@/integrations/supabase/client` directly (should use `@/infrastructure/supabase`).
+   - No repository layer — service does direct DB queries, violating the architecture's read path.
+
+7. **`authorization.ts` is dead frontend code**
+   - `src/features/identity/services/authorization.ts` contains server-side authorization patterns (`requireAuth`, `requireEventOwner`) but lives in the frontend bundle. Edge functions have their own inline auth checks. This file is never imported by any frontend code.
+
+8. **Frontend queue abstraction is unused**
+   - `src/infrastructure/queue.ts` defines `QueueAdapter` and `InMemoryQueue` but nothing imports or uses it.
+
+9. **Orders module is empty**
+   - `src/features/orders/index.ts` exports nothing. Order logic is split across `useOrderFlow` hook, `orders-reserve` edge function, `payments-intent` edge function, and `stripe-webhook`. No domain types, service, or repository.
+
+10. **Notifications module is just re-exports**
+    - `src/features/notifications/index.ts` re-exports hooks from `src/hooks/`. No service, repository, or domain types.
+
+### Incomplete Flows
+
+11. **Waitlist is schema-only**
+    - `waitlist` table exists with `position` and `notified_at` columns, but `rsvp_join` raises an exception at capacity instead of enqueuing to waitlist. No notification flow when spots open.
+
+12. **Event reminders have no processing**
+    - `event_reminders` table allows hosts to configure reminders, but no scheduled job actually sends them.
+
+13. **Guestlist approval is partial**
+    - `guestlist_require_approval` and `guestlist_deadline` exist on events, but no approval/rejection UI or enforcement logic.
+
+14. **Admin UI doesn't exist**
+    - Reports, moderation actions, support requests have full schema but no admin pages, no admin routes, no admin dashboard.
+
+15. **`get_friends_and_following_count` is misleading**
+    - Function name implies it counts friends AND organiser follows, but implementation is identical to `get_friend_count` — only counts accepted connections.
+
+### Frontend/Backend Inconsistencies
+
+16. **Profile update dual path**
+    - `identityService.updateProfile()` checks for session: if present, calls `profile-update` edge function; if not, writes directly via Supabase client (for mock/dev login). This means dev path bypasses all server-side validation.
+
+17. **Blocked users not filtered in feed**
+    - `blocked_users` table has proper RLS, but `feedService.ts` and `usePostsQuery.ts` don't filter posts from blocked users.
+
+18. **Muted connections not used**
+    - `connections.muted` column exists but feed scoring ignores it entirely.
+
+19. **Event status not filtered**
+    - Events have a `status` column (default 'published') but queries don't filter by status — draft or cancelled events could appear in listings.
+
+20. **Organiser verification is implicit vs explicit**
+    - Feed enrichment hardcodes `author_is_verified = true` for all organiser profile posts (feedService line 183, usePostsQuery line 121), but personal profile verification is DB-driven (`is_verified` column). These are semantically different verification concepts treated identically in the UI.
