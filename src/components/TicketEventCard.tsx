@@ -55,11 +55,8 @@ const TicketEventCard = ({
           {title}
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-            {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
-          </span>
           <Badge variant="outline" className={`text-xs font-medium h-7 rounded-full px-3 ${cfg.className}`}>
-            {cfg.label}
+            {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
           </Badge>
         </div>
       </div>
