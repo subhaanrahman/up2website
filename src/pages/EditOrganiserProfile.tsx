@@ -229,60 +229,6 @@ const EditOrganiserProfile = () => {
           </div>
         </div>
 
-        {/* Tags Section - Genre, Crowd, Features */}
-        <div className="space-y-3">
-          <Label>Tags (Genre, Crowd, Features)</Label>
-          <p className="text-xs text-muted-foreground">Add tags to describe your vibe, crowd, and features. Max 20.</p>
-
-          {/* Current tags */}
-          {formData.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {formData.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                  {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-1 hover:text-destructive">
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-            </div>
-          )}
-
-          {/* Add custom tag */}
-          <div className="flex gap-2">
-            <Input
-              value={newTag}
-              onChange={(e) => setNewTag(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(newTag); } }}
-              placeholder="Add a custom tag..."
-              className="flex-1"
-            />
-            <Button variant="outline" size="icon" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Suggestions */}
-          {Object.entries(TAG_SUGGESTIONS).map(([category, suggestions]) => (
-            <div key={category}>
-              <p className="text-xs font-medium text-muted-foreground capitalize mb-1.5">{category}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {suggestions
-                  .filter((s) => !formData.tags.includes(s))
-                  .map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => addTag(suggestion)}
-                      className="text-xs px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                    >
-                      + {suggestion}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Opening Hours - Venue only */}
         {formData.category === "Venue" && (
           <div className="space-y-3">
