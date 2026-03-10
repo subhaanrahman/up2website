@@ -628,6 +628,39 @@ export type Database = {
           },
         ]
       }
+      moderation_actions: {
+        Row: {
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          reason: string | null
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string | null
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       notification_settings: {
         Row: {
           created_at: string
@@ -1329,28 +1362,49 @@ export type Database = {
       }
       reports: {
         Row: {
+          assigned_admin_id: string | null
           created_at: string
+          description: string | null
           id: string
           reason: string
           reported_post_id: string | null
           reported_user_id: string | null
           reporter_id: string
+          resolution_notes: string | null
+          status: string
+          target_id: string | null
+          target_type: string
+          updated_at: string
         }
         Insert: {
+          assigned_admin_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           reason?: string
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id: string
+          resolution_notes?: string | null
+          status?: string
+          target_id?: string | null
+          target_type?: string
+          updated_at?: string
         }
         Update: {
+          assigned_admin_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           reason?: string
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id?: string
+          resolution_notes?: string | null
+          status?: string
+          target_id?: string | null
+          target_type?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1435,6 +1489,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      support_requests: {
+        Row: {
+          assigned_admin_id: string | null
+          category: string
+          context_metadata: Json | null
+          created_at: string
+          id: string
+          message: string
+          resolution_notes: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          assigned_admin_id?: string | null
+          category?: string
+          context_metadata?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          resolution_notes?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          assigned_admin_id?: string | null
+          category?: string
+          context_metadata?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          resolution_notes?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       ticket_tiers: {
         Row: {
@@ -1607,6 +1703,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_vouchers: {
         Row: {
           code: string
@@ -1737,6 +1854,14 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_group_chat_member: {
         Args: { p_group_chat_id: string; p_user_id: string }
         Returns: boolean
@@ -1764,6 +1889,7 @@ export type Database = {
       rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
     }
     Enums: {
+      app_role: "super_admin" | "moderator" | "support"
       user_rank: "bronze" | "silver" | "gold" | "platinum" | "diamond"
     }
     CompositeTypes: {
@@ -1892,6 +2018,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["super_admin", "moderator", "support"],
       user_rank: ["bronze", "silver", "gold", "platinum", "diamond"],
     },
   },
