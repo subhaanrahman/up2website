@@ -246,22 +246,25 @@ export type Database = {
           created_at: string
           event_id: string
           id: string
-          organiser_profile_id: string
+          organiser_profile_id: string | null
           role: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
           event_id: string
           id?: string
-          organiser_profile_id: string
+          organiser_profile_id?: string | null
           role?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
           event_id?: string
           id?: string
-          organiser_profile_id?: string
+          organiser_profile_id?: string | null
           role?: string
+          user_id?: string | null
         }
         Relationships: [
           {
