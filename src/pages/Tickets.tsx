@@ -154,7 +154,7 @@ const Tickets = () => {
 
   const pastPlans = filteredPlans
     .filter((t) => t.eventDate && new Date(t.eventDate) < now)
-    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
   const upcomingPlans = filteredPlans
     .filter((t) => t.eventDate && new Date(t.eventDate) >= now)
