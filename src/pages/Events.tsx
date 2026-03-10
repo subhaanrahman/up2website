@@ -182,7 +182,7 @@ const Events = () => {
       <div className="flex-1 px-4 py-3 min-w-0">
         <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
+          <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
             {format(new Date(event.eventDate || event.event_date), "EEE M/d - ha")}
           </span>
           {event.category && (
