@@ -154,7 +154,7 @@ const Tickets = () => {
 
   const pastPlans = filteredPlans
     .filter((t) => t.eventDate && new Date(t.eventDate) < now)
-    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
+    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
   const upcomingPlans = filteredPlans
     .filter((t) => t.eventDate && new Date(t.eventDate) >= now)
@@ -177,13 +177,13 @@ const Tickets = () => {
     .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
   const scrollToDivider = useCallback(() => {
-    if (dividerRef.current && !hasScrolled.current && pastPlans.length > 0) {
+    if (dividerRef.current && !hasScrolled.current) {
       hasScrolled.current = true;
       setTimeout(() => {
-        dividerRef.current?.scrollIntoView({ block: "start" });
-      }, 100);
+        dividerRef.current?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+      }, 150);
     }
-  }, [pastPlans.length]);
+  }, []);
 
   useEffect(() => {
     if (!plansLoading && plannedEvents) {
@@ -257,6 +257,19 @@ const Tickets = () => {
     }
     return (
       <div className="space-y-3">
+        {/* Past events (scroll up to see) */}
+        {pastPlans.length > 0 && (
+          <>
+            {renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
+          </>
+        )}
+
+        {/* Today anchor */}
+        <div ref={dividerRef}>
+          <TimeDivider label="Today" prominent />
+        </div>
+
+        {/* Upcoming events below */}
         {upcomingPlans.length > 0 ? (
           renderGroupedSection(upcomingGrouped, UPCOMING_GROUPS, false)
         ) : (
@@ -264,12 +277,6 @@ const Tickets = () => {
             <p className="text-sm">No upcoming plans</p>
           </div>
         )}
-        {pastPlans.length > 0 && (
-          <div ref={dividerRef}>
-            <TimeDivider label="Past" prominent />
-          </div>
-        )}
-        {renderGroupedSection(pastGrouped, PAST_GROUPS, true)}
       </div>
     );
   };
