@@ -6,6 +6,7 @@ import { Bell, Plus, Calendar, DollarSign, Loader2 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
+import NearbyEventsCarousel from "@/components/NearbyEventsCarousel";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
