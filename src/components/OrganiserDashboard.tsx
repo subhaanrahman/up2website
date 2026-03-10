@@ -8,8 +8,8 @@ import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ManageEventModal from "@/components/ManageEventModal";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from
+"@/components/ui/select";
 import StatCard from "@/components/organiser-dashboard/StatCard";
 import EventRow from "@/components/organiser-dashboard/EventRow";
 import FollowersPromotionTab from "@/components/organiser-dashboard/FollowersPromotionTab";
@@ -20,7 +20,7 @@ import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [timeframe, setTimeframe] = useState("past_month");
-  const [manageEvent, setManageEvent] = useState<{ id: string; title: string } | null>(null);
+  const [manageEvent, setManageEvent] = useState<{id: string;title: string;} | null>(null);
   const { activeProfile } = useActiveProfile();
 
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics(
@@ -32,15 +32,15 @@ const OrganiserDashboard = () => {
     queryKey: ["organiser-events", activeProfile?.id],
     queryFn: async () => {
       if (!activeProfile?.id) return [];
-      const { data, error } = await supabase
-        .from("events")
-        .select("*")
-        .eq("organiser_profile_id", activeProfile.id)
-        .order("event_date", { ascending: false });
+      const { data, error } = await supabase.
+      from("events").
+      select("*").
+      eq("organiser_profile_id", activeProfile.id).
+      order("event_date", { ascending: false });
       if (error) throw error;
       return data || [];
     },
-    enabled: !!activeProfile?.id,
+    enabled: !!activeProfile?.id
   });
 
   const { data: rsvpCounts } = useQuery({
@@ -48,11 +48,11 @@ const OrganiserDashboard = () => {
     queryFn: async () => {
       if (!events?.length) return {};
       const eventIds = events.map((e) => e.id);
-      const { data, error } = await supabase
-        .from("rsvps")
-        .select("event_id")
-        .in("event_id", eventIds)
-        .eq("status", "going");
+      const { data, error } = await supabase.
+      from("rsvps").
+      select("event_id").
+      in("event_id", eventIds).
+      eq("status", "going");
       if (error) throw error;
       const counts: Record<string, number> = {};
       data?.forEach((r) => {
@@ -60,7 +60,7 @@ const OrganiserDashboard = () => {
       });
       return counts;
     },
-    enabled: !!events?.length,
+    enabled: !!events?.length
   });
 
   const formatCurrency = (cents: number) => {
@@ -69,14 +69,14 @@ const OrganiserDashboard = () => {
 
   const now = new Date();
   const filtered = events?.filter((e) =>
-    e.title.toLowerCase().includes(searchQuery.toLowerCase())
+  e.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const upcomingEvents = filtered
-    ?.filter((e) => new Date(e.event_date) >= now && e.status !== "draft")
-    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
-  const pastEvents = filtered
-    ?.filter((e) => new Date(e.event_date) < now && e.status !== "draft")
-    .sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
+  const upcomingEvents = filtered?.
+  filter((e) => new Date(e.event_date) >= now && e.status !== "draft").
+  sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
+  const pastEvents = filtered?.
+  filter((e) => new Date(e.event_date) < now && e.status !== "draft").
+  sort((a, b) => new Date(b.event_date).getTime() - new Date(a.event_date).getTime());
   const draftEvents = filtered?.filter((e) => e.status === "draft");
 
   const renderEventList = (list: typeof events) => {
@@ -84,21 +84,21 @@ const OrganiserDashboard = () => {
       return (
         <div className="text-center py-12 text-muted-foreground">
           <p>No events</p>
-        </div>
-      );
+        </div>);
+
     }
     return (
       <div className="space-y-3">
-        {list.map((event) => (
-          <EventRow
-            key={event.id}
-            event={event}
-            rsvpCount={rsvpCounts?.[event.id] || 0}
-            onManage={() => setManageEvent({ id: event.id, title: event.title })}
-          />
-        ))}
-      </div>
-    );
+        {list.map((event) =>
+        <EventRow
+          key={event.id}
+          event={event}
+          rsvpCount={rsvpCounts?.[event.id] || 0}
+          onManage={() => setManageEvent({ id: event.id, title: event.title })} />
+
+        )}
+      </div>);
+
   };
 
   const handleExportCSV = () => {
@@ -107,14 +107,14 @@ const OrganiserDashboard = () => {
       title: e.title,
       date: e.event_date,
       status: e.status,
-      rsvps: rsvpCounts?.[e.id] || 0,
+      rsvps: rsvpCounts?.[e.id] || 0
     }));
     const header = "Title,Date,Status,RSVPs\n";
     const csv =
-      header +
-      rows
-        .map((r) => `"${r.title}",${r.date},${r.status},${r.rsvps}`)
-        .join("\n");
+    header +
+    rows.
+    map((r) => `"${r.title}",${r.date},${r.status},${r.rsvps}`).
+    join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -128,14 +128,14 @@ const OrganiserDashboard = () => {
     <div className="md:hidden">
       <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-4">
         <h1
-          className="text-2xl font-bold text-foreground uppercase"
+          className="text-2xl font-bold text-foreground uppercase text-center"
           style={{
             fontFamily: "'Akira Expanded', sans-serif",
             fontWeight: 900,
             fontStretch: "expanded",
-            letterSpacing: "0.05em",
-          }}
-        >
+            letterSpacing: "0.05em"
+          }}>
+          
           Dashboard
         </h1>
         <div className="flex items-center justify-between mt-1">
@@ -146,8 +146,8 @@ const OrganiserDashboard = () => {
               size="icon"
               className="h-8 w-8"
               onClick={handleExportCSV}
-              title="Export CSV"
-            >
+              title="Export CSV">
+              
               <Download className="h-4 w-4" />
             </Button>
             <Select value={timeframe} onValueChange={setTimeframe}>
@@ -171,43 +171,43 @@ const OrganiserDashboard = () => {
       <div className="px-4 grid grid-cols-2 gap-3 mb-6">
         <StatCard
           label="Total Revenue"
-          value={analyticsLoading ? "..." : formatCurrency(analytics?.total_revenue_cents || 0)}
-        />
+          value={analyticsLoading ? "..." : formatCurrency(analytics?.total_revenue_cents || 0)} />
+        
         <StatCard
           label="Total Attendees"
-          value={analyticsLoading ? "..." : String(analytics?.total_attendees || 0)}
-        />
+          value={analyticsLoading ? "..." : String(analytics?.total_attendees || 0)} />
+        
         <StatCard
           label="Net Tickets Sold"
           value={analyticsLoading ? "..." : String(analytics?.net_tickets_sold || 0)}
           subtitle={
-            analytics?.total_ticket_capacity
-              ? `${analytics.tickets_sold_pct}% of ${analytics.total_ticket_capacity} capacity`
-              : undefined
-          }
-        />
+          analytics?.total_ticket_capacity ?
+          `${analytics.tickets_sold_pct}% of ${analytics.total_ticket_capacity} capacity` :
+          undefined
+          } />
+        
         <StatCard
           label="VIP / Guestlist"
-          value={analyticsLoading ? "..." : String(analytics?.vip_guestlist_count || 0)}
-        />
+          value={analyticsLoading ? "..." : String(analytics?.vip_guestlist_count || 0)} />
+        
         <StatCard
           label="Views / Impressions"
           value={analyticsLoading ? "..." : String(analytics?.total_views || 0)}
-          subtitle="Tracking coming soon"
-        />
+          subtitle="Tracking coming soon" />
+        
         <StatCard
           label="Conversion Rate"
           value={analyticsLoading ? "..." : `${analytics?.conversion_rate_pct || 0}%`}
-          subtitle="Orders ÷ Views"
-        />
+          subtitle="Orders ÷ Views" />
+        
       </div>
 
       {/* Revenue Chart */}
-      {activeProfile?.id && (
-        <div className="px-4 mb-6">
+      {activeProfile?.id &&
+      <div className="px-4 mb-6">
           <RevenueChart organiserProfileId={activeProfile.id} />
         </div>
-      )}
+      }
 
       {/* Main Tabs: Events / Followers / Activity */}
       <div className="px-4">
@@ -227,25 +227,25 @@ const OrganiserDashboard = () => {
                   placeholder="Search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 bg-secondary border-0 h-9 text-sm"
-                />
+                  className="pl-10 bg-secondary border-0 h-9 text-sm" />
+                
               </div>
             </div>
 
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-2xl animate-pulse">
+            {isLoading ?
+            <div className="space-y-3">
+                {[1, 2, 3].map((i) =>
+              <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-2xl animate-pulse">
                     <div className="w-24 h-24 bg-secondary rounded-lg" />
                     <div className="flex-1 space-y-2">
                       <div className="h-5 w-3/4 bg-secondary rounded" />
                       <div className="h-4 w-1/2 bg-secondary rounded" />
                     </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <Tabs defaultValue="upcoming" className="w-full">
+              )}
+              </div> :
+
+            <Tabs defaultValue="upcoming" className="w-full">
                 <TabsList className="w-full mb-4">
                   <TabsTrigger value="upcoming" className="flex-1">
                     Upcoming{upcomingEvents?.length ? ` (${upcomingEvents.length})` : ""}
@@ -261,7 +261,7 @@ const OrganiserDashboard = () => {
                 <TabsContent value="past">{renderEventList(pastEvents)}</TabsContent>
                 <TabsContent value="draft">{renderEventList(draftEvents)}</TabsContent>
               </Tabs>
-            )}
+            }
           </TabsContent>
 
           <TabsContent value="followers">
@@ -274,16 +274,16 @@ const OrganiserDashboard = () => {
         </Tabs>
       </div>
 
-      {manageEvent && (
-        <ManageEventModal
-          open={!!manageEvent}
-          onOpenChange={(open) => { if (!open) setManageEvent(null); }}
-          eventId={manageEvent.id}
-          eventTitle={manageEvent.title}
-        />
-      )}
-    </div>
-  );
+      {manageEvent &&
+      <ManageEventModal
+        open={!!manageEvent}
+        onOpenChange={(open) => {if (!open) setManageEvent(null);}}
+        eventId={manageEvent.id}
+        eventTitle={manageEvent.title} />
+
+      }
+    </div>);
+
 };
 
 export default OrganiserDashboard;
