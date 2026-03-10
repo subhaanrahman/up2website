@@ -54,7 +54,6 @@ const EditOrganiserProfile = () => {
     instagram_handle: "",
     category: "Venue",
     opening_hours: {} as Record<string, string>,
-    tags: [] as string[],
   });
 
   useEffect(() => {
