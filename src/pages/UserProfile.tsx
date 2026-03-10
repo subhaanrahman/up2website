@@ -321,7 +321,7 @@ const UserProfile = () => {
   const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
   const avatarUrl = profile?.avatar_url;
   const isOrg = !!profile?._isOrganiser;
-  const vibeTags: string[] = profile?._tags || [];
+  
 
   // DM handler for organiser profiles
   const [dmLoading, setDmLoading] = useState(false);
