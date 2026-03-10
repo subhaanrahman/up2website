@@ -266,7 +266,7 @@ const Tickets = () => {
         {/* Past events (scroll up to see) */}
         {pastPlans.length > 0 && (
           <>
-            {renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
+            {renderGroupedSection(pastGrouped, PAST_GROUPS, true)}
           </>
         )}
 
