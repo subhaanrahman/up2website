@@ -61,12 +61,5 @@ export async function getSuggestedFriends(
   return candidates.slice(0, limit);
 }
 
-/**
- * Feed ranking — currently chronological (newest first).
- * Placeholder for future engagement-weighted ranking.
- */
-export function rankFeedPosts<T extends { created_at: string }>(posts: T[]): T[] {
-  return [...posts].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
-}
+// Feed ranking has been moved to feedService.ts with weighted deterministic scoring.
+// See: src/features/social/services/feedService.ts
