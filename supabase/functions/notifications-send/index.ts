@@ -19,6 +19,7 @@ const sendSchema = z.object({
     'friend_request',
     'gamification_levelup',
     'group_message',
+    'new_follower',
   ]),
   recipient_user_id: z.string().uuid(),
   title: z.string().min(1).max(200),
@@ -96,6 +97,7 @@ Deno.serve(async (req) => {
         (type === 'post_reaction' && settings.friend_activity === false) ||
         (type === 'post_repost' && settings.friend_activity === false) ||
         (type === 'post_from_following' && settings.new_events === false) ||
+        (type === 'new_follower' && settings.friend_activity === false) ||
         (type === 'group_message' && settings.messages === false);
 
       if (blocked) {
