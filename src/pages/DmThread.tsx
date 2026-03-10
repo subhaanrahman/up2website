@@ -25,6 +25,12 @@ const DmThread = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
+  const { markChatRead } = useUnreadMessages();
+
+  // Mark thread as read on mount
+  useEffect(() => {
+    if (id) markChatRead(id);
+  }, [id, markChatRead]);
 
   // Fetch thread metadata
   const { data: thread } = useQuery({
