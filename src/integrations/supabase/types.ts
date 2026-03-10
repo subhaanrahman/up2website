@@ -1607,6 +1607,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_vouchers: {
         Row: {
           code: string
@@ -1737,6 +1758,14 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: number
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_group_chat_member: {
         Args: { p_group_chat_id: string; p_user_id: string }
         Returns: boolean
@@ -1764,6 +1793,7 @@ export type Database = {
       rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
     }
     Enums: {
+      app_role: "super_admin" | "moderator" | "support"
       user_rank: "bronze" | "silver" | "gold" | "platinum" | "diamond"
     }
     CompositeTypes: {
@@ -1892,6 +1922,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["super_admin", "moderator", "support"],
       user_rank: ["bronze", "silver", "gold", "platinum", "diamond"],
     },
   },
