@@ -5,6 +5,7 @@ import { useRef, useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +24,7 @@ const BottomNav = () => {
   const { user, signOut } = useAuth();
   const { activeProfile, switchProfile, organiserProfiles, isOrganiser } = useActiveProfile();
   const { data: personalProfile } = useProfile(user?.id);
+  const { totalUnread } = useUnreadMessages();
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
@@ -109,16 +111,22 @@ const BottomNav = () => {
               );
             }
 
+            const isMessages = item.label === "Messages";
+            const hasUnread = isMessages && totalUnread > 0 && !isActive;
+
             return (
               <Link
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 h-full transition-colors",
-                  isActive ? "text-foreground" : "text-muted-foreground"
+                  "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
+                  isActive ? "text-foreground" : hasUnread ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <item.icon className={cn("h-6 w-6", isActive && "stroke-[2.5px]")} />
+                {hasUnread && (
+                  <span className="absolute top-2 right-1/2 translate-x-3 -translate-y-0.5 h-2 w-2 rounded-full bg-primary" />
+                )}
               </Link>
             );
           })}

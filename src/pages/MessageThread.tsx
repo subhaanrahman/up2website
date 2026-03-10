@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 interface ChatMessage {
   id: string;
@@ -28,6 +29,12 @@ const MessageThread = () => {
   const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const { markChatRead } = useUnreadMessages();
+
+  // Mark chat as read on mount
+  useEffect(() => {
+    if (id) markChatRead(id);
+  }, [id, markChatRead]);
 
   const { data: chat } = useQuery({
     queryKey: ["group-chat", id],

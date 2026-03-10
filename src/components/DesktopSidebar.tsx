@@ -6,6 +6,7 @@ import { useContext } from "react";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImg from "@/assets/logo.png";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 // Import context directly to avoid the throwing hook when provider isn't mounted yet
 import { ActiveProfileContext } from "@/contexts/ActiveProfileContext";
@@ -17,6 +18,7 @@ const DesktopSidebar = () => {
   const activeProfileCtx = useContext(ActiveProfileContext);
   const isOrganiser = activeProfileCtx?.isOrganiser ?? false;
   const { data: profile } = useProfile(user?.id);
+  const { totalUnread } = useUnreadMessages();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
@@ -47,19 +49,26 @@ const DesktopSidebar = () => {
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const isMessages = item.label === "Messages";
+            const hasUnread = isMessages && totalUnread > 0 && !isActive;
             return (
               <Link
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group",
+                  "flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group relative",
                   isActive
                     ? "text-foreground font-semibold"
+                    : hasUnread
+                    ? "text-primary hover:bg-secondary"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 )}
               >
                 <item.icon className={cn("h-6 w-6 flex-shrink-0", isActive && "stroke-[2.5px]")} />
                 <span className="hidden xl:block text-sm font-medium tracking-wide">{item.label}</span>
+                {hasUnread && (
+                  <span className="absolute left-8 top-2 h-2 w-2 rounded-full bg-primary" />
+                )}
               </Link>
             );
           })}
