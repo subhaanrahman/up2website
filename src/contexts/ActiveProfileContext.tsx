@@ -13,7 +13,7 @@ export interface OrganiserProfile {
   instagramHandle: string | null;
   category: string;
   openingHours: Record<string, string> | null;
-  tags: string[];
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -50,7 +50,7 @@ function mapOrgRow(r: any): OrganiserProfile {
     instagramHandle: r.instagram_handle,
     category: r.category,
     openingHours: r.opening_hours || null,
-    tags: Array.isArray(r.tags) ? r.tags : [],
+    
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
