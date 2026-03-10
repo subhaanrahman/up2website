@@ -177,13 +177,13 @@ const Tickets = () => {
     .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
   const scrollToDivider = useCallback(() => {
-    if (dividerRef.current && !hasScrolled.current && pastPlans.length > 0) {
+    if (dividerRef.current && !hasScrolled.current) {
       hasScrolled.current = true;
       setTimeout(() => {
-        dividerRef.current?.scrollIntoView({ block: "start" });
-      }, 100);
+        dividerRef.current?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
+      }, 150);
     }
-  }, [pastPlans.length]);
+  }, []);
 
   useEffect(() => {
     if (!plansLoading && plannedEvents) {
