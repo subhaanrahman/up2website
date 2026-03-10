@@ -110,7 +110,6 @@ const UserProfile = () => {
           page_classification: orgData.category,
           user_id: orgData.owner_id,
           _isOrganiser: true,
-          _tags: Array.isArray(orgData.tags) ? orgData.tags : [],
         });
 
         const { data: eventsData } = await supabase
@@ -322,7 +321,7 @@ const UserProfile = () => {
   const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
   const avatarUrl = profile?.avatar_url;
   const isOrg = !!profile?._isOrganiser;
-  const vibeTags: string[] = profile?._tags || [];
+  
 
   // DM handler for organiser profiles
   const [dmLoading, setDmLoading] = useState(false);
@@ -606,19 +605,6 @@ const UserProfile = () => {
             </div>
           )}
 
-          {/* Vibe Tags — organiser/venue profiles only */}
-          {isOrg && vibeTags.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 mb-3">
-              {vibeTags.map((tag: string) => (
-                <span
-                  key={tag}
-                  className="text-xs px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-foreground/80 font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
 
           {/* Mutual Friends — personal profiles, not own profile */}
           {!isOwnProfile && !isOrg && userId && <MutualFriendsRow targetUserId={userId} />}
