@@ -1,33 +1,39 @@
+## Plan: Feature Gaps & Stubbed Flows — All Batches
 
+### ✅ Batch 1 — COMPLETED
+- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
+- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
+- **F-03**: Change Password → `supabase.auth.updateUser()` 
+- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
+- **F-05**: Contact Us form → inserts into `contact_messages` table
+- **F-06**: Connect Music → persisted to `user_music_connections` table
+- **F-07**: Save/Interested → persisted to `saved_events` table
+- **F-08**: Map Preview → Google Maps embed iframe
+- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
+- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-## Analysis: Why "Today" Anchor Scroll Isn't Working
+### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
+- P-05: Add to Calendar (.ics download)
+- P-06: "Who's going" friend highlights
+- P-07: RSVP with +1 guest count
+- P-10: Waitlist when full
+- P-19: "Going" friends on event cards
 
-**Root cause:** The current approach uses `window.scrollTo` inside a double `requestAnimationFrame` triggered by a `useEffect`. This is unreliable for several reasons:
+### Batch 3 — Ticketing & Orders
+- P-11: Order confirmation / success page
+- P-12: View purchased tickets with QR codes
+- P-14: Transfer tickets
+- P-15: Discount code validation
+- P-28: Linked payment methods
 
-1. **Image loading shifts layout** — Event cards contain images. When the effect fires, images haven't loaded yet, so the "Today" divider's measured position is wrong. After images load, layout shifts and Today moves further down.
-2. **`useEffect` runs after paint** — By the time the scroll fires, the user already sees the top of the page (oldest past events). Even the double-rAF is not enough to wait for images.
-3. **No re-trigger on layout changes** — Once `hasScrolled` is set to true, even if layout shifts occur, the scroll won't re-fire.
+### Batch 4 — Organiser Tools
+- P-21: Revenue / sales dashboard tab
+- P-23: Scheduled event publishing
+- P-24: Attendee blast notifications
+- P-25: Embed event widget
 
-## Plan
-
-### 1. Switch to a scroll-container approach (most reliable)
-
-Instead of fighting `window.scrollTo` timing, wrap the plans list in a **scrollable container** and set its `scrollTop` directly using `useLayoutEffect`. This gives us full control.
-
-**Changes to `src/pages/Tickets.tsx`:**
-
-- Add a `scrollContainerRef` for the plans content area
-- On mobile: make the `<main>` area a scrollable container with `overflow-y: auto` and calculated height (`calc(100vh - sticky header height - bottom nav height)` ≈ `calc(100dvh - 160px - 80px)`)
-- On desktop: similar approach within the content column
-- Use `useLayoutEffect` to set `scrollContainerRef.current.scrollTop` so the "Today" divider is at the top — this fires **before** the browser paints, so users never see the wrong scroll position
-- Add `scroll-margin-top` CSS on the Today divider as a fallback
-- Remove `window.scrollTo` and the double-rAF hack
-- Add a secondary `setTimeout` (~300ms) scroll correction to handle post-image-load layout shift
-
-### 2. Remove the sticky header on mobile for the Tickets page content area
-
-The mobile header stays sticky, but the scrollable area is now inside a container below it, so `headerOffset` calculation is no longer needed.
-
-### Summary of changes
-- **One file:** `src/pages/Tickets.tsx` — restructure the mobile and desktop content areas to use an explicit scroll container, replace `useEffect`+`window.scrollTo` with `useLayoutEffect`+`scrollTop`, and add a delayed correction for image loading.
-
+### ✅ Batch 5 — Discovery & Social (COMPLETED)
+- P-02: Location-based event discovery (city filtering from user profile)
+- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
+- P-18: Share event as post to feed (Post button in share sheet)
+- P-XX: Event category filtering (10 categories with emoji pills)
