@@ -109,9 +109,8 @@ const MessageThread = () => {
   };
 
   const isOwnMessage = (msg: ChatMessage) => {
-    // Use sender_id if available, fall back to legacy field
-    if (msg.sender_id && user) return msg.sender_id === user.id;
-    return msg.is_from_current_user;
+    if (!user) return false;
+    return msg.sender_id === user.id;
   };
 
   return (
