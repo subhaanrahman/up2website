@@ -15,7 +15,7 @@ import ProfileQrModal from "@/components/ProfileQrModal";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
-  startOfWeek, startOfMonth, subMonths, isAfter, isBefore
+  startOfWeek, startOfMonth, subMonths, isAfter, isBefore, isSameDay
 } from "date-fns";
 
 interface TicketEvent {
@@ -63,8 +63,8 @@ function getPastGroup(date: Date, now: Date): TimeGroup {
   const lastMonthStart = subMonths(monthStart, 1);
   const sixMonthsAgo = subMonths(monthStart, 6);
 
-  if (isAfter(date, lastMonthStart)) return "last-month";
-  if (isAfter(date, sixMonthsAgo)) return "last-6-months";
+  if ((isAfter(date, lastMonthStart) || isSameDay(date, lastMonthStart)) && isBefore(date, monthStart)) return "last-month";
+  if ((isAfter(date, sixMonthsAgo) || isSameDay(date, sixMonthsAgo)) && isBefore(date, lastMonthStart)) return "last-6-months";
   return "older";
 }
 
@@ -152,12 +152,16 @@ const Tickets = () => {
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const pastPlans = filteredPlans
-    .filter((t) => t.eventDate && new Date(t.eventDate) < now)
+  const todayPlans = filteredPlans
+    .filter((t) => t.eventDate && isSameDay(new Date(t.eventDate), now))
     .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
+  const pastPlans = filteredPlans
+    .filter((t) => t.eventDate && !isSameDay(new Date(t.eventDate), now) && new Date(t.eventDate) < now)
+    .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
+
   const upcomingPlans = filteredPlans
-    .filter((t) => t.eventDate && new Date(t.eventDate) >= now)
+    .filter((t) => t.eventDate && !isSameDay(new Date(t.eventDate), now) && new Date(t.eventDate) >= now)
     .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
   const pastGrouped = groupEvents(pastPlans, PAST_GROUPS, getPastGroup, now);
@@ -248,7 +252,7 @@ const Tickets = () => {
   };
 
   const isLoading = activeSection === "plans" ? plansLoading : createdLoading;
-  const allPlans = [...pastPlans, ...upcomingPlans];
+  const allPlans = [...todayPlans, ...upcomingPlans, ...pastPlans];
 
   const renderPlansContent = () => {
     if (isLoading) return renderSkeleton();
@@ -263,26 +267,23 @@ const Tickets = () => {
     }
     return (
       <div className="space-y-3">
-        {/* Past events (scroll up to see) */}
-        {pastPlans.length > 0 && (
-          <>
-            {renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
-          </>
-        )}
-
-        {/* Today anchor */}
+        {/* Today at top */}
         <div ref={dividerRef}>
           <TimeDivider label="Today" prominent />
         </div>
-
-        {/* Upcoming events below */}
-        {upcomingPlans.length > 0 ? (
-          renderGroupedSection(upcomingGrouped, UPCOMING_GROUPS, false)
+        {todayPlans.length > 0 ? (
+          todayPlans.map((t) => renderCard(t, false))
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">No upcoming plans</p>
+          <div className="text-center py-2 text-muted-foreground">
+            <p className="text-sm">No plans today</p>
           </div>
         )}
+
+        {/* Upcoming in middle */}
+        {upcomingPlans.length > 0 && renderGroupedSection(upcomingGrouped, UPCOMING_GROUPS, false)}
+
+        {/* Past at bottom */}
+        {pastPlans.length > 0 && renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
       </div>
     );
   };
