@@ -5,6 +5,7 @@ import { useRef, useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
   Sheet,
   SheetContent,
