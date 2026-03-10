@@ -374,7 +374,7 @@ const Dashboard = () => {
         {groupChats.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {groupChats.map((chat) => (
-              <GroupChatTile key={chat.id} chat={chat} />
+              <GroupChatTile key={chat.id} chat={chat} unreadCount={perChat[chat.id] || 0} />
             ))}
           </div>
         ) : (
