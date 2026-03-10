@@ -257,6 +257,19 @@ const Tickets = () => {
     }
     return (
       <div className="space-y-3">
+        {/* Past events (scroll up to see) */}
+        {pastPlans.length > 0 && (
+          <>
+            {renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
+          </>
+        )}
+
+        {/* Today anchor */}
+        <div ref={dividerRef}>
+          <TimeDivider label="Today" prominent />
+        </div>
+
+        {/* Upcoming events below */}
         {upcomingPlans.length > 0 ? (
           renderGroupedSection(upcomingGrouped, UPCOMING_GROUPS, false)
         ) : (
@@ -264,12 +277,6 @@ const Tickets = () => {
             <p className="text-sm">No upcoming plans</p>
           </div>
         )}
-        {pastPlans.length > 0 && (
-          <div ref={dividerRef}>
-            <TimeDivider label="Past" prominent />
-          </div>
-        )}
-        {renderGroupedSection(pastGrouped, PAST_GROUPS, true)}
       </div>
     );
   };
