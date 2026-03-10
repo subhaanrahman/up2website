@@ -294,6 +294,7 @@ const Dashboard = () => {
   const { isOrganiser, organiserProfiles } = useActiveProfile();
   const { data: chats, isLoading: chatsLoading } = useGroupChats();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const { perChat } = useUnreadMessages();
 
   // For organiser view: use organiser profiles from context
   const ownedOrgIds = isOrganiser ? organiserProfiles.map(o => o.id) : [];
