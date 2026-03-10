@@ -97,6 +97,7 @@ Deno.serve(async (req) => {
         (type === 'post_reaction' && settings.friend_activity === false) ||
         (type === 'post_repost' && settings.friend_activity === false) ||
         (type === 'post_from_following' && settings.new_events === false) ||
+        (type === 'new_follower' && settings.friend_activity === false) ||
         (type === 'group_message' && settings.messages === false);
 
       if (blocked) {
