@@ -131,6 +131,7 @@ const Tickets = () => {
   const { isOrganiser, activeProfile } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const dividerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const hasScrolled = useRef(false);
 
   // New separated hooks
