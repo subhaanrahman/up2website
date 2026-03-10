@@ -40,7 +40,7 @@ const EventEmbed = () => {
   const eventUrl = `${window.location.origin}/events/${event.id}`;
 
   return (
-    <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+    <div className="min-h-screen bg-background p-4 flex items-center justify-center animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <div className="w-full max-w-sm bg-card border border-border rounded-2xl overflow-hidden shadow-lg">
         {coverImage && (
           <img

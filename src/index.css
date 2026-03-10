@@ -205,4 +205,37 @@ All colors MUST be HSL.
       animation: none;
     }
   }
+
+  /* ── Global press animation ──────────────────────────────── */
+  /* Tap-highlight removal */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Press scale for all interactive elements */
+  button:not(:disabled):not(.no-press):active,
+  a[href]:not(.no-press):active {
+    transform: scale(0.93);
+    transition: transform 0.1s ease-out;
+  }
+
+  /* Smooth release back to normal */
+  button:not(:disabled):not(.no-press),
+  a[href]:not(.no-press) {
+    transition: transform 0.2s ease;
+  }
+
+  /* Exclude everything inside .no-press containers (e.g. bottom nav) */
+  .no-press button:active,
+  .no-press a:active {
+    transform: none !important;
+    transition: none !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled):not(.no-press):active,
+    a[href]:not(.no-press):active {
+      transform: none;
+    }
+  }
 }

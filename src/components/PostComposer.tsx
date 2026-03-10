@@ -165,16 +165,16 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
           </Avatar>
         </Link>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1">
-            <Link to="/profile" className="font-semibold text-[15px] text-foreground hover:underline leading-tight">
+          <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+            <Link to="/profile" className="font-semibold text-[15px] text-foreground hover:underline leading-tight truncate shrink-0">
               {displayName}
             </Link>
-            {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground" />}
-            <span className="text-muted-foreground text-[13px]">@{username}</span>
+            {isVerified && <BadgeCheck className="h-[15px] w-[15px] text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0" />}
+            <span className="text-muted-foreground text-[15px] truncate">@{username}</span>
           </div>
 
           {isComposing ? (
-            <div className="mt-1.5 transition-all duration-200">
+            <div className="mt-1.5 animate-in fade-in slide-in-from-top-2 duration-200 fill-mode-both">
               <textarea
                 ref={textareaRef}
                 value={postText}
@@ -245,7 +245,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
             </div>
           ) : (
             <p
-              className="text-muted-foreground text-[15px] cursor-pointer mt-0.5"
+              className="text-muted-foreground text-[15px] cursor-pointer mt-0.5 animate-in fade-in duration-150 fill-mode-both"
               onClick={() => setIsComposing(true)}
             >
               Write Something...

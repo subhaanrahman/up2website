@@ -5,7 +5,7 @@ const PrivacyPolicy = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-center px-4 py-4 relative">
           <h1 className="text-xl font-bold text-foreground text-center">PRIVACY POLICY</h1>

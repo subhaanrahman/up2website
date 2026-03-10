@@ -124,7 +124,7 @@ const EditProfile = () => {
   const displayInitial = formData.display_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
           <Button variant="ghost" size="icon" onClick={() => navigate("/profile")}>

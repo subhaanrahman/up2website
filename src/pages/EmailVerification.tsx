@@ -57,7 +57,7 @@ const EmailVerification = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <header className="sticky top-0 z-40 bg-background border-b border-border">
         <div className="flex items-center justify-center px-4 py-4 relative">
           <h1 className="text-xl font-bold text-foreground text-center">EMAIL VERIFICATION</h1>

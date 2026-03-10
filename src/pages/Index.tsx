@@ -196,7 +196,7 @@ const Index = () => {
       {/* Floating Action Button - mobile only */}
       <div className="fixed bottom-24 z-40 w-full left-0 pointer-events-none md:hidden">
         <div className="flex justify-end px-4 pointer-events-auto w-fit ml-auto">
-          <Link to="/create" className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
+          <Link to="/create" className="h-14 w-14 rounded-full bg-primary flex items-center justify-center shadow-lg hover:bg-primary/90 transition-all duration-150 active:scale-90 active:shadow-md">
             <Plus className="h-7 w-7 text-primary-foreground" />
           </Link>
         </div>
