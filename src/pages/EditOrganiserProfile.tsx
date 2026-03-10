@@ -41,7 +41,6 @@ const EditOrganiserProfile = () => {
   const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles } = useActiveProfile();
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
-  const [newTag, setNewTag] = useState("");
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
