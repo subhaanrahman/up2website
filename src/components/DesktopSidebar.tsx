@@ -18,6 +18,7 @@ const DesktopSidebar = () => {
   const activeProfileCtx = useContext(ActiveProfileContext);
   const isOrganiser = activeProfileCtx?.isOrganiser ?? false;
   const { data: profile } = useProfile(user?.id);
+  const { totalUnread } = useUnreadMessages();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
