@@ -185,23 +185,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
                 style={{ minHeight: "24px" }}
               />
 
-              {/* Collaborator chips */}
-              {collaborators.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {collaborators.map(c => (
-                    <span key={c.user_id} className="inline-flex items-center gap-1 bg-secondary rounded-full pl-1 pr-2 py-0.5 text-[12px] text-foreground">
-                      <Avatar className="h-4 w-4">
-                        <AvatarImage src={c.avatar_url || undefined} />
-                        <AvatarFallback className="text-[8px] bg-muted">{c.display_name[0]}</AvatarFallback>
-                      </Avatar>
-                      {c.display_name}
-                      <button onClick={() => removeCollaborator(c.user_id)} className="ml-0.5 hover:text-destructive">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
 
               {imagePreview && (
                 <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
@@ -221,15 +204,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
                 </div>
               )}
 
-              {/* Collaborator picker */}
-              {showCollabPicker && (
-                <CollaboratorPicker
-                  currentUserId={user?.id || ""}
-                  excludeIds={collaborators.map(c => c.user_id)}
-                  onSelect={addCollaborator}
-                  onClose={() => setShowCollabPicker(false)}
-                />
-              )}
 
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                 <div className="flex items-center gap-1">
@@ -242,14 +216,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
                     <Image className="h-[18px] w-[18px]" />
                   </Button>
                   <GifPicker onSelect={handleGifSelect} />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    onClick={() => setShowCollabPicker(prev => !prev)}
-                  >
-                    <UserPlus className="h-[18px] w-[18px]" />
-                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
