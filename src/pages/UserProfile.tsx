@@ -215,6 +215,27 @@ const UserProfile = () => {
       setIsFollowingOrganiser(true);
       setSocialCount((c) => c + 1);
       toast.success("Following!");
+
+      // Send notification to organiser owner
+      if (profile?.user_id && profile.user_id !== user.id) {
+        const { data: followerProfile } = await supabase
+          .from("profiles")
+          .select("display_name, avatar_url")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        supabase.functions.invoke("notifications-send", {
+          body: {
+            type: "new_follower",
+            recipient_user_id: profile.user_id,
+            title: "New Follower",
+            message: `${followerProfile?.display_name || "Someone"} started following your page`,
+            avatar_url: followerProfile?.avatar_url || null,
+            link: `/profile/${user.id}`,
+            organiser_profile_id: userId,
+          },
+        });
+      }
     } else {
       toast.error("Failed to follow");
     }
