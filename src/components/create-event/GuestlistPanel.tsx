@@ -1,5 +1,3 @@
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 
@@ -21,44 +19,63 @@ const GuestlistPanel = ({
   guestlistCapacity, setGuestlistCapacity,
 }: GuestlistPanelProps) => {
   return (
-    <div className="space-y-6 animate-in fade-in-0 duration-200">
-      {/* Enable Guestlist */}
-      <div className="flex items-center justify-between">
-        <Label className="text-foreground">Enable Guestlist / VIPs</Label>
-        <Switch checked={guestlistEnabled} onCheckedChange={setGuestlistEnabled} />
+    <div className="space-y-3 animate-in fade-in-0 duration-200">
+
+      {/* Enable toggle */}
+      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-4">
+          <div>
+            <p className="text-[15px] font-medium text-foreground">Enable Guestlist / VIPs</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Allow guests to join the guestlist</p>
+          </div>
+          <Switch checked={guestlistEnabled} onCheckedChange={setGuestlistEnabled} />
+        </div>
       </div>
 
       {guestlistEnabled && (
         <>
-          {/* Deadline */}
-          <div className="space-y-2">
-            <Label className="text-foreground text-sm">Guestlist Deadline</Label>
-            <Input type="datetime-local" value={guestlistDeadline} onChange={(e) => setGuestlistDeadline(e.target.value)} placeholder="None" className="bg-card border-border" />
-            <p className="text-xs text-muted-foreground">Leave empty for no deadline</p>
-          </div>
-
-          {/* Require approval */}
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-foreground text-sm">Require Approval</Label>
-              <p className="text-xs text-muted-foreground">Guests must request access</p>
+          {/* Deadline + Capacity */}
+          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Guestlist Deadline</p>
+              <input
+                type="datetime-local"
+                value={guestlistDeadline}
+                onChange={(e) => setGuestlistDeadline(e.target.value)}
+                className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Leave empty for no deadline</p>
             </div>
-            <Switch checked={requireApproval} onCheckedChange={setRequireApproval} />
-          </div>
-
-          {/* Max capacity */}
-          <div className="space-y-2">
-            <Label className="text-foreground text-sm">Max Guestlist Capacity</Label>
-            <Input type="number" placeholder="None (unlimited)" value={guestlistCapacity} onChange={(e) => setGuestlistCapacity(e.target.value)} className="bg-card border-border" />
-          </div>
-
-          {/* Allow invite mutuals */}
-          <div className="flex items-center justify-between opacity-60">
-            <div className="flex items-center gap-2">
-              <Label className="text-foreground text-sm">Allow Invite Mutuals</Label>
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Coming Soon</Badge>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="px-4 pt-3 pb-4">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Max Guestlist Capacity</p>
+              <input
+                type="number"
+                value={guestlistCapacity}
+                onChange={(e) => setGuestlistCapacity(e.target.value)}
+                placeholder="Unlimited"
+                className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+              />
             </div>
-            <Switch disabled checked={false} />
+          </div>
+
+          {/* Require approval + Coming Soon */}
+          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-4">
+              <div>
+                <p className="text-[15px] font-medium text-foreground">Require Approval</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Guests must request access</p>
+              </div>
+              <Switch checked={requireApproval} onCheckedChange={setRequireApproval} />
+            </div>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="flex items-center justify-between px-4 py-4 opacity-50">
+              <div className="flex items-center gap-2">
+                <p className="text-[15px] font-medium text-foreground">Allow Invite Mutuals</p>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Soon</Badge>
+              </div>
+              <Switch disabled checked={false} />
+            </div>
           </div>
         </>
       )}

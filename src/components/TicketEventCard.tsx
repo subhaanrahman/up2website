@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { Badge } from "@/components/ui/badge";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved";
@@ -55,9 +54,9 @@ const TicketEventCard = ({
           {title}
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className="text-xs font-medium h-7 rounded-full px-3 bg-primary/15 text-primary-foreground border-primary/30">
+          <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
             {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
-          </Badge>
+          </span>
         </div>
       </div>
 

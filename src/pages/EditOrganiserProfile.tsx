@@ -3,9 +3,7 @@ import PayoutSetupSection from "@/components/PayoutSetupSection";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -110,139 +108,189 @@ const EditOrganiserProfile = () => {
 
   if (!activeOrg) return null;
 
+  const displayInitial = (formData.display_name?.[0] || "O").toUpperCase();
+
   return (
     <div className="min-h-screen bg-background animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
           <Button variant="ghost" size="icon" onClick={() => navigate("/profile")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Edit Organiser</h1>
-          <Button onClick={handleSave} disabled={saving} className="rounded-full px-6">
-            {saving ? "Saving..." : "Save"}
+          <h1 className="text-sm font-bold tracking-[0.2em] uppercase">Edit Organiser</h1>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            className="rounded-full px-5 text-xs font-bold tracking-widest"
+          >
+            {saving ? "···" : "SAVE"}
           </Button>
         </div>
       </header>
 
-      <main className="px-4 py-6 max-w-lg mx-auto space-y-6">
-        <div className="space-y-2">
-          <Label>Display Name *</Label>
-          <Input
-            value={formData.display_name}
-            onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-            placeholder="Your organiser name"
-          />
+      <main className="px-4 pb-12 max-w-lg mx-auto">
+        {/* Avatar hero */}
+        <div className="flex flex-col items-center pt-8 pb-8">
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-primary/25 blur-2xl scale-150 pointer-events-none" />
+            <Avatar className="relative h-28 w-28 border-2 border-primary/40 ring-4 ring-background shadow-xl">
+              <AvatarImage src={activeOrg.avatarUrl || undefined} />
+              <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
+                {displayInitial}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+          <p className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground mt-3">
+            {formData.display_name || "Organiser"}
+          </p>
         </div>
 
-        <div className="space-y-2">
-          <Label>Username *</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-            <Input
-              value={formData.username}
-              onChange={(e) =>
-                setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })
-              }
-              placeholder="username"
-              className="pl-8"
+        <div className="space-y-3">
+
+          {/* Name + Username */}
+          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Display Name</p>
+              <input
+                value={formData.display_name}
+                onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
+                placeholder="Your organiser name"
+                className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+              />
+            </div>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="px-4 pt-3 pb-4">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Username</p>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground text-[15px]">@</span>
+                <input
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })
+                  }
+                  placeholder="username"
+                  className="flex-1 bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Category */}
+          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Category</p>
+            <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+              <SelectTrigger className="border-0 p-0 h-auto bg-transparent text-[15px] font-medium shadow-none focus:ring-0 focus:outline-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Bio */}
+          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Bio</p>
+            <textarea
+              value={formData.bio}
+              onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+              placeholder="Tell people about your brand…"
+              rows={3}
+              className="w-full bg-transparent text-foreground text-[15px] placeholder:text-muted-foreground/40 outline-none resize-none leading-relaxed"
             />
           </div>
-          <p className="text-xs text-muted-foreground">Only lowercase letters, numbers, and underscores</p>
-        </div>
 
-        <div className="space-y-2">
-          <Label>Category</Label>
-          <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>{c}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Bio</Label>
-          <Textarea
-            value={formData.bio}
-            onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-            placeholder="Tell people about your brand..."
-            rows={4}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>City</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                {formData.city || "Select a city"}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search cities..." />
-                <CommandList>
-                  <CommandEmpty>No city found.</CommandEmpty>
-                  <CommandGroup>
-                    {CITIES.map((city) => (
-                      <CommandItem key={city} value={city} onSelect={() => setFormData({ ...formData, city })}>
-                        <Check className={cn("mr-2 h-4 w-4", formData.city === city ? "opacity-100" : "opacity-0")} />
-                        {city}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Instagram</Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">@</span>
-            <Input
-              value={formData.instagram_handle}
-              onChange={(e) =>
-                setFormData({ ...formData, instagram_handle: e.target.value.replace(/[^a-zA-Z0-9._]/g, "").slice(0, 30) })
-              }
-              placeholder="your.instagram"
-              className="pl-8"
-            />
+          {/* Instagram + City */}
+          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+            <div className="px-4 pt-4 pb-3">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Instagram</p>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground text-[15px]">@</span>
+                <input
+                  value={formData.instagram_handle}
+                  onChange={(e) =>
+                    setFormData({ ...formData, instagram_handle: e.target.value.replace(/[^a-zA-Z0-9._]/g, "").slice(0, 30) })
+                  }
+                  placeholder="your.instagram"
+                  className="flex-1 bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+                />
+              </div>
+            </div>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="px-4 pt-3 pb-4">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">City</p>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center justify-between w-full">
+                    <span className={`text-[15px] font-medium ${formData.city ? "text-foreground" : "text-muted-foreground/40"}`}>
+                      {formData.city || "Select a city"}
+                    </span>
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground/60" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search cities…" />
+                    <CommandList>
+                      <CommandEmpty>No city found.</CommandEmpty>
+                      <CommandGroup>
+                        {CITIES.map((city) => (
+                          <CommandItem key={city} value={city} onSelect={() => setFormData({ ...formData, city })}>
+                            <Check className={cn("mr-2 h-4 w-4", formData.city === city ? "opacity-100" : "opacity-0")} />
+                            {city}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
-        </div>
 
-        {/* Opening Hours - Venue only */}
-        {formData.category === "Venue" && (
-          <div className="space-y-3">
-            <Label>Opening Hours</Label>
-            <p className="text-xs text-muted-foreground">Set your venue's opening hours for each day.</p>
-            <div className="space-y-2">
-              {DAYS.map((day) => (
-                <div key={day} className="flex items-center gap-3">
-                  <span className="text-sm text-foreground w-24 shrink-0">{day}</span>
-                  <Input
-                    value={formData.opening_hours[day] || ""}
-                    onChange={(e) => updateOpeningHours(day, e.target.value)}
-                    placeholder="e.g. 10:00 - 02:00 or Closed"
-                    className="flex-1"
-                  />
+          {/* Opening Hours — Venue only */}
+          {formData.category === "Venue" && (
+            <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Opening Hours</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Leave blank for closed</p>
+              </div>
+              {DAYS.map((day, i) => (
+                <div key={day}>
+                  {i !== 0 && <div className="h-px bg-border/50 mx-4" />}
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-[13px] font-medium text-muted-foreground w-24 shrink-0">{day}</span>
+                    <input
+                      value={formData.opening_hours[day] || ""}
+                      onChange={(e) => updateOpeningHours(day, e.target.value)}
+                      placeholder="10:00 – 02:00"
+                      className="flex-1 bg-transparent text-foreground text-[14px] placeholder:text-muted-foreground/40 outline-none text-right"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Payouts Section */}
-        <PayoutSetupSection
-          organiserProfileId={activeOrg.id}
-          isOwner={activeOrg.ownerId === (user?.id || '')}
-        />
+          {/* Payouts */}
+          <PayoutSetupSection
+            organiserProfileId={activeOrg.id}
+            isOwner={activeOrg.ownerId === (user?.id || "")}
+          />
+        </div>
+
+        {/* Bottom save */}
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full mt-6 h-12 rounded-2xl font-bold tracking-widest text-sm"
+        >
+          {saving ? "SAVING…" : "SAVE CHANGES"}
+        </Button>
       </main>
     </div>
   );

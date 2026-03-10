@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { X, Ticket, ClipboardList, Bell, Clock } from "lucide-react";
+import { X, Ticket, ClipboardList, Bell, Clock, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -47,9 +45,6 @@ const CreateEvent = () => {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
-  const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
   const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
   const [cohostInput, setCohostInput] = useState("");
 
@@ -199,19 +194,19 @@ const CreateEvent = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="flex items-center justify-between px-4 h-14">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50">
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto">
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClose}>
             <X className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold text-foreground">New Event</h1>
+          <h1 className="text-sm font-bold tracking-[0.2em] uppercase">New Event</h1>
           <Button
             size="sm"
             onClick={handleSubmit}
             disabled={createEventMutation.isPending}
-            className="h-9 px-4 text-sm"
+            className="rounded-full px-5 text-xs font-bold tracking-widest"
           >
-            {createEventMutation.isPending ? "..." : "Create"}
+            {createEventMutation.isPending ? "···" : "CREATE"}
           </Button>
         </div>
       </header>
@@ -227,9 +222,6 @@ const CreateEvent = () => {
               location={location} setLocation={setLocation}
               description={description} setDescription={setDescription}
               category={category} setCategory={setCategory}
-              selectedGenres={selectedGenres} setSelectedGenres={setSelectedGenres}
-              selectedStyles={selectedStyles} setSelectedStyles={setSelectedStyles}
-              selectedVibes={selectedVibes} setSelectedVibes={setSelectedVibes}
               cohosts={cohosts} setCohosts={setCohosts}
               cohostInput={cohostInput} setCohostInput={setCohostInput}
             />
@@ -259,56 +251,56 @@ const CreateEvent = () => {
             <NotificationsPanel reminders={reminders} setReminders={setReminders} />
           )}
 
-          {/* Create + Schedule buttons on details tab */}
+          {/* Schedule + publish on details tab */}
           {activeTab === "details" && (
-            <div className="pt-6 space-y-3">
-              {/* Schedule option */}
-              <div className="space-y-2">
-                <Label className="text-foreground text-sm flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" /> Schedule Publishing (optional)
-                </Label>
-                <Input
+            <div className="pt-3 space-y-3">
+              <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" /> Schedule Publishing
+                </p>
+                <input
                   type="datetime-local"
                   value={publishAt}
                   onChange={(e) => setPublishAt(e.target.value)}
-                  className="h-12 bg-card border-border"
-                  placeholder="Leave empty to publish immediately"
+                  className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
                 />
-                {publishAt && (
-                  <p className="text-xs text-muted-foreground">
-                    Event will auto-publish at the selected time
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {publishAt ? "Event will auto-publish at this time" : "Leave empty to publish immediately"}
+                </p>
               </div>
               <Button
                 type="button"
-                size="lg"
-                className="w-full h-14 text-lg"
+                className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm"
                 disabled={createEventMutation.isPending}
                 onClick={handleSubmit}
               >
-                {createEventMutation.isPending ? "Creating..." : publishAt ? "Schedule Event" : "Create Event"}
+                {createEventMutation.isPending ? "CREATING…" : publishAt ? "SCHEDULE EVENT" : "CREATE EVENT"}
               </Button>
             </div>
           )}
         </div>
       </main>
 
-      {/* Bottom Tab Bar - replaces regular nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border">
+      {/* Bottom Tab Bar */}
+      <nav className="no-press fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-t border-border/50">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+          <button
+            onClick={() => setActiveTab("details")}
+            className={`flex flex-col items-center gap-0.5 px-4 py-1.5 transition-colors ${activeTab === "details" ? "text-primary" : "text-muted-foreground"}`}
+          >
+            <FileText className="h-5 w-5" />
+            <span className="text-[10px] font-bold tracking-widest uppercase">Details</span>
+          </button>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex flex-col items-center gap-0.5 px-4 py-1.5 transition-colors ${
-                activeTab === tab.key
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground"
+                activeTab === tab.key ? "text-primary" : "text-muted-foreground"
               }`}
             >
               {tab.icon}
-              <span className="text-[10px] font-medium">{tab.label}</span>
+              <span className="text-[10px] font-bold tracking-widest uppercase">{tab.label}</span>
             </button>
           ))}
         </div>

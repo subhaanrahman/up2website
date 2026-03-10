@@ -87,15 +87,6 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
               {category}
             </Badge>
           </div>
-          {user && isUuid && (
-            <button
-              onClick={handleSave}
-              className="absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-card/90 backdrop-blur-sm hover:bg-card transition-colors"
-              aria-label={isSaved ? "Unsave event" : "Save event"}
-            >
-              <Bookmark className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-card-foreground"}`} />
-            </button>
-          )}
         </div>
         <div className="p-4">
           <h3 className="font-bold text-base text-card-foreground mb-2 line-clamp-1 tracking-tight group-hover:text-primary transition-colors capitalize">

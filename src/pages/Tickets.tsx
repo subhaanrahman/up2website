@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } fr
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Calendar, Plus } from "lucide-react";
+import { Search, Calendar, Plus, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useProfile } from "@/hooks/useProfileQuery";
@@ -106,19 +106,17 @@ function CreatedEventCard({ event, isPast }: { event: any; isPast: boolean }) {
         )}
       </div>
       <div className="flex-1 px-4 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-1 capitalize leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="text-xs bg-secondary px-3 py-1.5 rounded-full text-muted-foreground font-medium">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
             {format(new Date(event.eventDate), "EEE M/d - ha")}
           </span>
           {event.status === "draft" && (
             <span className="text-xs bg-accent/20 text-accent-foreground px-2 py-1 rounded-full font-medium">Draft</span>
           )}
         </div>
-        {event.location && (
-          <p className="text-xs text-muted-foreground truncate">{event.location}</p>
-        )}
       </div>
+      <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
     </Link>
   );
 }

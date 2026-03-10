@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Settings, ScanLine } from "lucide-react";
+import { Settings, ScanLine } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
@@ -21,7 +21,7 @@ const EventRow = ({ event, rsvpCount, onManage }: EventRowProps) => {
         to={`/events/${event.id}`}
         className="flex items-center flex-1 min-w-0 hover:bg-card/80 transition-colors"
       >
-        <div className="w-24 h-24 flex-shrink-0 relative">
+        <div className="w-28 h-28 flex-shrink-0 relative">
           <img
             src={event.cover_image || getEventFlyer(event.id)}
             alt={event.title}
@@ -36,33 +36,18 @@ const EventRow = ({ event, rsvpCount, onManage }: EventRowProps) => {
             </Badge>
           )}
         </div>
-        <div className="flex-1 px-3 py-2 min-w-0">
-          <h3 className="font-bold text-sm text-foreground line-clamp-1 capitalize leading-tight">
+        <div className="flex-1 px-4 py-3 min-w-0">
+          <h3 className="font-bold text-lg text-foreground line-clamp-2 capitalize leading-tight mb-3">
             {event.title}
           </h3>
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[11px] bg-secondary px-2 py-1 rounded-full text-muted-foreground font-medium">
-              {format(new Date(event.event_date), "EEE M/d")}
-            </span>
-            <span className="text-[11px] bg-secondary px-2 py-1 rounded-full text-muted-foreground font-medium">
-              {rsvpCount} going
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
+              {format(new Date(event.event_date), "EEE M/d - ha")}
             </span>
           </div>
         </div>
       </Link>
       <div className="flex items-center gap-1 pr-2 flex-shrink-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate(`/events/${event.id}/edit`);
-          }}
-          title="Edit"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
         <Button
           variant="ghost"
           size="icon"

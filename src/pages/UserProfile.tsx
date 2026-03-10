@@ -25,6 +25,8 @@ import {
   Disc,
   Megaphone,
   Mic2,
+  Ticket,
+  Home,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
@@ -590,6 +592,12 @@ const UserProfile = () => {
                   )}
                   {profile.page_classification.toLowerCase() === "artist" && (
                     <Mic2 className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  {profile.page_classification.toLowerCase() === "event" && (
+                    <Ticket className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  {profile.page_classification.toLowerCase() === "venue" && (
+                    <Home className="h-3.5 w-3.5 text-primary" />
                   )}
                 </span>
               )}
