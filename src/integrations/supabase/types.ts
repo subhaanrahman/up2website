@@ -1329,28 +1329,49 @@ export type Database = {
       }
       reports: {
         Row: {
+          assigned_admin_id: string | null
           created_at: string
+          description: string | null
           id: string
           reason: string
           reported_post_id: string | null
           reported_user_id: string | null
           reporter_id: string
+          resolution_notes: string | null
+          status: string
+          target_id: string | null
+          target_type: string
+          updated_at: string
         }
         Insert: {
+          assigned_admin_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           reason?: string
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id: string
+          resolution_notes?: string | null
+          status?: string
+          target_id?: string | null
+          target_type?: string
+          updated_at?: string
         }
         Update: {
+          assigned_admin_id?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           reason?: string
           reported_post_id?: string | null
           reported_user_id?: string | null
           reporter_id?: string
+          resolution_notes?: string | null
+          status?: string
+          target_id?: string | null
+          target_type?: string
+          updated_at?: string
         }
         Relationships: [
           {
