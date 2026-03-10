@@ -1,39 +1,24 @@
-## Plan: Feature Gaps & Stubbed Flows — All Batches
 
-### ✅ Batch 1 — COMPLETED
-- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
-- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
-- **F-03**: Change Password → `supabase.auth.updateUser()` 
-- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
-- **F-05**: Contact Us form → inserts into `contact_messages` table
-- **F-06**: Connect Music → persisted to `user_music_connections` table
-- **F-07**: Save/Interested → persisted to `saved_events` table
-- **F-08**: Map Preview → Google Maps embed iframe
-- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
-- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
-- P-05: Add to Calendar (.ics download)
-- P-06: "Who's going" friend highlights
-- P-07: RSVP with +1 guest count
-- P-10: Waitlist when full
-- P-19: "Going" friends on event cards
+## Fix: Tickets page sort order — most recent to oldest
 
-### Batch 3 — Ticketing & Orders
-- P-11: Order confirmation / success page
-- P-12: View purchased tickets with QR codes
-- P-14: Transfer tickets
-- P-15: Discount code validation
-- P-28: Linked payment methods
+### Problem
+Past plans are sorted ascending (oldest first) instead of descending (most recent first). Past events in "My Plans" show the very first event at the top instead of the most recently passed one.
 
-### Batch 4 — Organiser Tools
-- P-21: Revenue / sales dashboard tab
-- P-23: Scheduled event publishing
-- P-24: Attendee blast notifications
-- P-25: Embed event widget
+### Changes
 
-### ✅ Batch 5 — Discovery & Social (COMPLETED)
-- P-02: Location-based event discovery (city filtering from user profile)
-- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
-- P-18: Share event as post to feed (Post button in share sheet)
-- P-XX: Event category filtering (10 categories with emoji pills)
+**`src/pages/Tickets.tsx`**
+
+1. **Line 157** — Reverse past plans sort to descending (most recent past event first):
+   - Change `new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()` → `new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()`
+
+2. **Line 161** — Keep upcoming plans ascending (soonest first) — already correct, no change needed.
+
+3. **Lines ~280-282** — Reverse the past group render order: currently renders `[...PAST_GROUPS].reverse()` which shows "older" first. Change to render `PAST_GROUPS` in natural order (last-month → last-6-months → older) so most recent past events appear at top.
+
+4. **Line 173** — Keep upcoming created events ascending — already correct.
+
+5. **Line 176-177** — Past created events are already sorted descending — already correct.
+
+This is a one-line sort fix plus adjusting the group render order for past plans.
+
