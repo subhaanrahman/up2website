@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
 import { getOptimizedUrl } from "@/lib/imageUtils";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 /* ── Types ── */
 
