@@ -1,34 +1,39 @@
+## Plan: Feature Gaps & Stubbed Flows — All Batches
 
-Goal: Fix the Tickets “My Plans” ordering bug so past events stay at the bottom and “Last Month” is not incorrectly shown at the top.
+### ✅ Batch 1 — COMPLETED
+- **F-01**: "Add" button on Suggested Friends → wired to `connections` table insert
+- **F-02**: Feed Post "..." menu → DropdownMenu with Delete/Report/Block, using `reports` and `blocked_users` tables
+- **F-03**: Change Password → `supabase.auth.updateUser()` 
+- **F-04**: Delete Account → `account-delete` edge function with full data cleanup
+- **F-05**: Contact Us form → inserts into `contact_messages` table
+- **F-06**: Connect Music → persisted to `user_music_connections` table
+- **F-07**: Save/Interested → persisted to `saved_events` table
+- **F-08**: Map Preview → Google Maps embed iframe
+- **F-10**: Analytics → enabled, new `/events/:id/analytics` page with revenue/tickets/attendees
+- **F-12**: Group Chat creation → `CreateGroupChatModal` + `group_chat_members` table
 
-Root cause found in current code:
-- `src/pages/Tickets.tsx` → `getPastGroup()` currently does:
-  - `if (isAfter(date, lastMonthStart)) return "last-month";`
-- This is too broad. Any past date after last month’s start (including dates earlier this month) is labeled `"last-month"`.
-- Result: recent past events can be mis-bucketed as “Last Month,” making that divider appear unexpectedly high.
+### Batch 2 — Event Detail & RSVP Enhancements (NEXT)
+- P-05: Add to Calendar (.ics download)
+- P-06: "Who's going" friend highlights
+- P-07: RSVP with +1 guest count
+- P-10: Waitlist when full
+- P-19: "Going" friends on event cards
 
-What I will change:
-1) Fix past-group classification boundaries in `getPastGroup()`:
-- Use explicit range checks:
-  - `"last-month"` only if `date >= lastMonthStart` AND `date < monthStart`
-  - `"last-6-months"` only if `date >= sixMonthsAgo` AND `date < lastMonthStart`
-  - otherwise `"older"`
-- This prevents current-month past events from being mislabeled “Last Month.”
+### Batch 3 — Ticketing & Orders
+- P-11: Order confirmation / success page
+- P-12: View purchased tickets with QR codes
+- P-14: Transfer tickets
+- P-15: Discount code validation
+- P-28: Linked payment methods
 
-2) Keep the page section order exactly as requested:
-- Top: Today
-- Middle: Upcoming
-- Bottom: Past
-- This is already implemented in `renderPlansContent()` and will remain unchanged.
+### Batch 4 — Organiser Tools
+- P-21: Revenue / sales dashboard tab
+- P-23: Scheduled event publishing
+- P-24: Attendee blast notifications
+- P-25: Embed event widget
 
-3) Preserve past visual chronology inside the past section:
-- Keep existing past group rendering order (`[...PAST_GROUPS].reverse()`) so older buckets stay above newer past buckets near Today.
-- Keep per-group past event sort descending (recent-to-older within each bucket).
-
-Validation after change:
-- Event from yesterday/earlier this month should no longer appear under “Last Month.”
-- “Last Month” divider should only appear for events actually in previous calendar month.
-- With mixed data, layout should remain: Today at top, Upcoming in middle, all Past content at bottom.
-
-Files to update:
-- `src/pages/Tickets.tsx` (only)
+### ✅ Batch 5 — Discovery & Social (COMPLETED)
+- P-02: Location-based event discovery (city filtering from user profile)
+- P-03: "For You" recommendations (friends' RSVPs, followed organisers, city, backfill)
+- P-18: Share event as post to feed (Post button in share sheet)
+- P-XX: Event category filtering (10 categories with emoji pills)
