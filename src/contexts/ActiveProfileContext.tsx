@@ -13,7 +13,7 @@ export interface OrganiserProfile {
   instagramHandle: string | null;
   category: string;
   openingHours: Record<string, string> | null;
-  tags: string[];
+  
   createdAt: string;
   updatedAt: string;
 }
