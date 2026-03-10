@@ -70,7 +70,6 @@ const EditOrganiserProfile = () => {
         instagram_handle: activeOrg.instagramHandle || "",
         category: activeOrg.category || "Venue",
         opening_hours: (activeOrg as any).openingHours || {},
-        tags: (activeOrg as any).tags || [],
       });
     }
   }, [activeOrg, isOrganiser, navigate]);
