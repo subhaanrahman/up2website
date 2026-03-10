@@ -185,15 +185,19 @@ const Tickets = () => {
     container.scrollTop = offset;
   }, []);
 
-  // Use useLayoutEffect so scroll happens before paint — user never sees wrong position
+  // Scroll to Today on initial load — useLayoutEffect fires before paint
   useLayoutEffect(() => {
     if (!plansLoading && plannedEvents && activeSection === "plans") {
-      // Small delay to ensure the container ref is attached and content rendered
-      requestAnimationFrame(() => {
-        scrollToToday();
-        // Delayed correction for image load layout shifts
-        setTimeout(scrollToToday, 400);
-      });
+      scrollToToday();
+    }
+  }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
+
+  // Delayed correction for image load layout shifts
+  useEffect(() => {
+    if (!plansLoading && plannedEvents && activeSection === "plans") {
+      const t1 = setTimeout(scrollToToday, 300);
+      const t2 = setTimeout(scrollToToday, 600);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
 
