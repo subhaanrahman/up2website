@@ -335,12 +335,12 @@ const Tickets = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="h-dvh flex flex-col bg-background md:min-h-screen md:block md:h-auto">
       <Navbar />
 
       {/* Mobile */}
-      <div className="md:hidden">
-        <header className="sticky top-0 z-40 bg-background px-4 pt-6 pb-2">
+      <div className="md:hidden flex flex-col flex-1 overflow-hidden">
+        <header className="flex-shrink-0 bg-background px-4 pt-6 pb-2 z-40">
           <h1 className="text-2xl font-bold text-foreground mb-4 text-center">TICKETS</h1>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -361,8 +361,7 @@ const Tickets = () => {
 
         <main
           ref={activeSection === "plans" ? scrollContainerRef : undefined}
-          className="px-4 pt-2 overflow-y-auto"
-          style={{ height: "calc(100dvh - 160px - 80px)" }}
+          className="flex-1 overflow-y-auto px-4 pt-2 pb-20"
         >
           {activeSection === "plans" ? renderPlansContent() : renderCreatedContent()}
         </main>
