@@ -179,9 +179,16 @@ const Tickets = () => {
   const scrollToDivider = useCallback(() => {
     if (dividerRef.current && !hasScrolled.current) {
       hasScrolled.current = true;
-      setTimeout(() => {
-        dividerRef.current?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
-      }, 150);
+      // Use requestAnimationFrame to ensure DOM is painted, then scroll
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (!dividerRef.current) return;
+          const headerOffset = 160; // sticky header height
+          const elementPosition = dividerRef.current.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.scrollY - headerOffset;
+          window.scrollTo({ top: offsetPosition, behavior: "instant" as ScrollBehavior });
+        });
+      });
     }
   }, []);
 
