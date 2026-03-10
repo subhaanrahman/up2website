@@ -161,7 +161,7 @@ const Profile = () => {
   const bio = isOrganiser && activeOrg ? activeOrg.bio || "" : profile?.bio || "";
   const city = isOrganiser && activeOrg ? activeOrg.city || "" : profile?.city || "";
   const classification = isOrganiser && activeOrg ? activeOrg.category : profile?.pageClassification || null;
-  const vibeTags = isOrganiser && activeOrg ? activeOrg.tags : [];
+  
 
   const now = new Date();
   const upcomingEvents = (profileEvents || [])
