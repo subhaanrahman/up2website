@@ -6,6 +6,7 @@ import { Bell, Plus, Calendar, DollarSign, Loader2 } from "lucide-react";
 import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
+import NearbyEventsCarousel from "@/components/NearbyEventsCarousel";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
@@ -127,40 +128,9 @@ const Index = () => {
           onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
         />
 
-        {/* Events Near You — DB-backed */}
+        {/* Events Near You — DB-backed auto-scroll carousel */}
         {nearbyEvents.length > 0 && (
-          <div className="border-b border-border">
-            <div className="px-4 py-3">
-              <h2 className="text-base font-black text-foreground uppercase font-display tracking-[0.05em]" style={{ fontStretch: 'expanded' }}>Events Near You</h2>
-            </div>
-            <div className="px-4 pb-4 flex flex-col gap-2">
-              {nearbyEvents.map((event: any) => (
-                <Link key={event.id} to={`/events/${event.id}`} className="flex rounded-2xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors">
-                  <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
-                    <img
-                      src={event.cover_image || getEventFlyer(event.id)}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
-                    <h3 className="font-bold text-foreground text-sm truncate capitalize">{event.title}</h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <Calendar className="h-3 w-3 text-primary" />
-                      <span>{format(new Date(event.event_date), "EEE M/d - ha")}</span>
-                    </div>
-                    {event.location && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.location}</p>
-                    )}
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                      <DollarSign className="h-3 w-3 text-primary" />
-                      <span>{event.ticket_price_cents === 0 ? "Free" : `R${(event.ticket_price_cents / 100).toFixed(2)}`}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
+          <NearbyEventsCarousel events={nearbyEvents} />
         )}
 
         {/* Feed Posts with inline suggested friends */}
