@@ -177,31 +177,30 @@ const Tickets = () => {
     .filter((e) => new Date(e.eventDate) < now)
     .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
-  const scrollToDivider = useCallback(() => {
-    if (dividerRef.current && !hasScrolled.current) {
-      hasScrolled.current = true;
-      // Use requestAnimationFrame to ensure DOM is painted, then scroll
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (!dividerRef.current) return;
-          const headerOffset = 160; // sticky header height
-          const elementPosition = dividerRef.current.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.scrollY - headerOffset;
-          window.scrollTo({ top: offsetPosition, behavior: "instant" as ScrollBehavior });
-        });
-      });
-    }
+  const scrollToToday = useCallback(() => {
+    const container = scrollContainerRef.current;
+    const divider = dividerRef.current;
+    if (!container || !divider) return;
+    const offset = divider.offsetTop - container.offsetTop;
+    container.scrollTop = offset;
   }, []);
 
-  useEffect(() => {
-    if (!plansLoading && plannedEvents) {
-      scrollToDivider();
+  // Use useLayoutEffect so scroll happens before paint — user never sees wrong position
+  useLayoutEffect(() => {
+    if (!plansLoading && plannedEvents && activeSection === "plans" && !hasScrolled.current) {
+      hasScrolled.current = true;
+      scrollToToday();
+      // Delayed correction for image load layout shifts
+      const timer = setTimeout(scrollToToday, 400);
+      return () => clearTimeout(timer);
     }
-  }, [plansLoading, plannedEvents, scrollToDivider]);
+  }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
 
-  // Reset scroll flag when switching tabs
-  useEffect(() => {
-    hasScrolled.current = false;
+  // Reset scroll flag when switching to plans tab
+  useLayoutEffect(() => {
+    if (activeSection === "plans") {
+      hasScrolled.current = false;
+    }
   }, [activeSection]);
 
   const displayName = profile?.displayName || "";
