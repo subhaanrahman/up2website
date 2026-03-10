@@ -115,6 +115,46 @@ const EventDetail = () => {
     enabled: !!id && !isMock,
   });
 
+  // Fetch cohosts
+  const { data: eventCohosts = [] } = useQuery({
+    queryKey: ["event-cohosts", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const { data: rows } = await supabase
+        .from("event_cohosts")
+        .select("id, organiser_profile_id, user_id, role")
+        .eq("event_id", id);
+      if (!rows || rows.length === 0) return [];
+
+      const results: { id: string; displayName: string; avatarUrl: string | null; link: string }[] = [];
+
+      const orgIds = rows.filter(r => r.organiser_profile_id).map(r => r.organiser_profile_id!);
+      if (orgIds.length > 0) {
+        const { data: orgs } = await supabase
+          .from("organiser_profiles")
+          .select("id, display_name, avatar_url")
+          .in("id", orgIds);
+        for (const o of orgs || []) {
+          results.push({ id: o.id, displayName: o.display_name, avatarUrl: o.avatar_url, link: `/user/${o.id}` });
+        }
+      }
+
+      const userIds = rows.filter(r => r.user_id).map(r => r.user_id!);
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, avatar_url")
+          .in("user_id", userIds);
+        for (const p of profiles || []) {
+          results.push({ id: p.user_id, displayName: p.display_name || "User", avatarUrl: p.avatar_url, link: `/user/${p.user_id}` });
+        }
+      }
+
+      return results;
+    },
+    enabled: !!id && !isMock,
+  });
+
   // P-06: Friends going to this event
   const { data: friendsGoing = [] } = useFriendsGoing(isUuid && !isMock ? id : undefined);
 
