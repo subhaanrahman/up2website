@@ -204,15 +204,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
                 </div>
               )}
 
-              {/* Collaborator picker */}
-              {showCollabPicker && (
-                <CollaboratorPicker
-                  currentUserId={user?.id || ""}
-                  excludeIds={collaborators.map(c => c.user_id)}
-                  onSelect={addCollaborator}
-                  onClose={() => setShowCollabPicker(false)}
-                />
-              )}
 
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
                 <div className="flex items-center gap-1">
