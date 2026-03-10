@@ -24,6 +24,7 @@ const BottomNav = () => {
   const { user, signOut } = useAuth();
   const { activeProfile, switchProfile, organiserProfiles, isOrganiser } = useActiveProfile();
   const { data: personalProfile } = useProfile(user?.id);
+  const { totalUnread } = useUnreadMessages();
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
