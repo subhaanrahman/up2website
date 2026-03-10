@@ -108,6 +108,18 @@ const MessageThread = () => {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  // Realtime subscription for group chat messages
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`group-chat-${id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_chat_messages", filter: `group_chat_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, queryClient]);
+
   const isOwnMessage = (msg: ChatMessage) => {
     if (!user) return false;
     return msg.sender_id === user.id;
