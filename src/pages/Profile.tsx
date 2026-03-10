@@ -391,11 +391,6 @@ const EventListItem = ({ event }: { event: { id: string; title: string; eventDat
           <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
             {format(new Date(event.eventDate), "EEE M/d - ha")}
           </span>
-          {event.category && (
-            <span className="text-xs bg-secondary px-3 py-2 rounded-full text-muted-foreground font-medium h-7 flex items-center">
-              {event.category}
-            </span>
-          )}
         </div>
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
