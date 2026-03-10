@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ReactionType = "heart" | "fire" | "eyes" | "pray" | "mood";
@@ -163,15 +164,17 @@ const ReactionPicker = ({
               </span>
             ))}
           </span>
-        ) : (
+        ) : isLiked && displayEmoji ? (
           <span
             className={cn(
               "text-[18px] leading-none",
               animatingReaction && "animate-bounce"
             )}
           >
-            {isLiked && displayEmoji ? displayEmoji : "🤍"}
+            {displayEmoji}
           </span>
+        ) : (
+          <Heart className={cn("h-[18px] w-[18px] text-muted-foreground", animatingReaction && "animate-bounce")} />
         )}
         {likeCount > 0 && (
           <span className="text-[13px] tabular-nums ml-0.5">{likeCount}</span>
