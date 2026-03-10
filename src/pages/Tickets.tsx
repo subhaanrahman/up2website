@@ -387,7 +387,13 @@ const Tickets = () => {
             <Input placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
 
-          {activeSection === "plans" ? renderPlansContent() : renderCreatedContent()}
+          <div
+            ref={activeSection === "plans" ? scrollContainerRef : undefined}
+            className="overflow-y-auto"
+            style={{ maxHeight: "calc(100dvh - 280px)" }}
+          >
+            {activeSection === "plans" ? renderPlansContent() : renderCreatedContent()}
+          </div>
         </div>
       </main>
 
