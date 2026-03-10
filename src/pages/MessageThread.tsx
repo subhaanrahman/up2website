@@ -79,7 +79,7 @@ const MessageThread = () => {
     queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
     queryClient.invalidateQueries({ queryKey: ["group-chats"] });
 
-    // Notify other group members
+    // Notify other group members (fire-and-forget)
     const { data: members } = await supabase
       .from("group_chat_members")
       .select("user_id")
