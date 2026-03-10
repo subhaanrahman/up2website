@@ -12,6 +12,7 @@ import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
 import ShareEventSheet from "@/components/ShareEventSheet";
+import EventBoard from "@/components/EventBoard";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
@@ -157,6 +158,23 @@ const EventDetail = () => {
 
   // P-06: Friends going to this event
   const { data: friendsGoing = [] } = useFriendsGoing(isUuid && !isMock ? id : undefined);
+
+  // Check if user has a valid ticket for this event
+  const { data: hasTicket } = useQuery({
+    queryKey: ["user-ticket", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return false;
+      const { data } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .eq("status", "valid")
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
 
   // P-10: Waitlist & capacity check
   const { data: capacityInfo } = useQuery({
@@ -562,6 +580,11 @@ const EventDetail = () => {
                 : `${friendsGoing.length} friends going`}
             </span>
           </div>
+        )}
+
+        {/* Event Board — visible to attendees, ticket holders, and host */}
+        {dbEvent && user && (userRsvp || isHost || hasTicket) && (
+          <EventBoard eventId={dbEvent.id} />
         )}
 
         {/* P-05: Add to Calendar */}
