@@ -55,7 +55,7 @@ const TicketEventCard = ({
           {title}
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className="text-xs font-medium h-7 rounded-full px-3 bg-primary/15 text-primary border-primary/30">
+          <Badge className="text-xs font-medium h-7 rounded-full px-3 bg-primary/15 text-primary-foreground border-primary/30">
             {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
           </Badge>
         </div>
