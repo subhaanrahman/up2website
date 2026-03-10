@@ -15,7 +15,7 @@ import ProfileQrModal from "@/components/ProfileQrModal";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
-  startOfWeek, startOfMonth, subMonths, isAfter, isBefore
+  startOfWeek, startOfMonth, subMonths, isAfter, isBefore, isSameDay
 } from "date-fns";
 
 interface TicketEvent {
@@ -152,12 +152,16 @@ const Tickets = () => {
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const todayPlans = filteredPlans
+    .filter((t) => t.eventDate && isSameDay(new Date(t.eventDate), now))
+    .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+
   const pastPlans = filteredPlans
-    .filter((t) => t.eventDate && new Date(t.eventDate) < now)
+    .filter((t) => t.eventDate && !isSameDay(new Date(t.eventDate), now) && new Date(t.eventDate) < now)
     .sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
 
   const upcomingPlans = filteredPlans
-    .filter((t) => t.eventDate && new Date(t.eventDate) >= now)
+    .filter((t) => t.eventDate && !isSameDay(new Date(t.eventDate), now) && new Date(t.eventDate) >= now)
     .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
 
   const pastGrouped = groupEvents(pastPlans, PAST_GROUPS, getPastGroup, now);
