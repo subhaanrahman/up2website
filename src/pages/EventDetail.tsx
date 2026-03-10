@@ -159,6 +159,23 @@ const EventDetail = () => {
   // P-06: Friends going to this event
   const { data: friendsGoing = [] } = useFriendsGoing(isUuid && !isMock ? id : undefined);
 
+  // Check if user has a valid ticket for this event
+  const { data: hasTicket } = useQuery({
+    queryKey: ["user-ticket", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return false;
+      const { data } = await supabase
+        .from("tickets")
+        .select("id")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .eq("status", "valid")
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!id && !!user && !isMock,
+  });
+
   // P-10: Waitlist & capacity check
   const { data: capacityInfo } = useQuery({
     queryKey: ["event-capacity", id],
