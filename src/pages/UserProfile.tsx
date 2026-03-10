@@ -110,7 +110,6 @@ const UserProfile = () => {
           page_classification: orgData.category,
           user_id: orgData.owner_id,
           _isOrganiser: true,
-          _tags: Array.isArray(orgData.tags) ? orgData.tags : [],
         });
 
         const { data: eventsData } = await supabase
