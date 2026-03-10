@@ -9,12 +9,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useCreateEvent } from "@/hooks/useEventsQuery";
 import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
-import EventDetailsForm from "@/components/create-event/EventDetailsForm";
+import EventDetailsForm, { type CohostEntry } from "@/components/create-event/EventDetailsForm";
 import TicketingPanel from "@/components/create-event/TicketingPanel";
 import GuestlistPanel from "@/components/create-event/GuestlistPanel";
 import NotificationsPanel from "@/components/create-event/NotificationsPanel";
 import type { TicketTier } from "@/components/create-event/TicketTierModal";
 import type { DiscountCode } from "@/components/create-event/DiscountCodeModal";
+import { supabase } from "@/integrations/supabase/client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,7 +50,7 @@ const CreateEvent = () => {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [selectedVibes, setSelectedVibes] = useState<string[]>([]);
-  const [cohosts, setCohosts] = useState<string[]>([]);
+  const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
   const [cohostInput, setCohostInput] = useState("");
 
   // Ticketing state
