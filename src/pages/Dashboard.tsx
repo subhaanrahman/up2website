@@ -186,12 +186,21 @@ const useDmThreads = (mode: "user" | "organiser", organiserProfileIds?: string[]
 
 /* ── Components ── */
 
-const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
+const GroupChatTile = ({ chat, unreadCount }: { chat: GroupChat; unreadCount: number }) => (
   <Link
     to={`/messages/${chat.id}`}
     className="group relative flex flex-col rounded-2xl bg-card border border-border/60 p-4 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 min-h-[168px] overflow-hidden"
   >
     <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent rounded-2xl pointer-events-none" />
+
+    {/* Unread badge */}
+    {unreadCount > 0 && (
+      <div className="absolute top-3 right-3 z-10 flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-primary">
+        <span className="text-[10px] font-bold text-primary-foreground leading-none">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      </div>
+    )}
 
     <div className="relative flex -space-x-2">
       {chat.memberPreviews.slice(0, 3).map((m) => (
@@ -221,7 +230,7 @@ const GroupChatTile = ({ chat }: { chat: GroupChat }) => (
         {chat.name}
       </h3>
       {chat.last_message && (
-        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+        <p className={cn("text-xs line-clamp-2 leading-relaxed", unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
           {chat.last_message}
         </p>
       )}
