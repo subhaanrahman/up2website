@@ -63,8 +63,8 @@ function getPastGroup(date: Date, now: Date): TimeGroup {
   const lastMonthStart = subMonths(monthStart, 1);
   const sixMonthsAgo = subMonths(monthStart, 6);
 
-  if (isAfter(date, lastMonthStart)) return "last-month";
-  if (isAfter(date, sixMonthsAgo)) return "last-6-months";
+  if ((isAfter(date, lastMonthStart) || isSameDay(date, lastMonthStart)) && isBefore(date, monthStart)) return "last-month";
+  if ((isAfter(date, sixMonthsAgo) || isSameDay(date, sixMonthsAgo)) && isBefore(date, lastMonthStart)) return "last-6-months";
   return "older";
 }
 
