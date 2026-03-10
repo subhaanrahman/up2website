@@ -487,13 +487,24 @@ const EventDetail = () => {
         {/* Hosted by */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
-          <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={displayHostAvatar} />
-              <AvatarFallback>{displayHostName[0]}</AvatarFallback>
-            </Avatar>
-            <span className="font-medium text-foreground">{displayHostName}</span>
-          </Link>
+          <div className="space-y-2">
+            <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={displayHostAvatar} />
+                <AvatarFallback>{displayHostName[0]}</AvatarFallback>
+              </Avatar>
+              <span className="font-medium text-foreground">{displayHostName}</span>
+            </Link>
+            {eventCohosts.length > 0 && eventCohosts.map((cohost) => (
+              <Link key={cohost.id} to={cohost.link} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={cohost.avatarUrl || undefined} />
+                  <AvatarFallback>{cohost.displayName[0]}</AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-foreground">{cohost.displayName}</span>
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* Guests / Attending */}
