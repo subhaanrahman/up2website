@@ -28,20 +28,13 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { CITIES } from "@/data/cities";
-import { ArrowLeft, Check, ChevronsUpDown, Plus, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { toast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 
 const CATEGORIES = ["Venue", "Event"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-
-const TAG_SUGGESTIONS = {
-  genre: ["House", "Techno", "Hip Hop", "R&B", "Afrobeats", "Amapiano", "Deep House", "Jazz", "Indie", "Pop", "Rock", "Latin", "Reggaeton", "Drum & Bass"],
-  crowd: ["Young Professionals", "Students", "Over 25s", "Mixed", "LGBTQ+ Friendly", "Upscale", "Underground", "Casual"],
-  features: ["Outdoor Area", "Rooftop", "Dance Floor", "VIP Section", "Smoking Area", "Free Parking", "Pool", "Live Music", "DJ Booth", "Food Menu", "Cocktail Bar", "Bottle Service"],
-};
 
 const EditOrganiserProfile = () => {
   const navigate = useNavigate();
