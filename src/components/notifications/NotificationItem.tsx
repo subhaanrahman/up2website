@@ -80,7 +80,14 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
   const handleClick = () => {
     if (Math.abs(translateX) > 5) return;
     if (!notification.read) markRead.mutate(notification.id);
-    if (notification.link) navigate(notification.link);
+    if (notification.link) {
+      // Post notifications: navigate to home feed since there's no post detail page
+      if (notification.link.startsWith("/post/")) {
+        navigate("/");
+      } else {
+        navigate(notification.link);
+      }
+    }
   };
 
   const revealRatio = Math.min(1, Math.abs(translateX) / DISMISS_THRESHOLD);

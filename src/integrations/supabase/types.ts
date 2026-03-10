@@ -1879,6 +1879,7 @@ export type Database = {
       }
       is_profile_public: { Args: { p_user_id: string }; Returns: boolean }
       purge_expired_notifications: { Args: never; Returns: undefined }
+      purge_orphaned_notifications: { Args: never; Returns: number }
       rsvp_join:
         | { Args: { p_event_id: string; p_status?: string }; Returns: Json }
         | {
