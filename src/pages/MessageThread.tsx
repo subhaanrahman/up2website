@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 
 interface ChatMessage {
   id: string;
