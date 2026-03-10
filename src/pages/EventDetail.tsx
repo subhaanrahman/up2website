@@ -582,6 +582,11 @@ const EventDetail = () => {
           </div>
         )}
 
+        {/* Event Board — visible to attendees, ticket holders, and host */}
+        {dbEvent && user && (userRsvp || isHost || hasTicket) && (
+          <EventBoard eventId={dbEvent.id} />
+        )}
+
         {/* P-05: Add to Calendar */}
         {dbEvent && !isPastEvent && (
           <Button variant="secondary" className="w-full" onClick={handleAddToCalendar}>
