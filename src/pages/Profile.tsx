@@ -270,19 +270,6 @@ const Profile = () => {
             </div>
           )}
 
-          {/* Vibe Tags — organiser/venue profiles only */}
-          {isOrganiser && vibeTags.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 mb-6">
-              {vibeTags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs px-3 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-foreground/80 font-medium"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Tabs */}

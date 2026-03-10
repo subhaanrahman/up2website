@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     if (updates.instagram_handle !== undefined) updateData.instagram_handle = updates.instagram_handle || null;
     if (updates.category !== undefined) updateData.category = updates.category;
     if (updates.opening_hours !== undefined) updateData.opening_hours = updates.opening_hours;
-    if (updates.tags !== undefined) updateData.tags = updates.tags;
+    
     updateData.updated_at = new Date().toISOString();
 
     const { data, error } = await serviceClient
