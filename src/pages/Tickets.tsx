@@ -187,21 +187,15 @@ const Tickets = () => {
 
   // Use useLayoutEffect so scroll happens before paint — user never sees wrong position
   useLayoutEffect(() => {
-    if (!plansLoading && plannedEvents && activeSection === "plans" && !hasScrolled.current) {
-      hasScrolled.current = true;
-      scrollToToday();
-      // Delayed correction for image load layout shifts
-      const timer = setTimeout(scrollToToday, 400);
-      return () => clearTimeout(timer);
+    if (!plansLoading && plannedEvents && activeSection === "plans") {
+      // Small delay to ensure the container ref is attached and content rendered
+      requestAnimationFrame(() => {
+        scrollToToday();
+        // Delayed correction for image load layout shifts
+        setTimeout(scrollToToday, 400);
+      });
     }
   }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
-
-  // Reset scroll flag when switching to plans tab
-  useLayoutEffect(() => {
-    if (activeSection === "plans") {
-      hasScrolled.current = false;
-    }
-  }, [activeSection]);
 
   const displayName = profile?.displayName || "";
   const username = profile?.username || displayName || user?.phone || "User";
