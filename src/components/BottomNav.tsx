@@ -119,14 +119,11 @@ const BottomNav = () => {
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
+                  "flex flex-col items-center justify-center flex-1 h-full transition-colors",
                   isActive ? "text-foreground" : hasUnread ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 <item.icon className={cn("h-6 w-6", isActive && "stroke-[2.5px]")} />
-                {hasUnread && (
-                  <span className="absolute top-2 right-1/2 translate-x-3 -translate-y-0.5 h-2 w-2 rounded-full bg-primary" />
-                )}
               </Link>
             );
           })}
