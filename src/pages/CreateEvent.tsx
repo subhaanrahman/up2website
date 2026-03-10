@@ -158,11 +158,24 @@ const CreateEvent = () => {
         publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
       });
 
+      const eventId = (data as any).id;
+
+      // Save cohosts to event_cohosts table
+      if (cohosts.length > 0 && eventId) {
+        const cohostRows = cohosts.map(c => ({
+          event_id: eventId,
+          organiser_profile_id: c.type === "organiser" ? c.id : null,
+          user_id: c.type === "personal" ? c.id : null,
+          role: "cohost",
+        }));
+        await supabase.from("event_cohosts").insert(cohostRows);
+      }
+
       toast({
         title: publishAt ? "Event scheduled!" : "Event created!",
         description: publishAt ? "Your event will publish at the scheduled time." : "Your event has been created successfully.",
       });
-      navigate(`/events/${(data as any).id}`);
+      navigate(`/events/${eventId}`);
     } catch {
       toast({ title: "Error", description: "Failed to create event. Please try again.", variant: "destructive" });
     }
