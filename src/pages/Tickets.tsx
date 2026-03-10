@@ -132,7 +132,6 @@ const Tickets = () => {
   const { data: profile } = useProfile(user?.id);
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const hasScrolled = useRef(false);
 
   // New separated hooks
   const { data: plannedEvents = [], isLoading: plansLoading } = useUserPlannedEvents(user?.id);
@@ -181,11 +180,13 @@ const Tickets = () => {
     const container = scrollContainerRef.current;
     const divider = dividerRef.current;
     if (!container || !divider) return;
-    const offset = divider.offsetTop - container.offsetTop;
-    container.scrollTop = offset;
+    // Use getBoundingClientRect — always correct regardless of offsetParent chain
+    const containerRect = container.getBoundingClientRect();
+    const dividerRect = divider.getBoundingClientRect();
+    container.scrollTop += dividerRect.top - containerRect.top;
   }, []);
 
-  // Scroll to Today on initial load — useLayoutEffect fires before paint
+  // Scroll to Today on initial load
   useLayoutEffect(() => {
     if (!plansLoading && plannedEvents && activeSection === "plans") {
       scrollToToday();
@@ -196,7 +197,7 @@ const Tickets = () => {
   useEffect(() => {
     if (!plansLoading && plannedEvents && activeSection === "plans") {
       const t1 = setTimeout(scrollToToday, 300);
-      const t2 = setTimeout(scrollToToday, 600);
+      const t2 = setTimeout(scrollToToday, 800);
       return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
