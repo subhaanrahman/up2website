@@ -360,7 +360,11 @@ const Tickets = () => {
           </Tabs>
         </header>
 
-        <main className="px-4 pt-2">
+        <main
+          ref={activeSection === "plans" ? scrollContainerRef : undefined}
+          className="px-4 pt-2 overflow-y-auto"
+          style={{ height: "calc(100dvh - 160px - 80px)" }}
+        >
           {activeSection === "plans" ? renderPlansContent() : renderCreatedContent()}
         </main>
       </div>
