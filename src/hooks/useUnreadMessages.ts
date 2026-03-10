@@ -86,15 +86,14 @@ export function useUnreadMessages() {
         await Promise.all(
           dmIds.map(async (threadId) => {
             const lastRead = lastReadMap[threadId];
+            if (!lastRead) return;
+
             let q = supabase
               .from("dm_messages")
               .select("id", { count: "exact", head: true })
               .eq("thread_id", threadId)
-              .neq("sender_id", user.id);
-
-            if (lastRead) {
-              q = q.gt("created_at", lastRead);
-            }
+              .neq("sender_id", user.id)
+              .gt("created_at", lastRead);
 
             const { count } = await q;
             const unread = count || 0;
