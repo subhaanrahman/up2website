@@ -3,18 +3,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 
-/**
- * Notifications Send — Triggered inline from other functions or client
- * 
- * Handles real-time / event-driven notifications:
- * - shared_event: Friend shared an event/post/account with you
- * - shared_post: Friend shared a post with you
- * - shared_account: Friend shared an account with you
- * - post_from_following: New post from organiser you follow
- * - friend_request: Someone sent you a friend request
- * - gamification_levelup: You leveled up
- */
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -38,6 +26,7 @@ const sendSchema = z.object({
   avatar_url: z.string().url().nullable().optional(),
   event_image: z.string().url().nullable().optional(),
   link: z.string().nullable().optional(),
+  organiser_profile_id: z.string().uuid().nullable().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -77,10 +66,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { type, recipient_user_id, title, message, avatar_url, event_image, link } = parsed.data;
+    const { type, recipient_user_id, title, message, avatar_url, event_image, link, organiser_profile_id } = parsed.data;
 
-    // Don't let users notify themselves
-    if (recipient_user_id === user.id) {
+    // Don't let users notify themselves (unless it's a notification scoped to a different profile)
+    if (recipient_user_id === user.id && !organiser_profile_id) {
       return new Response(JSON.stringify({ error: 'Cannot notify yourself' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -99,7 +88,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (settings) {
-    const blocked =
+      const blocked =
         (type === 'friend_request' && settings.friend_activity === false) ||
         (type === 'shared_event' && settings.friend_activity === false) ||
         (type === 'shared_post' && settings.friend_activity === false) ||
@@ -144,6 +133,7 @@ Deno.serve(async (req) => {
         avatar_url: avatar_url || null,
         event_image: event_image || null,
         link: link || null,
+        organiser_profile_id: organiser_profile_id || null,
       });
 
     if (insertError) {

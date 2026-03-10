@@ -682,6 +682,7 @@ export type Database = {
           id: string
           link: string | null
           message: string
+          organiser_profile_id: string | null
           read: boolean
           title: string
           type: string
@@ -695,6 +696,7 @@ export type Database = {
           id?: string
           link?: string | null
           message: string
+          organiser_profile_id?: string | null
           read?: boolean
           title: string
           type?: string
@@ -708,12 +710,21 @@ export type Database = {
           id?: string
           link?: string | null
           message?: string
+          organiser_profile_id?: string | null
           read?: boolean
           title?: string
           type?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notifications_organiser_profile_id_fkey"
+            columns: ["organiser_profile_id"]
+            isOneToOne: false
+            referencedRelation: "organiser_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       orders: {
         Row: {

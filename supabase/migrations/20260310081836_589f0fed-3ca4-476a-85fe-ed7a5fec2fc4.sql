@@ -1,0 +1,1 @@
+ALTER TABLE public.notifications ADD COLUMN organiser_profile_id uuid REFERENCES public.organiser_profiles(id) ON DELETE SET NULL DEFAULT NULL;

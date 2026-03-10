@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -79,7 +79,7 @@ const MessageThread = () => {
     queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
     queryClient.invalidateQueries({ queryKey: ["group-chats"] });
 
-    // Notify other group members
+    // Notify other group members (fire-and-forget)
     const { data: members } = await supabase
       .from("group_chat_members")
       .select("user_id")
@@ -107,6 +107,18 @@ const MessageThread = () => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
+
+  // Realtime subscription for group chat messages
+  useEffect(() => {
+    if (!id) return;
+    const channel = supabase
+      .channel(`group-chat-${id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_chat_messages", filter: `group_chat_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id, queryClient]);
 
   const isOwnMessage = (msg: ChatMessage) => {
     if (!user) return false;
