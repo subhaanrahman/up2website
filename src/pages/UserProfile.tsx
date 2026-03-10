@@ -566,7 +566,7 @@ const UserProfile = () => {
                 <Instagram className="h-5 w-5" />
               </Button>
             ) : null}
-            <ShareProfileSheet profileUrl={`/user/${userId}`} displayName={displayName} />
+            <ShareProfileSheet profileUrl={`/user/${userId}`} displayName={displayName} avatarUrl={profile?.avatar_url} />
           </div>
 
           {profile.bio && (
