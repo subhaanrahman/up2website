@@ -175,4 +175,34 @@ All colors MUST be HSL.
     @apply font-bold uppercase;
     letter-spacing: 0.04em;
   }
+
+  @keyframes snakeSlide {
+    0% {
+      transform: translateY(-72px) translateX(0px) rotate(-6deg);
+    }
+    55% {
+      transform: translateY(10px) translateX(6px) rotate(5deg);
+    }
+    75% {
+      transform: translateY(-6px) translateX(-4px) rotate(-3deg);
+    }
+    88% {
+      transform: translateY(3px) translateX(2px) rotate(2deg);
+    }
+    100% {
+      transform: translateY(0px) translateX(0px) rotate(0deg);
+    }
+  }
+
+  .animate-snakeSlide {
+    animation: snakeSlide 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+    will-change: transform;
+    transform-origin: center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-snakeSlide {
+      animation: none;
+    }
+  }
 }
