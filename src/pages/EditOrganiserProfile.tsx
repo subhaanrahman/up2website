@@ -101,18 +101,6 @@ const EditOrganiserProfile = () => {
     }
   };
 
-  const addTag = (tag: string) => {
-    const trimmed = tag.trim();
-    if (trimmed && !formData.tags.includes(trimmed) && formData.tags.length < 20) {
-      setFormData({ ...formData, tags: [...formData.tags, trimmed] });
-    }
-    setNewTag("");
-  };
-
-  const removeTag = (tag: string) => {
-    setFormData({ ...formData, tags: formData.tags.filter((t) => t !== tag) });
-  };
-
   const updateOpeningHours = (day: string, value: string) => {
     setFormData({
       ...formData,
