@@ -284,7 +284,7 @@ const Tickets = () => {
           ) : allEvents.length > 0 ? (
             <div className="space-y-3">
               {/* Past events grouped */}
-              {renderGroupedSection(pastGrouped, [...PAST_GROUPS].reverse(), true)}
+              {renderGroupedSection(pastGrouped, PAST_GROUPS, true)}
 
               {/* Today divider — prominent */}
               {pastEvents.length > 0 && (
