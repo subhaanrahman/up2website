@@ -242,14 +242,6 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
                     <Image className="h-[18px] w-[18px]" />
                   </Button>
                   <GifPicker onSelect={handleGifSelect} />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-primary"
-                    onClick={() => setShowCollabPicker(prev => !prev)}
-                  >
-                    <UserPlus className="h-[18px] w-[18px]" />
-                  </Button>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button
