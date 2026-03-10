@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -185,23 +185,21 @@ const Tickets = () => {
     container.scrollTop = offset;
   }, []);
 
-  // Use useLayoutEffect so scroll happens before paint — user never sees wrong position
+  // Scroll to Today on initial load — useLayoutEffect fires before paint
   useLayoutEffect(() => {
-    if (!plansLoading && plannedEvents && activeSection === "plans" && !hasScrolled.current) {
-      hasScrolled.current = true;
+    if (!plansLoading && plannedEvents && activeSection === "plans") {
       scrollToToday();
-      // Delayed correction for image load layout shifts
-      const timer = setTimeout(scrollToToday, 400);
-      return () => clearTimeout(timer);
     }
   }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
 
-  // Reset scroll flag when switching to plans tab
-  useLayoutEffect(() => {
-    if (activeSection === "plans") {
-      hasScrolled.current = false;
+  // Delayed correction for image load layout shifts
+  useEffect(() => {
+    if (!plansLoading && plannedEvents && activeSection === "plans") {
+      const t1 = setTimeout(scrollToToday, 300);
+      const t2 = setTimeout(scrollToToday, 600);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [activeSection]);
+  }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
 
   const displayName = profile?.displayName || "";
   const username = profile?.username || displayName || user?.phone || "User";
