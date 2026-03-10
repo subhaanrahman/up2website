@@ -34,7 +34,7 @@ interface ActiveProfileContextValue {
   refetchOrganiserProfiles: () => Promise<void>;
 }
 
-const ActiveProfileContext = createContext<ActiveProfileContextValue | undefined>(undefined);
+export const ActiveProfileContext = createContext<ActiveProfileContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "active_profile";
 

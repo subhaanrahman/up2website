@@ -2,16 +2,20 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, Search, MessageSquare, User, Ticket, LayoutDashboard, Plus, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { useActiveProfile } from "@/contexts/ActiveProfileContext";
+import { useContext } from "react";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImg from "@/assets/logo.png";
+
+// Import context directly to avoid the throwing hook when provider isn't mounted yet
+import { ActiveProfileContext } from "@/contexts/ActiveProfileContext";
 
 const DesktopSidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const { isOrganiser } = useActiveProfile();
+  const activeProfileCtx = useContext(ActiveProfileContext);
+  const isOrganiser = activeProfileCtx?.isOrganiser ?? false;
   const { data: profile } = useProfile(user?.id);
 
   const navItems = [
