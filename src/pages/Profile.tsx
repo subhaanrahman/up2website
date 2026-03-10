@@ -12,6 +12,9 @@ import {
   ChevronRight,
   BadgeCheck,
   Users,
+  Disc,
+  Megaphone,
+  Mic2,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -180,7 +183,7 @@ const Profile = () => {
 
       <main className="px-4 pt-8 max-w-lg mx-auto">
         <div className="text-center">
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-3">
             <button
               onClick={() => setQrOpen(true)}
               className="cursor-pointer transition-transform hover:scale-105"
@@ -203,11 +206,11 @@ const Profile = () => {
             )}
           </div>
 
-          <p className="text-muted-foreground mb-4 tracking-[0.1em] mt-1 text-base">
+          <p className="text-muted-foreground mb-3 tracking-[0.1em] mt-0.5 text-base">
             @{isOrganiser && activeOrg ? activeOrg.username : profile?.username || username.toLowerCase().replace(/\s+/g, "")}
           </p>
 
-          <div className="flex items-center justify-center gap-6 mb-5">
+          <div className="flex items-center justify-center gap-6 mb-3">
             <button
               onClick={() => !isOrganiser && navigate("/profile/friends")}
               className={`text-center ${!isOrganiser ? "cursor-pointer" : ""}`}
@@ -222,7 +225,7 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-center gap-2 mb-5">
+          <div className="flex items-center justify-center gap-2 mb-3">
             <Link to={isOrganiser ? "/profile/edit-organiser" : "/profile/edit"}>
               <Button className="px-8 h-11 rounded-full font-bold tracking-widest text-sm">EDIT</Button>
             </Link>
@@ -236,15 +239,34 @@ const Profile = () => {
           </div>
 
           {bio && (
-            <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-3">{bio}</p>
+            <p className="text-foreground text-sm leading-relaxed max-w-[300px] mx-auto mb-2">{bio}</p>
           )}
 
           {(classification || city) && (
             <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm mb-3 mx-auto">
-              <MapPin className="h-3.5 w-3.5 text-primary" />
-              <span className="text-sm font-medium tracking-wide text-foreground/80">
-                {[classification, city].filter(Boolean).join(" · ")}
-              </span>
+              {classification && (
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide text-foreground/80">
+                  <span>{classification}</span>
+                  {classification.toLowerCase() === "dj" && (
+                    <Disc className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  {classification.toLowerCase() === "promoter" && (
+                    <Megaphone className="h-3.5 w-3.5 text-primary" />
+                  )}
+                  {classification.toLowerCase() === "artist" && (
+                    <Mic2 className="h-3.5 w-3.5 text-primary" />
+                  )}
+                </span>
+              )}
+              {classification && city && (
+                <span className="text-sm font-medium tracking-wide text-foreground/40">·</span>
+              )}
+              {city && (
+                <span className="inline-flex items-center gap-1 text-sm font-medium tracking-wide text-foreground/80">
+                  <span>{city}</span>
+                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                </span>
+              )}
             </div>
           )}
 
