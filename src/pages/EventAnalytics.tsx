@@ -1,7 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,7 +8,7 @@ const EventAnalytics = () => {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  // Fetch the event's organiser_profile_id
+  // Fetch the event details
   const { data: event } = useQuery({
     queryKey: ["event-for-analytics", id],
     queryFn: async () => {
@@ -24,13 +23,8 @@ const EventAnalytics = () => {
     enabled: !!id,
   });
 
-  const { data: analytics, isLoading } = useDashboardAnalytics(
-    event?.organiser_profile_id || undefined,
-    "all"
-  );
-
   // Fetch event-specific ticket counts
-  const { data: eventOrders } = useQuery({
+  const { data: eventOrders, isLoading } = useQuery({
     queryKey: ["event-orders-stats", id],
     queryFn: async () => {
       if (!id) return { totalRevenue: 0, ticketsSold: 0, attendees: 0 };
@@ -86,7 +80,9 @@ const EventAnalytics = () => {
         </div>
 
         {isLoading && (
-          <p className="text-muted-foreground text-sm text-center">Loading analytics…</p>
+          <div className="flex items-center justify-center py-8">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
         )}
       </main>
 

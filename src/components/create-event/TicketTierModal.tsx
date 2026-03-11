@@ -22,9 +22,14 @@ const TicketTierModal = ({ open, onOpenChange, onSave, existing }: TicketTierMod
   const [name, setName] = useState(existing?.name || "");
   const [price, setPrice] = useState(existing?.price?.toString() || "");
   const [quantity, setQuantity] = useState(existing?.availableQuantity?.toString() || "");
+  const [nameError, setNameError] = useState("");
 
   const handleSave = () => {
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setNameError("Tier name is required");
+      return;
+    }
+    setNameError("");
     onSave({
       id: existing?.id || crypto.randomUUID(),
       name: name.trim(),
@@ -46,7 +51,13 @@ const TicketTierModal = ({ open, onOpenChange, onSave, existing }: TicketTierMod
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-foreground">Name</Label>
-            <Input placeholder="e.g. General Admission" value={name} onChange={(e) => setName(e.target.value)} className="bg-background border-border" />
+            <Input
+              placeholder="e.g. General Admission"
+              value={name}
+              onChange={(e) => { setName(e.target.value); if (nameError) setNameError(""); }}
+              className={`bg-background border-border ${nameError ? "border-destructive" : ""}`}
+            />
+            {nameError && <p className="text-xs text-destructive mt-1">{nameError}</p>}
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Price (R)</Label>

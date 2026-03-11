@@ -51,6 +51,23 @@ const ManageEvent = () => {
   const orders = manageData?.orders || [];
   const rsvps = manageData?.rsvps || [];
 
+  // Fetch refunds for all orders belonging to this event
+  const { data: refundsData = [], isLoading: refundsLoading } = useQuery({
+    queryKey: ["event-refunds", id],
+    queryFn: async () => {
+      if (!orders.length) return [];
+      const orderIds = orders.map((o: any) => o.id);
+      const { data, error } = await supabase
+        .from("refunds")
+        .select("id, order_id, stripe_refund_id, amount_cents, reason, status, created_at")
+        .in("order_id", orderIds)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!id && orders.length > 0,
+  });
+
   // Fetch event media
   const { data: media, refetch: refetchMedia } = useQuery({
     queryKey: ["event-media", id],
@@ -384,20 +401,72 @@ const ManageEvent = () => {
 
         {/* REFUNDS TAB */}
         <TabsContent value="refunds" className="px-4 mt-0">
-          <div className="py-6">
-            <h3 className="font-semibold text-foreground mb-3">Refund Requests</h3>
-            <div className="text-center py-8 border border-dashed border-border rounded-xl">
-              <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No refund requests found</p>
+          {refundsLoading ? (
+            <div className="py-12 flex items-center justify-center">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
-          </div>
-          <div className="py-6">
-            <h3 className="font-semibold text-foreground mb-3">Processed Refunds</h3>
-            <div className="text-center py-8 border border-dashed border-border rounded-xl">
-              <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No refund orders found</p>
-            </div>
-          </div>
+          ) : (
+            <>
+              {/* Pending requests */}
+              <div className="py-6">
+                <h3 className="font-semibold text-foreground mb-3">Refund Requests</h3>
+                {refundsData.filter((r: any) => r.status === "pending").length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-border rounded-xl">
+                    <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No pending refund requests</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {refundsData.filter((r: any) => r.status === "pending").map((refund: any) => (
+                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-xl border border-border">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">Order {refund.order_id.slice(0, 8)}</p>
+                          {refund.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{refund.reason}</p>}
+                          <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(refund.created_at), "d MMM yyyy")}</p>
+                        </div>
+                        <div className="text-right ml-3 flex-shrink-0">
+                          <p className="text-sm font-semibold text-foreground">R{(refund.amount_cents / 100).toFixed(2)}</p>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-500 font-medium">Pending</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Processed refunds */}
+              <div className="py-6">
+                <h3 className="font-semibold text-foreground mb-3">Processed Refunds</h3>
+                {refundsData.filter((r: any) => r.status !== "pending").length === 0 ? (
+                  <div className="text-center py-8 border border-dashed border-border rounded-xl">
+                    <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No processed refunds</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {refundsData.filter((r: any) => r.status !== "pending").map((refund: any) => (
+                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-xl border border-border">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">Order {refund.order_id.slice(0, 8)}</p>
+                          {refund.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{refund.reason}</p>}
+                          {refund.stripe_refund_id && <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">{refund.stripe_refund_id}</p>}
+                          <p className="text-xs text-muted-foreground mt-0.5">{format(new Date(refund.created_at), "d MMM yyyy")}</p>
+                        </div>
+                        <div className="text-right ml-3 flex-shrink-0">
+                          <p className="text-sm font-semibold text-foreground">R{(refund.amount_cents / 100).toFixed(2)}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            refund.status === "succeeded" ? "bg-green-500/10 text-green-500" :
+                            refund.status === "failed" ? "bg-destructive/10 text-destructive" :
+                            "bg-secondary text-muted-foreground"
+                          }`}>{refund.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </TabsContent>
       </Tabs>
 

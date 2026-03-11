@@ -6,11 +6,6 @@ import type { EventEntity, Rsvp } from '../domain/types';
 
 export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
-export const EVENT_CATEGORIES = [
-  'party', 'music', 'networking', 'food', 'sports', 'arts', 'charity', 'festival', 'comedy', 'other'
-] as const;
-export type EventCategory = (typeof EVENT_CATEGORIES)[number];
-
 function mapEventRow(row: Record<string, unknown>): EventEntity {
   return {
     id: row.id as string,
@@ -21,7 +16,6 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     eventDate: row.event_date as string,
     endDate: row.end_date as string | null,
     coverImage: row.cover_image as string | null,
-    category: row.category as string | null,
     maxGuests: row.max_guests as number | null,
     isPublic: row.is_public as boolean,
     createdAt: row.created_at as string,
@@ -30,15 +24,12 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
 }
 
 export const eventsRepository = {
-  async list(options?: { limit?: number; category?: string }): Promise<EventEntity[]> {
+  async list(options?: { limit?: number }): Promise<EventEntity[]> {
     let query = supabase
       .from('events')
       .select('*')
       .order('event_date', { ascending: true });
 
-    if (options?.category) {
-      query = query.eq('category', options.category);
-    }
     if (options?.limit) {
       query = query.limit(options.limit);
     }
@@ -48,7 +39,7 @@ export const eventsRepository = {
     return (data || []).map(mapEventRow);
   },
 
-  async search(options: { query?: string; filter?: EventFilter; category?: EventCategory; city?: string; limit?: number }): Promise<EventEntity[]> {
+  async search(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }): Promise<EventEntity[]> {
     const now = new Date();
 
     // For "free" filter we need to join ticket_tiers; otherwise plain events query
@@ -65,10 +56,6 @@ export const eventsRepository = {
     if (options.query?.trim()) {
       const term = `%${options.query.trim()}%`;
       q = q.or(`title.ilike.${term},location.ilike.${term}`);
-    }
-
-    if (options.category) {
-      q = q.eq('category', options.category);
     }
 
     if (options.city) {

@@ -9,7 +9,6 @@ export interface EventEntity {
   eventDate: string;
   endDate: string | null;
   coverImage: string | null;
-  category: string | null;
   maxGuests: number | null;
   isPublic: boolean;
   createdAt: string;
@@ -22,7 +21,6 @@ export interface CreateEventInput {
   location?: string;
   eventDate: string;
   endDate?: string;
-  category?: string;
   maxGuests?: number;
   isPublic?: boolean;
   coverImage?: string;

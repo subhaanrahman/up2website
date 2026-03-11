@@ -20,6 +20,7 @@ import { useDashboardAnalytics } from "@/hooks/useDashboardAnalytics";
 const OrganiserDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [timeframe, setTimeframe] = useState("past_month");
+  const [selectedEventId, setSelectedEventId] = useState("all");
   const [manageEvent, setManageEvent] = useState<{id: string;title: string;} | null>(null);
   const { activeProfile } = useActiveProfile();
 
@@ -27,6 +28,32 @@ const OrganiserDashboard = () => {
     activeProfile?.id,
     timeframe
   );
+
+  // Per-event stats when an event is selected
+  const { data: eventStats, isLoading: eventStatsLoading } = useQuery({
+    queryKey: ["event-stats-dashboard", selectedEventId],
+    queryFn: async () => {
+      if (selectedEventId === "all" || !selectedEventId) return null;
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("amount_cents, quantity, status")
+        .eq("event_id", selectedEventId)
+        .eq("status", "confirmed");
+      const totalRevenue = orders?.reduce((s: number, o: any) => s + o.amount_cents, 0) || 0;
+      const ticketsSold = orders?.reduce((s: number, o: any) => s + o.quantity, 0) || 0;
+      const { count: attendees } = await supabase
+        .from("rsvps")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", selectedEventId)
+        .eq("status", "going");
+      const { count: guestlist } = await supabase
+        .from("rsvps")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", selectedEventId);
+      return { totalRevenue, ticketsSold, attendees: attendees || 0, guestlist: guestlist || 0 };
+    },
+    enabled: selectedEventId !== "all",
+  });
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["organiser-events", activeProfile?.id],
@@ -150,6 +177,19 @@ const OrganiserDashboard = () => {
               
               <Download className="h-4 w-4" />
             </Button>
+            {events && events.length > 0 && (
+              <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                <SelectTrigger className="h-auto w-auto max-w-[120px] gap-1.5 border-0 bg-secondary px-3 py-1.5 rounded-full text-xs text-muted-foreground shadow-none focus:ring-0 truncate">
+                  <SelectValue placeholder="All Events" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Events</SelectItem>
+                  {events.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Select value={timeframe} onValueChange={setTimeframe}>
               <SelectTrigger className="h-auto w-auto gap-1.5 border-0 bg-secondary px-3 py-1.5 rounded-full text-xs text-muted-foreground shadow-none focus:ring-0">
                 <Clock className="h-3 w-3" />
@@ -169,37 +209,50 @@ const OrganiserDashboard = () => {
 
       {/* Stats Grid */}
       <div className="px-4 grid grid-cols-2 gap-3 mb-6">
-        <StatCard
-          label="Total Revenue"
-          value={analyticsLoading ? "..." : formatCurrency(analytics?.total_revenue_cents || 0)} />
-        
-        <StatCard
-          label="Total Attendees"
-          value={analyticsLoading ? "..." : String(analytics?.total_attendees || 0)} />
-        
-        <StatCard
-          label="Net Tickets Sold"
-          value={analyticsLoading ? "..." : String(analytics?.net_tickets_sold || 0)}
-          subtitle={
-          analytics?.total_ticket_capacity ?
-          `${analytics.tickets_sold_pct}% of ${analytics.total_ticket_capacity} capacity` :
-          undefined
-          } />
-        
-        <StatCard
-          label="VIP / Guestlist"
-          value={analyticsLoading ? "..." : String(analytics?.vip_guestlist_count || 0)} />
-        
-        <StatCard
-          label="Views / Impressions"
-          value={analyticsLoading ? "..." : String(analytics?.total_views || 0)}
-          subtitle="Tracking coming soon" />
-        
-        <StatCard
-          label="Conversion Rate"
-          value={analyticsLoading ? "..." : `${analytics?.conversion_rate_pct || 0}%`}
-          subtitle="Orders ÷ Views" />
-        
+        {selectedEventId === "all" ? (
+          <>
+            <StatCard
+              label="Total Revenue"
+              value={analyticsLoading ? "..." : formatCurrency(analytics?.total_revenue_cents || 0)} />
+            <StatCard
+              label="Total Attendees"
+              value={analyticsLoading ? "..." : String(analytics?.total_attendees || 0)} />
+            <StatCard
+              label="Net Tickets Sold"
+              value={analyticsLoading ? "..." : String(analytics?.net_tickets_sold || 0)}
+              subtitle={
+              analytics?.total_ticket_capacity ?
+              `${analytics.tickets_sold_pct}% of ${analytics.total_ticket_capacity} capacity` :
+              undefined
+              } />
+            <StatCard
+              label="VIP / Guestlist"
+              value={analyticsLoading ? "..." : String(analytics?.vip_guestlist_count || 0)} />
+            <StatCard
+              label="Views / Impressions"
+              value={analyticsLoading ? "..." : String(analytics?.total_views || 0)}
+              subtitle="Tracking coming soon" />
+            <StatCard
+              label="Conversion Rate"
+              value={analyticsLoading ? "..." : `${analytics?.conversion_rate_pct || 0}%`}
+              subtitle="Orders ÷ Views" />
+          </>
+        ) : (
+          <>
+            <StatCard
+              label="Revenue"
+              value={eventStatsLoading ? "..." : formatCurrency(eventStats?.totalRevenue || 0)} />
+            <StatCard
+              label="Tickets Sold"
+              value={eventStatsLoading ? "..." : String(eventStats?.ticketsSold || 0)} />
+            <StatCard
+              label="Attendees (RSVP)"
+              value={eventStatsLoading ? "..." : String(eventStats?.attendees || 0)} />
+            <StatCard
+              label="Total RSVPs"
+              value={eventStatsLoading ? "..." : String(eventStats?.guestlist || 0)} />
+          </>
+        )}
       </div>
 
       {/* Revenue Chart */}

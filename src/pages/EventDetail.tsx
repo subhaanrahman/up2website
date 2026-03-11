@@ -491,7 +491,13 @@ const EventDetail = () => {
                 <BadgeCheck className="h-5 w-5 text-primary fill-primary stroke-primary-foreground" />
               )}
             </Link>
-            <button className="h-10 w-10 rounded-full flex items-center justify-center">
+            <button
+              className="h-10 w-10 rounded-full flex items-center justify-center"
+              onClick={() => eventAddress && window.open(
+                `https://maps.google.com/maps?q=${encodeURIComponent(eventAddress)}`,
+                "_blank"
+              )}
+            >
               <MapPin className="h-5 w-5 text-foreground" />
             </button>
           </div>

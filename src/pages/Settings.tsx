@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CreditCard,
   Sparkles,
+  Ban,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,7 @@ const settingsItems = [
   { icon: CreditCard, label: "Payment Methods", path: "/settings/payment-methods", description: "Manage saved payment methods" },
   { icon: Music, label: "Connect Music Apps", path: "/settings/music", description: "Link your music streaming services" },
   { icon: Shield, label: "Privacy Options", path: "/settings/privacy", description: "Control your privacy settings" },
+  { icon: Ban, label: "Blocked Users", path: "/settings/blocked-users", description: "Manage users you've blocked" },
   { icon: HelpCircle, label: "Help Center", path: "/settings/help", description: "FAQs and support resources" },
   { icon: Mail, label: "Contact Us", path: "/settings/contact", description: "Get in touch with our team" },
   { icon: Info, label: "About", path: "/settings/about", description: "Learn more about the app" },

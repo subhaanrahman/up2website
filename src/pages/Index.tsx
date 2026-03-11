@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus, Calendar, DollarSign, Loader2 } from "lucide-react";
+import { Bell, Plus, Calendar, DollarSign, Loader2, Users, Sparkles } from "lucide-react";
 import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
@@ -139,8 +139,26 @@ const Index = () => {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : feedPosts.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground text-sm">
-            No posts yet. Be the first to post!
+          <div className="flex flex-col items-center py-14 px-6 text-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground text-base">Your feed is empty</p>
+              <p className="text-sm text-muted-foreground mt-1">Follow friends and organisers to see their posts here</p>
+            </div>
+            <div className="flex gap-3 mt-1">
+              <Link to="/search">
+                <Button size="sm" className="rounded-full px-5 text-xs font-bold tracking-widest">
+                  Browse Events
+                </Button>
+              </Link>
+              <Link to="/profile/friends">
+                <Button size="sm" variant="outline" className="rounded-full px-5 text-xs font-bold tracking-widest">
+                  Find Friends
+                </Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <>

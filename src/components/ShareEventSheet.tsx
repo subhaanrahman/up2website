@@ -35,7 +35,7 @@ const CARD_THEMES = [
   { bg: "from-primary to-primary/70", dot: "bg-primary" },
   { bg: "from-purple-600 to-violet-900", dot: "bg-purple-600" },
   { bg: "from-zinc-700 to-zinc-900", dot: "bg-zinc-700" },
-  { bg: "from-rose-600 to-pink-900", dot: "bg-rose-600" },
+  { bg: "from-[#ff385c] to-[#7a1828]", dot: "bg-[#ff385c]" },
 ];
 
 const ShareEventSheet = ({
@@ -192,7 +192,7 @@ const ShareEventSheet = ({
     0: { cardBg: "#7c3aed", accent: "#a855f7" },
     1: { cardBg: "#7c3aed", accent: "#8b5cf6" },
     2: { cardBg: "#3f3f46", accent: "#71717a" },
-    3: { cardBg: "#be123c", accent: "#e11d48" },
+    3: { cardBg: "#cc2a47", accent: "#ff385c" },
   };
 
   const shareOptions = [

@@ -95,6 +95,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
         blocked_id: authorId,
       });
       if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["feed-context"] });
+      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       toast({ title: "User blocked", description: "You won't see their posts anymore." });
     } catch {
       toast({ title: "Failed to block user", variant: "destructive" });

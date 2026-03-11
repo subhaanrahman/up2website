@@ -37,6 +37,7 @@ const CreateEvent = () => {
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [publishAt, setPublishAt] = useState("");
+  const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; location?: string }>({});
 
   // Details state
   const [title, setTitle] = useState("");
@@ -44,7 +45,6 @@ const CreateEvent = () => {
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
   const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
   const [cohostInput, setCohostInput] = useState("");
 
@@ -109,7 +109,6 @@ const CreateEvent = () => {
         description: description || undefined,
         location: location || undefined,
         eventDate: eventDateTime,
-        category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
         isPublic: false, // draft events are private
         organiserProfileId: orgProfileId,
@@ -129,10 +128,15 @@ const CreateEvent = () => {
     }
 
     if (!title || !date || !location) {
-      toast({ title: "Missing information", description: "Please fill in title, date, and location", variant: "destructive" });
+      setFormErrors({
+        title: !title ? "Event title is required" : undefined,
+        date: !date ? "Date is required" : undefined,
+        location: !location ? "Location is required" : undefined,
+      });
       setActiveTab("details");
       return;
     }
+    setFormErrors({});
 
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
@@ -147,7 +151,6 @@ const CreateEvent = () => {
         description: description || undefined,
         location,
         eventDate: eventDateTime,
-        category: category || "party",
         maxGuests: capacity ? parseInt(capacity) : undefined,
         organiserProfileId: orgProfileId,
         publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
@@ -164,6 +167,13 @@ const CreateEvent = () => {
           role: "cohost",
         }));
         await supabase.from("event_cohosts").insert(cohostRows);
+      }
+
+      // Save reminder preferences to event_reminders table
+      if (reminders.length > 0 && eventId) {
+        await supabase.from("event_reminders").insert(
+          reminders.map(r => ({ event_id: eventId, reminder_type: r, is_enabled: true }))
+        );
       }
 
       toast({
@@ -221,9 +231,9 @@ const CreateEvent = () => {
               time={time} setTime={setTime}
               location={location} setLocation={setLocation}
               description={description} setDescription={setDescription}
-              category={category} setCategory={setCategory}
               cohosts={cohosts} setCohosts={setCohosts}
               cohostInput={cohostInput} setCohostInput={setCohostInput}
+              errors={formErrors}
             />
           )}
           {activeTab === "ticketing" && (

@@ -1,13 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { X, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,12 +24,11 @@ interface EventDetailsFormProps {
   setLocation: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
-  category: string;
-  setCategory: (v: string) => void;
   cohosts: CohostEntry[];
   setCohosts: (v: CohostEntry[]) => void;
   cohostInput: string;
   setCohostInput: (v: string) => void;
+  errors?: { title?: string; date?: string; location?: string };
 }
 
 interface SearchResult {
@@ -54,9 +46,9 @@ const EventDetailsForm = ({
   time, setTime,
   location, setLocation,
   description, setDescription,
-  category, setCategory,
   cohosts, setCohosts,
   cohostInput, setCohostInput,
+  errors = {},
 }: EventDetailsFormProps) => {
   const { user } = useAuth();
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -129,7 +121,7 @@ const EventDetailsForm = ({
     <div className="space-y-3">
 
       {/* Title */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+      <div className={`bg-card rounded-2xl border px-4 pt-4 pb-4 ${errors.title ? "border-destructive" : "border-border/50"}`}>
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Event Title *</p>
         <input
           value={title}
@@ -137,10 +129,11 @@ const EventDetailsForm = ({
           placeholder="Give your event a name"
           className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
         />
+        {errors.title && <p className="text-xs text-destructive mt-1">{errors.title}</p>}
       </div>
 
       {/* Date + Time */}
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className={`bg-card rounded-2xl border overflow-hidden ${errors.date ? "border-destructive" : "border-border/50"}`}>
         <div className="px-4 pt-4 pb-3">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Date *</p>
           <input
@@ -149,6 +142,7 @@ const EventDetailsForm = ({
             onChange={(e) => setDate(e.target.value)}
             className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
           />
+          {errors.date && <p className="text-xs text-destructive mt-1">{errors.date}</p>}
         </div>
         <div className="h-px bg-border/50 mx-4" />
         <div className="px-4 pt-3 pb-4">
@@ -163,7 +157,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Location */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+      <div className={`bg-card rounded-2xl border px-4 pt-4 pb-4 ${errors.location ? "border-destructive" : "border-border/50"}`}>
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Location *</p>
         <input
           value={location}
@@ -171,27 +165,7 @@ const EventDetailsForm = ({
           placeholder="Where's the event?"
           className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
         />
-      </div>
-
-      {/* Category */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Category</p>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="border-0 p-0 h-auto bg-transparent text-[15px] font-medium shadow-none focus:ring-0 focus:outline-none">
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="party">🎉 Party</SelectItem>
-            <SelectItem value="social">🥂 Social</SelectItem>
-            <SelectItem value="dinner">🍽️ Dinner</SelectItem>
-            <SelectItem value="brunch">🥞 Brunch</SelectItem>
-            <SelectItem value="concert">🎵 Concert</SelectItem>
-            <SelectItem value="festival">🎪 Festival</SelectItem>
-            <SelectItem value="sports">⚽ Sports</SelectItem>
-            <SelectItem value="networking">🤝 Networking</SelectItem>
-            <SelectItem value="other">📌 Other</SelectItem>
-          </SelectContent>
-        </Select>
+        {errors.location && <p className="text-xs text-destructive mt-1">{errors.location}</p>}
       </div>
 
       {/* Description */}

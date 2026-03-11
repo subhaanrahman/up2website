@@ -46,6 +46,8 @@ import EventAnalytics from "./pages/EventAnalytics";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
 import PaymentMethods from "./pages/PaymentMethods";
 import EventEmbed from "./pages/EventEmbed";
+import BlockedUsers from "./pages/BlockedUsers";
+import MusicCallback from "./pages/MusicCallback";
 
 const queryClient = new QueryClient();
 
@@ -95,12 +97,14 @@ const App = () => (
               <Route path="/settings/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
               <Route path="/settings/account" element={<ProtectedRoute><ManageAccount /></ProtectedRoute>} />
               <Route path="/settings/music" element={<ProtectedRoute><ConnectMusic /></ProtectedRoute>} />
+              <Route path="/settings/music/callback" element={<ProtectedRoute><MusicCallback /></ProtectedRoute>} />
               <Route path="/settings/contact" element={<ProtectedRoute><ContactUs /></ProtectedRoute>} />
               <Route path="/settings/email-verification" element={<ProtectedRoute><EmailVerification /></ProtectedRoute>} />
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
               <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
               <Route path="/settings/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
+              <Route path="/settings/blocked-users" element={<ProtectedRoute><BlockedUsers /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

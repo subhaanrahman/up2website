@@ -1,27 +1,27 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsService } from '@/features/events';
 import { eventsApi, rsvpApi } from '@/api';
-import type { CreateEventInput, UpdateEventInput, EventFilter, EventCategory } from '@/features/events';
+import type { CreateEventInput, UpdateEventInput, EventFilter } from '@/features/events';
 
 
 
 export const eventKeys = {
   all: ['events'] as const,
-  list: (filters?: { category?: string }) => [...eventKeys.all, 'list', filters] as const,
+  list: (filters?: { limit?: number }) => [...eventKeys.all, 'list', filters] as const,
   search: (filters: Record<string, unknown>) => [...eventKeys.all, 'search', filters] as const,
   detail: (id: string) => [...eventKeys.all, 'detail', id] as const,
   hostEvents: (hostId: string) => [...eventKeys.all, 'host', hostId] as const,
   rsvps: (eventId: string) => [...eventKeys.all, 'rsvps', eventId] as const,
 };
 
-export function useEvents(options?: { category?: string; limit?: number }) {
+export function useEvents(options?: { limit?: number }) {
   return useQuery({
     queryKey: eventKeys.list(options),
     queryFn: () => eventsService.listEvents(options),
   });
 }
 
-export function useSearchEvents(options: { query?: string; filter?: EventFilter; category?: EventCategory; city?: string; limit?: number }) {
+export function useSearchEvents(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }) {
   return useQuery({
     queryKey: eventKeys.search(options),
     queryFn: () => eventsService.searchEvents(options),

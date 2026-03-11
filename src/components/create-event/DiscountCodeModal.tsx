@@ -36,16 +36,38 @@ const DiscountCodeModal = ({ open, onOpenChange, onSave, existing }: DiscountCod
   const [ticketLimitType, setTicketLimitType] = useState<"unlimited" | "limited">(existing?.ticketLimitType || "unlimited");
   const [ticketLimitAmount, setTicketLimitAmount] = useState(existing?.ticketLimitAmount?.toString() || "");
   const [revealHidden, setRevealHidden] = useState(existing?.revealHiddenTickets || false);
+  const [codeError, setCodeError] = useState("");
+  const [valueError, setValueError] = useState("");
+  const [limitError, setLimitError] = useState("");
 
   const handleSave = () => {
-    if (!code.trim()) return;
+    let hasError = false;
+    if (!code.trim()) {
+      setCodeError("Discount code is required");
+      hasError = true;
+    } else {
+      setCodeError("");
+    }
+    if (!discountValue || parseFloat(discountValue) <= 0) {
+      setValueError("Discount amount must be greater than 0");
+      hasError = true;
+    } else {
+      setValueError("");
+    }
+    if (ticketLimitType === "limited" && (!ticketLimitAmount || parseInt(ticketLimitAmount) <= 0)) {
+      setLimitError("Enter a valid ticket limit");
+      hasError = true;
+    } else {
+      setLimitError("");
+    }
+    if (hasError) return;
     onSave({
       id: existing?.id || crypto.randomUUID(),
       code: code.trim().toUpperCase(),
       discountType,
-      discountValue: parseFloat(discountValue) || 0,
+      discountValue: parseFloat(discountValue),
       ticketLimitType,
-      ticketLimitAmount: ticketLimitType === "limited" ? parseInt(ticketLimitAmount) || null : null,
+      ticketLimitAmount: ticketLimitType === "limited" ? parseInt(ticketLimitAmount) : null,
       revealHiddenTickets: revealHidden,
     });
     onOpenChange(false);
@@ -60,7 +82,13 @@ const DiscountCodeModal = ({ open, onOpenChange, onSave, existing }: DiscountCod
         <div className="space-y-4">
           <div className="space-y-2">
             <Label className="text-foreground">Code</Label>
-            <Input placeholder="e.g. EARLY20" value={code} onChange={(e) => setCode(e.target.value)} className="bg-background border-border uppercase" />
+            <Input
+              placeholder="e.g. EARLY20"
+              value={code}
+              onChange={(e) => { setCode(e.target.value); if (codeError) setCodeError(""); }}
+              className={`bg-background border-border uppercase ${codeError ? "border-destructive" : ""}`}
+            />
+            {codeError && <p className="text-xs text-destructive mt-1">{codeError}</p>}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
@@ -75,7 +103,14 @@ const DiscountCodeModal = ({ open, onOpenChange, onSave, existing }: DiscountCod
             </div>
             <div className="space-y-2">
               <Label className="text-foreground">Amount</Label>
-              <Input type="number" placeholder="0" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} className="bg-background border-border" />
+              <Input
+                type="number"
+                placeholder="0"
+                value={discountValue}
+                onChange={(e) => { setDiscountValue(e.target.value); if (valueError) setValueError(""); }}
+                className={`bg-background border-border ${valueError ? "border-destructive" : ""}`}
+              />
+              {valueError && <p className="text-xs text-destructive mt-1">{valueError}</p>}
             </div>
           </div>
           <div className="space-y-2">
@@ -88,7 +123,16 @@ const DiscountCodeModal = ({ open, onOpenChange, onSave, existing }: DiscountCod
               </SelectContent>
             </Select>
             {ticketLimitType === "limited" && (
-              <Input type="number" placeholder="Enter limit" value={ticketLimitAmount} onChange={(e) => setTicketLimitAmount(e.target.value)} className="bg-background border-border mt-2" />
+              <>
+                <Input
+                  type="number"
+                  placeholder="Enter limit"
+                  value={ticketLimitAmount}
+                  onChange={(e) => { setTicketLimitAmount(e.target.value); if (limitError) setLimitError(""); }}
+                  className={`bg-background border-border mt-2 ${limitError ? "border-destructive" : ""}`}
+                />
+                {limitError && <p className="text-xs text-destructive mt-1">{limitError}</p>}
+              </>
             )}
           </div>
           <div className="flex items-center justify-between">

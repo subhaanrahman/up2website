@@ -29,7 +29,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    --primary: 0 85% 65%;
+    --primary: 349 100% 61%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 96%;
@@ -38,7 +38,7 @@ All colors MUST be HSL.
     --muted: 0 0% 92%;
     --muted-foreground: 0 0% 45%;
 
-    --accent: 0 85% 65%;
+    --accent: 349 100% 61%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -46,20 +46,20 @@ All colors MUST be HSL.
 
     --border: 0 0% 90%;
     --input: 0 0% 90%;
-    --ring: 0 85% 65%;
+    --ring: 349 100% 61%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 9%;
-    --sidebar-primary: 0 85% 65%;
+    --sidebar-primary: 349 100% 61%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 96%;
     --sidebar-accent-foreground: 0 0% 9%;
     --sidebar-border: 0 0% 90%;
-    --sidebar-ring: 0 85% 65%;
+    --sidebar-ring: 349 100% 61%;
 
-    --chart-1: 0 85% 65%;
+    --chart-1: 349 100% 61%;
     --chart-2: 350 80% 60%;
     --chart-3: 10 90% 70%;
     --chart-4: 340 75% 55%;
@@ -95,8 +95,8 @@ All colors MUST be HSL.
     --popover: 0 0% 13%;
     --popover-foreground: 0 0% 98%;
 
-    /* Coral pink accent - matching reference */
-    --primary: 340 100% 60%;
+    /* Logo pink - #ff385c */
+    --primary: 349 100% 61%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 18%;
@@ -105,7 +105,7 @@ All colors MUST be HSL.
     --muted: 0 0% 22%;
     --muted-foreground: 0 0% 55%;
 
-    --accent: 340 100% 60%;
+    --accent: 349 100% 61%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -113,18 +113,18 @@ All colors MUST be HSL.
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 340 100% 60%;
+    --ring: 349 100% 61%;
 
     --sidebar-background: 0 0% 9%;
     --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 340 100% 60%;
+    --sidebar-primary: 349 100% 61%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 340 100% 60%;
+    --sidebar-ring: 349 100% 61%;
 
-    --chart-1: 340 100% 60%;
+    --chart-1: 349 100% 61%;
     --chart-2: 350 80% 60%;
     --chart-3: 10 90% 70%;
     --chart-4: 340 75% 55%;
