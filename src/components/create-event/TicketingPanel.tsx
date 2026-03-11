@@ -5,6 +5,7 @@ import { Plus, Edit2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import TicketTierModal, { type TicketTier } from "./TicketTierModal";
 import DiscountCodeModal, { type DiscountCode } from "./DiscountCodeModal";
+import { DateTimePicker } from "./DateTimePicker";
 
 interface TicketingPanelProps {
   capacity: string;
@@ -174,16 +175,12 @@ const TicketingPanel = ({
       </div>
 
       {/* Tickets available from */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Tickets Available From</p>
-        <input
-          type="datetime-local"
-          value={ticketsAvailableFrom}
-          onChange={(e) => setTicketsAvailableFrom(e.target.value)}
-          className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
-        />
-        <p className="text-xs text-muted-foreground mt-1">Leave empty to open immediately</p>
-      </div>
+      <DateTimePicker
+        value={ticketsAvailableFrom}
+        onChange={setTicketsAvailableFrom}
+        label="Tickets Available From"
+        helperText="Leave empty to open immediately"
+      />
 
       <TicketTierModal open={tierModalOpen} onOpenChange={setTierModalOpen} onSave={handleSaveTier} existing={editingTier} />
       <DiscountCodeModal open={discountModalOpen} onOpenChange={setDiscountModalOpen} onSave={handleSaveDiscount} existing={editingDiscount} />

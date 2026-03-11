@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin, Trash2, Flag, Ban } from "lucide-react";
 import { getOptimizedUrl } from "@/lib/imageUtils";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { formatDistanceToNow, format } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
@@ -167,7 +168,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
             <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
               <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
                 <img
-                  src={eventData.cover_image || ""}
+                  src={eventData.cover_image || getEventFlyer(eventData.id)}
                   alt={eventData.title}
                   className="w-full h-full object-cover"
                   loading="lazy"

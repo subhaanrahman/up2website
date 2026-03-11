@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { X, Ticket, ClipboardList, Bell, Clock, FileText } from "lucide-react";
+import { X, Ticket, ClipboardList, Bell, FileText } from "lucide-react";
+import { DateTimePicker } from "@/components/create-event/DateTimePicker";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
@@ -264,20 +265,13 @@ const CreateEvent = () => {
           {/* Schedule + publish on details tab */}
           {activeTab === "details" && (
             <div className="pt-3 space-y-3">
-              <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
-                <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" /> Schedule Publishing
-                </p>
-                <input
-                  type="datetime-local"
-                  value={publishAt}
-                  onChange={(e) => setPublishAt(e.target.value)}
-                  className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {publishAt ? "Event will auto-publish at this time" : "Leave empty to publish immediately"}
-                </p>
-              </div>
+              <DateTimePicker
+                value={publishAt}
+                onChange={setPublishAt}
+                label="Schedule Publishing"
+                helperText="Leave empty to publish immediately"
+                helperTextActive="Event will auto-publish at this time"
+              />
               <Button
                 type="button"
                 className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm"

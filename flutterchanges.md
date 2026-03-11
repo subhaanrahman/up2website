@@ -33,6 +33,81 @@
 
 <!-- New entries are added below this line, newest first -->
 
+### 2026-03-11 — Extract reusable DateTimePicker and apply across all forms
+
+**Files changed:** `src/components/create-event/DateTimePicker.tsx` (new), `src/components/create-event/EventDetailsForm.tsx`, `src/components/create-event/GuestlistPanel.tsx`, `src/components/create-event/TicketingPanel.tsx`, `src/pages/CreateEvent.tsx`
+
+**What changed (React/TS):**
+- Extracted reusable `DateTimePicker`, `DatePicker`, and `TimePicker` components into a shared file (`DateTimePicker.tsx`).
+- Replaced all remaining `<input type="datetime-local">` across the app:
+  - **GuestlistPanel** — guestlist deadline
+  - **TicketingPanel** — tickets available from date
+  - **CreateEvent** — schedule publishing date
+- Removed the inline `TimePicker` duplicate from `EventDetailsForm`, now imports the shared version.
+- Zero native HTML date/time/datetime-local inputs remain in the codebase.
+
+**Flutter migration notes:**
+- Create a reusable `DateTimePicker` widget that combines a date row and time row (matching the pattern in this React component). Use it everywhere a datetime-local was used.
+- For the combined variant (`DateTimePicker`), store the value as a single `DateTime?` and split into date/time display internally.
+- For the separate variant (event details), expose `DatePicker` and `TimePicker` as standalone widgets that accept/emit `String` date and time values respectively.
+- Ensure all forms (create event details, guestlist deadline, ticketing availability, schedule publishing) use these shared widgets for UI consistency.
+- No new packages required — uses `showDatePicker()`, `showTimePicker()`, or custom `ListWheelScrollView` columns.
+
+---
+
+### 2026-03-11 — Mobile-style date & time pickers on CreateEvent page
+
+**Files changed:** `src/components/create-event/EventDetailsForm.tsx`
+
+**What changed (React/TS):**
+- Replaced native `<input type="date">` with a tappable row (CalendarDays icon + formatted date text) that opens a `Calendar` popover with the shadcn/react-day-picker calendar. Dates before today are disabled.
+- Replaced native `<input type="time">` with a tappable row (Clock icon + formatted 12-hour time) that opens a popover with three scrollable columns: hours (1–12), minutes (00–55 in 5-min steps), and AM/PM. Selections are highlighted with the primary colour.
+- Both pickers show placeholder text ("Select a date" / "Select a time") when empty.
+
+**Flutter migration notes:**
+- **Date**: Use `showDatePicker()` which presents the native Material/Cupertino date picker modal. Set `firstDate: DateTime.now()` to disable past dates. Display the selected date formatted with `DateFormat('EEEE, MMMM d, yyyy')` from the `intl` package.
+- **Time**: Use `showTimePicker()` for the native time picker, or for a more custom look, use `CupertinoTimerPicker` / a custom `ListWheelScrollView` with three columns (hour, minute, AM/PM) inside a `showModalBottomSheet`.
+- Layout each row as:
+  ```dart
+  GestureDetector(
+    onTap: () => _pickDate(context),
+    child: Row(
+      children: [
+        Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(LucideIcons.calendarDays, size: 20, color: primary),
+        ),
+        SizedBox(width: 12),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('DATE', style: labelStyle),
+          Text(formattedDate ?? 'Select a date', style: valueStyle),
+        ]),
+      ],
+    ),
+  )
+  ```
+- No new packages required — `showDatePicker` and `showTimePicker` are built into Flutter.
+
+---
+
+### 2026-03-11 — Fix missing event images in FeedPost tiles
+
+**Files changed:** `src/components/FeedPost.tsx`
+
+**What changed (React/TS):**
+- The event tile image was falling back to an empty string (`""`) when `cover_image` was null, resulting in a broken/missing image.
+- Now uses `getEventFlyer(eventData.id)` as the fallback, matching the NearbyEventsCarousel behaviour.
+
+**Flutter migration notes:**
+- In the shared `EventTileCard` widget, ensure the image source has the same fallback logic: if `coverImage` is null, call the equivalent `getEventFlyer(eventId)` utility to generate a deterministic placeholder/flyer image.
+- No new packages or routes required — just ensure the fallback function is wired up in both carousel and feed post usages.
+
+---
+
 ### 2026-03-11 — Unify FeedPost event card layout with NearbyEvents tile
 
 **Files changed:** `src/components/FeedPost.tsx`

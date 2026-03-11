@@ -1,5 +1,6 @@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "./DateTimePicker";
 
 interface GuestlistPanelProps {
   guestlistEnabled: boolean;
@@ -34,29 +35,24 @@ const GuestlistPanel = ({
 
       {guestlistEnabled && (
         <>
-          {/* Deadline + Capacity */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
-            <div className="px-4 pt-4 pb-3">
-              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Guestlist Deadline</p>
-              <input
-                type="datetime-local"
-                value={guestlistDeadline}
-                onChange={(e) => setGuestlistDeadline(e.target.value)}
-                className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Leave empty for no deadline</p>
-            </div>
-            <div className="h-px bg-border/50 mx-4" />
-            <div className="px-4 pt-3 pb-4">
-              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Max Guestlist Capacity</p>
-              <input
-                type="number"
-                value={guestlistCapacity}
-                onChange={(e) => setGuestlistCapacity(e.target.value)}
-                placeholder="Unlimited"
-                className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
-              />
-            </div>
+          {/* Deadline */}
+          <DateTimePicker
+            value={guestlistDeadline}
+            onChange={setGuestlistDeadline}
+            label="Guestlist Deadline"
+            helperText="Leave empty for no deadline"
+          />
+
+          {/* Capacity */}
+          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Max Guestlist Capacity</p>
+            <input
+              type="number"
+              value={guestlistCapacity}
+              onChange={(e) => setGuestlistCapacity(e.target.value)}
+              placeholder="Unlimited"
+              className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+            />
           </div>
 
           {/* Require approval + Coming Soon */}

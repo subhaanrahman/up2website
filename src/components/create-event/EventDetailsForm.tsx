@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { X, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DatePicker, TimePicker } from "./DateTimePicker";
 
 export interface CohostEntry {
   id: string;
@@ -134,26 +135,10 @@ const EventDetailsForm = ({
 
       {/* Date + Time */}
       <div className={`bg-card rounded-2xl border overflow-hidden ${errors.date ? "border-destructive" : "border-border/50"}`}>
-        <div className="px-4 pt-4 pb-3">
-          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Date *</p>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
-          />
-          {errors.date && <p className="text-xs text-destructive mt-1">{errors.date}</p>}
-        </div>
+        <DatePicker date={date} setDate={setDate} label="Date *" disablePast />
+        {errors.date && <p className="text-xs text-destructive px-4 pb-2">{errors.date}</p>}
         <div className="h-px bg-border/50 mx-4" />
-        <div className="px-4 pt-3 pb-4">
-          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Time</p>
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            className="w-full bg-transparent text-foreground text-[15px] font-medium outline-none"
-          />
-        </div>
+        <TimePicker time={time} setTime={setTime} />
       </div>
 
       {/* Location */}
