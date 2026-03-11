@@ -66,7 +66,16 @@ const Auth = () => {
           </div>
 
           {step === "phone" && (
-            <PhoneStep onPhoneChecked={handlePhoneChecked} />
+            <>
+              <PhoneStep onPhoneChecked={handlePhoneChecked} />
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+              >
+                Skip for now →
+              </button>
+            </>
           )}
 
           {step === "otp" && (
