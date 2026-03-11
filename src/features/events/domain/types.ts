@@ -9,6 +9,7 @@ export interface EventEntity {
   eventDate: string;
   endDate: string | null;
   coverImage: string | null;
+  category: string | null;
   maxGuests: number | null;
   isPublic: boolean;
   createdAt: string;

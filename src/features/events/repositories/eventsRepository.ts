@@ -16,6 +16,7 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     eventDate: row.event_date as string,
     endDate: row.end_date as string | null,
     coverImage: row.cover_image as string | null,
+    category: row.category as string | null,
     maxGuests: row.max_guests as number | null,
     isPublic: row.is_public as boolean,
     createdAt: row.created_at as string,
