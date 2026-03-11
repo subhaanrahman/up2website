@@ -164,20 +164,25 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <Link to={`/events/${eventData.id}`} className="block mt-2.5 rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
-              {eventData.cover_image && (
-                <img src={eventData.cover_image} alt={eventData.title} className="w-full h-32 object-cover" loading="lazy" />
-              )}
-              <div className="p-3">
-                <h4 className="font-bold text-foreground text-sm">{eventData.title}</h4>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
+              <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
+                <img
+                  src={eventData.cover_image || ""}
+                  alt={eventData.title}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
+                <h4 className="font-bold text-foreground text-sm truncate capitalize">{eventData.title}</h4>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                   <Calendar className="h-3 w-3 text-primary" />
-                  <span>{format(new Date(eventData.event_date), "EEE, MMM d · h:mm a")}</span>
+                  <span>{format(new Date(eventData.event_date), "EEE M/d - ha")}</span>
                 </div>
                 {eventData.location && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                    <MapPin className="h-3 w-3 text-primary" />
-                    <span>{eventData.location}</span>
+                    <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
+                    <span className="truncate">{eventData.location}</span>
                   </div>
                 )}
               </div>

@@ -238,7 +238,7 @@ function SuggestedFriendsSection({
   return (
     <div className="py-4 border-b border-border">
       <div className="px-4 pb-3">
-        <h2 className="text-base font-semibold text-foreground">Suggested Friends</h2>
+        <h2 className="text-base font-black text-foreground uppercase font-display tracking-[0.05em]" style={{ fontStretch: "expanded" }}>Suggested Friends</h2>
       </div>
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex gap-3 px-4 pb-2">

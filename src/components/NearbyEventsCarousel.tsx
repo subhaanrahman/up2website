@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useState } from "react";
 import { Link } from "react-router-dom";
-import { Calendar, DollarSign } from "lucide-react";
+import { Calendar, DollarSign, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import useEmblaCarousel from "embla-carousel-react";
@@ -73,7 +73,10 @@ const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
                       <span>{format(new Date(event.event_date), "EEE M/d - ha")}</span>
                     </div>
                     {event.location && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.location}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                        <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
+                        <span className="truncate">{event.location}</span>
+                      </div>
                     )}
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                       <DollarSign className="h-3 w-3 text-primary" />
