@@ -63,16 +63,14 @@ const EventDetailsForm = ({
     if (query.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
 
     searchTimeoutRef.current = setTimeout(async () => {
-      // PostgREST requires ilike values with wildcards to be quoted so the filter parses correctly
-      const term = `%${query.replace(/'/g, "''")}%`;
-      const quoted = (t: string) => `'${t}'`;
+      const term = `%${query}%`;
       const cohostIds = new Set(cohosts.map(c => c.id));
 
       const [profilesRes, organisersRes] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name, username, avatar_url")
-          .or(`username.ilike.${quoted(term)},display_name.ilike.${quoted(term)}`).neq("user_id", user?.id ?? "").limit(10),
+          .or(`username.ilike.${term},display_name.ilike.${term}`).neq("user_id", user?.id ?? "").limit(10),
         supabase.from("organiser_profiles").select("id, display_name, username, avatar_url, owner_id")
-          .or(`username.ilike.${quoted(term)},display_name.ilike.${quoted(term)}`).limit(10),
+          .or(`username.ilike.${term},display_name.ilike.${term}`).limit(10),
       ]);
 
       let friendIds = new Set<string>();
@@ -209,16 +207,50 @@ const EventDetailsForm = ({
           )}
         </div>
         {cohosts.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="mt-3 space-y-2">
             {cohosts.map((c) => (
-              <Badge key={c.id} variant="secondary" className="text-xs gap-1 flex items-center">
-                {c.avatarUrl && <img src={c.avatarUrl} alt="" className="w-4 h-4 rounded-full object-cover" />}
-                {c.displayName}
-                {c.type === "organiser" && <span className="text-muted-foreground text-[10px]">·org</span>}
-                <button type="button" onClick={() => removeCohost(c.id)} className="ml-0.5 hover:text-destructive">
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
+              <div
+                key={c.id}
+                className="w-full flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/10 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-bold text-foreground">
+                        {c.displayName[0]?.toUpperCase() ?? "?"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {c.displayName}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {c.type === "organiser" && (
+                        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                          Organiser
+                        </span>
+                      )}
+                      {c.type === "personal" && (
+                        <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                          Personal
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-3 text-[11px] font-semibold rounded-full"
+                  onClick={() => removeCohost(c.id)}
+                >
+                  Remove
+                </Button>
+              </div>
             ))}
           </div>
         )}

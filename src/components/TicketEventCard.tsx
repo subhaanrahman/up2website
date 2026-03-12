@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
 
@@ -43,7 +42,7 @@ const TicketEventCard = ({
     >
       <div className="w-28 h-28 flex-shrink-0">
         <img
-          src={getOptimizedUrl(getEventFlyer(eventId), 'EVENT_CARD') || getEventFlyer(eventId)}
+          src={getEventFlyer(eventId)}
           alt={title}
           className="w-full h-full object-cover"
           loading="lazy"
