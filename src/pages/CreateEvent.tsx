@@ -42,6 +42,7 @@ const CreateEvent = () => {
 
   // Details state
   const [title, setTitle] = useState("");
+  const [coverImage, setCoverImage] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
@@ -112,6 +113,7 @@ const CreateEvent = () => {
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         isPublic: false, // draft events are private
+        coverImage: coverImage || undefined,
         organiserProfileId: orgProfileId,
       });
       toast({ title: "Draft saved", description: "Your event has been saved as a draft." });
@@ -153,6 +155,7 @@ const CreateEvent = () => {
         location,
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
+        coverImage: coverImage || undefined,
         organiserProfileId: orgProfileId,
         publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
       });
@@ -211,14 +214,7 @@ const CreateEvent = () => {
             <X className="h-5 w-5" />
           </Button>
           <h1 className="text-sm font-bold tracking-[0.2em] uppercase">New Event</h1>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={createEventMutation.isPending}
-            className="rounded-full px-5 text-xs font-bold tracking-widest"
-          >
-            {createEventMutation.isPending ? "···" : "CREATE"}
-          </Button>
+          <span className="w-9" />
         </div>
       </header>
 
@@ -228,6 +224,7 @@ const CreateEvent = () => {
           {activeTab === "details" && (
             <EventDetailsForm
               title={title} setTitle={setTitle}
+              coverImage={coverImage} setCoverImage={setCoverImage}
               date={date} setDate={setDate}
               time={time} setTime={setTime}
               location={location} setLocation={setLocation}

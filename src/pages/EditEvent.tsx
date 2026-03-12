@@ -45,6 +45,7 @@ const EditEvent = () => {
   const [location, setLocation] = useState("");
   const [capacity, setCapacity] = useState("");
   const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; location?: string }>({});
+  const [coverImage, setCoverImage] = useState<string | null>(null);
 
   // Co-host state
   const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
@@ -74,6 +75,7 @@ const EditEvent = () => {
       setTime(format(d, "HH:mm"));
       setLocation(event.location || "");
       setCapacity(event.maxGuests?.toString() || "");
+      setCoverImage(event.coverImage || null);
     }
   }, [event]);
 
@@ -247,6 +249,7 @@ const EditEvent = () => {
         location,
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
+        coverImage: coverImage || undefined,
       });
 
       // Sync co-hosts: remove old, add new
@@ -349,6 +352,7 @@ const EditEvent = () => {
               <div className="space-y-4">
                 <EventDetailsForm
                   title={title} setTitle={setTitle}
+                  coverImage={coverImage} setCoverImage={setCoverImage}
                   date={date} setDate={setDate}
                   time={time} setTime={setTime}
                   location={location} setLocation={setLocation}

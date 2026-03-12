@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { X, Users } from "lucide-react";
+import { X, Users, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { DatePicker, TimePicker } from "./DateTimePicker";
@@ -17,6 +17,8 @@ export interface CohostEntry {
 interface EventDetailsFormProps {
   title: string;
   setTitle: (v: string) => void;
+  coverImage: string | null;
+  setCoverImage: (v: string | null) => void;
   date: string;
   setDate: (v: string) => void;
   time: string;
@@ -43,6 +45,7 @@ interface SearchResult {
 
 const EventDetailsForm = ({
   title, setTitle,
+  coverImage, setCoverImage,
   date, setDate,
   time, setTime,
   location, setLocation,
@@ -56,6 +59,29 @@ const EventDetailsForm = ({
   const [showDropdown, setShowDropdown] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadingFlyer, setUploadingFlyer] = useState(false);
+
+  const handleFlyerSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingFlyer(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/events/${Date.now()}.${ext}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("post-images")
+        .upload(path, file, { contentType: file.type });
+      if (uploadErr) throw uploadErr;
+      const { data } = supabase.storage.from("post-images").getPublicUrl(path);
+      setCoverImage(data.publicUrl);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingFlyer(false);
+      if (e.target) e.target.value = "";
+    }
+  };
 
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -131,6 +157,62 @@ const EventDetailsForm = ({
           className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
         />
         {errors.title && <p className="text-xs text-destructive mt-1">{errors.title}</p>}
+      </div>
+
+      {/* Event flyer upload */}
+      <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 rounded-2xl border border-border/60 px-4 pt-4 pb-4">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground flex items-center gap-1.5">
+            <ImageIcon className="h-3 w-3" /> Event Flyer
+          </p>
+          <span className="text-[10px] text-muted-foreground/80">Shows on cards & detail</span>
+        </div>
+        <div className="space-y-3">
+          <div className="w-full aspect-[4/5] rounded-2xl bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center">
+            {coverImage ? (
+              <img src={coverImage} alt="Event flyer" className="w-full h-full object-cover" />
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-2 px-6 text-center">
+                <span className="text-[11px] font-medium text-muted-foreground">
+                  Add a bold flyer to make your event pop.
+                </span>
+                <span className="text-[10px] text-muted-foreground/80">
+                  Portrait image works best (4:5)
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="flex-1 rounded-full"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFlyer}
+            >
+              {uploadingFlyer ? "Uploading…" : "Upload flyer"}
+            </Button>
+            {coverImage && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-full px-3 text-[11px]"
+                onClick={() => setCoverImage(null)}
+              >
+                Remove
+              </Button>
+            )}
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFlyerSelect}
+        />
       </div>
 
       {/* Date + Time */}
