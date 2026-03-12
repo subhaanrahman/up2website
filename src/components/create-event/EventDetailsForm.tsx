@@ -63,14 +63,16 @@ const EventDetailsForm = ({
     if (query.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
 
     searchTimeoutRef.current = setTimeout(async () => {
-      const term = `%${query}%`;
+      // PostgREST requires ilike values with wildcards to be quoted so the filter parses correctly
+      const term = `%${query.replace(/'/g, "''")}%`;
+      const quoted = (t: string) => `'${t}'`;
       const cohostIds = new Set(cohosts.map(c => c.id));
 
       const [profilesRes, organisersRes] = await Promise.all([
         supabase.from("profiles").select("user_id, display_name, username, avatar_url")
-          .or(`username.ilike.${term},display_name.ilike.${term}`).neq("user_id", user?.id ?? "").limit(10),
+          .or(`username.ilike.${quoted(term)},display_name.ilike.${quoted(term)}`).neq("user_id", user?.id ?? "").limit(10),
         supabase.from("organiser_profiles").select("id, display_name, username, avatar_url, owner_id")
-          .or(`username.ilike.${term},display_name.ilike.${term}`).limit(10),
+          .or(`username.ilike.${quoted(term)},display_name.ilike.${quoted(term)}`).limit(10),
       ]);
 
       let friendIds = new Set<string>();

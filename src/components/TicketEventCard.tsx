@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 
-export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved";
+export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
 
 interface TicketEventCardProps {
   rsvpId: string;
@@ -22,6 +22,7 @@ const statusConfig: Record<TicketStatus, { label: string; className: string }> =
   pending: { label: "RSVP Pending", className: "bg-accent/10 text-accent-foreground border-accent/20" },
   interested: { label: "Interested", className: "bg-secondary text-muted-foreground border-border" },
   saved: { label: "Saved", className: "bg-secondary text-muted-foreground border-border" },
+  cohost: { label: "Co-host", className: "bg-primary/10 text-primary border-primary/20" },
 };
 
 const TicketEventCard = ({

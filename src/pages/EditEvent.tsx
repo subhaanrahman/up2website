@@ -77,43 +77,103 @@ const EditEvent = () => {
     }
   }, [event]);
 
-  // Load existing co-hosts
-  const { data: existingCohosts } = useQuery({
+  // Load existing co-hosts + organiser owner (so list matches "Hosted by" on event page)
+  const {
+    data: loadedCohostEntries,
+    isSuccess: cohostsQuerySuccess,
+  } = useQuery({
     queryKey: ["event-cohosts-edit", id],
-    queryFn: async () => {
+    queryFn: async (): Promise<CohostEntry[]> => {
       if (!id) return [];
-      const { data, error } = await supabase
+      const entries: CohostEntry[] = [];
+
+      // 1) Event's organiser_profile_id and owner (so owner shows in form like on event page)
+      const { data: eventRow } = await supabase
+        .from("events")
+        .select("organiser_profile_id")
+        .eq("id", id)
+        .single();
+      const organiserProfileId = eventRow?.organiser_profile_id;
+      if (organiserProfileId) {
+        const { data: org } = await supabase
+          .from("organiser_profiles")
+          .select("owner_id")
+          .eq("id", organiserProfileId)
+          .single();
+        if (org?.owner_id) {
+          const { data: ownerProfile } = await supabase
+            .from("profiles")
+            .select("user_id, display_name, username, avatar_url")
+            .eq("user_id", org.owner_id)
+            .single();
+          if (ownerProfile) {
+            entries.push({
+              id: ownerProfile.user_id,
+              type: "personal",
+              displayName: ownerProfile.display_name || ownerProfile.username || "Unknown",
+              username: ownerProfile.username ?? null,
+              avatarUrl: ownerProfile.avatar_url ?? null,
+            });
+          }
+        }
+      }
+
+      // 2) Rows from event_cohosts (batch fetch like EventDetail)
+      const { data: rows, error } = await supabase
         .from("event_cohosts")
         .select("id, organiser_profile_id, user_id, role")
         .eq("event_id", id);
       if (error) throw error;
-      return data || [];
+
+      const orgIds = (rows || []).filter((r) => r.organiser_profile_id).map((r) => r.organiser_profile_id!);
+      const userIds = (rows || []).filter((r) => r.user_id).map((r) => r.user_id!);
+      const existingIds = new Set(entries.map((e) => e.id));
+
+      if (orgIds.length > 0) {
+        const { data: orgs } = await supabase
+          .from("organiser_profiles")
+          .select("id, display_name, username, avatar_url")
+          .in("id", orgIds);
+        for (const o of orgs || []) {
+          if (existingIds.has(o.id)) continue;
+          existingIds.add(o.id);
+          entries.push({
+            id: o.id,
+            type: "organiser",
+            displayName: o.display_name || o.username || "Unknown",
+            username: o.username ?? null,
+            avatarUrl: o.avatar_url ?? null,
+          });
+        }
+      }
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, username, avatar_url")
+          .in("user_id", userIds);
+        for (const p of profiles || []) {
+          if (existingIds.has(p.user_id)) continue;
+          existingIds.add(p.user_id);
+          entries.push({
+            id: p.user_id,
+            type: "personal",
+            displayName: p.display_name || p.username || "Unknown",
+            username: p.username ?? null,
+            avatarUrl: p.avatar_url ?? null,
+          });
+        }
+      }
+      return entries;
     },
     enabled: !!id,
   });
 
+  // Sync loaded co-hosts into form state when query succeeds (runs for both [] and non-empty)
   useEffect(() => {
-    if (!existingCohosts?.length) return;
-    const load = async () => {
-      const entries: CohostEntry[] = [];
-      for (const c of existingCohosts) {
-        if (c.organiser_profile_id) {
-          const { data } = await supabase.from("organiser_profiles")
-            .select("id, display_name, username, avatar_url")
-            .eq("id", c.organiser_profile_id).single();
-          if (data) entries.push({ id: data.id, type: "organiser", displayName: data.display_name || data.username || "Unknown", username: data.username, avatarUrl: data.avatar_url });
-        } else if (c.user_id) {
-          const { data } = await supabase.from("profiles")
-            .select("user_id, display_name, username, avatar_url")
-            .eq("user_id", c.user_id).single();
-          if (data) entries.push({ id: data.user_id, type: "personal", displayName: data.display_name || data.username || "Unknown", username: data.username, avatarUrl: data.avatar_url });
-        }
-      }
-      setCohosts(entries);
-      setOriginalCohostIds(entries.map((e) => e.id));
-    };
-    load();
-  }, [existingCohosts]);
+    if (!cohostsQuerySuccess || loadedCohostEntries === undefined) return;
+    setCohosts([...loadedCohostEntries]);
+    setOriginalCohostIds(loadedCohostEntries.map((e) => e.id));
+  }, [cohostsQuerySuccess, loadedCohostEntries]);
 
   // Load existing ticket tiers
   const { data: existingTiers } = useQuery({

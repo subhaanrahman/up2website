@@ -78,6 +78,9 @@ const EventDetail = () => {
     enabled: !!dbEvent,
   });
 
+  // Fetch organiser owner profile (so they appear in "Hosted by" when event is organiser-created)
+  const { data: organiserOwnerProfile } = useProfile(organiserHost?.owner_id ?? undefined);
+
   // Fetch user's existing RSVP for this event
   const { data: userRsvp } = useQuery({
     queryKey: ["user-rsvp", id, user?.id],
@@ -389,6 +392,22 @@ const EventDetail = () => {
       ? `/user/${dbEvent.hostId}`
       : "#";
 
+  // Include organiser owner in "Hosted by" when event is organiser-created (they have edit rights but may not be in event_cohosts)
+  const organiserOwnerAsHost =
+    organiserHost && organiserOwnerProfile
+      ? {
+          id: organiserHost.owner_id,
+          displayName: organiserOwnerProfile.displayName || "User",
+          avatarUrl: organiserOwnerProfile.avatarUrl ?? null,
+          link: `/user/${organiserHost.owner_id}`,
+        }
+      : null;
+  const ownerAlreadyInCohosts = organiserOwnerAsHost && eventCohosts.some((c) => c.id === organiserOwnerAsHost.id);
+  const hostedByList = [
+    ...(organiserOwnerAsHost && !ownerAlreadyInCohosts ? [organiserOwnerAsHost] : []),
+    ...eventCohosts,
+  ];
+
   if (!event) {
     return (
       <div className="min-h-screen bg-background pb-20">
@@ -519,11 +538,11 @@ const EventDetail = () => {
               </Avatar>
               <span className="font-medium text-foreground">{displayHostName}</span>
             </Link>
-            {eventCohosts.length > 0 && eventCohosts.map((cohost) => (
+            {hostedByList.map((cohost) => (
               <Link key={cohost.id} to={cohost.link} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={cohost.avatarUrl || undefined} />
-                  <AvatarFallback>{cohost.displayName[0]}</AvatarFallback>
+                  <AvatarFallback>{(cohost.displayName || "?")[0]}</AvatarFallback>
                 </Avatar>
                 <span className="font-medium text-foreground">{cohost.displayName}</span>
               </Link>

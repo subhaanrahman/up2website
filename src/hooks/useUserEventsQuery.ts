@@ -34,7 +34,7 @@ export function useUserPlannedEvents(userId: string | undefined) {
     queryFn: async () => {
       if (!userId) return [];
 
-      const [rsvpResult, orderResult, savedResult] = await Promise.all([
+      const [rsvpResult, orderResult, savedResult, cohostResult] = await Promise.all([
         supabase
           .from('rsvps')
           .select('event_id, status, events (id, title, event_date, cover_image, location, category, status)')
@@ -49,12 +49,27 @@ export function useUserPlannedEvents(userId: string | undefined) {
           .from('saved_events')
           .select('event_id, events:event_id (id, title, event_date, cover_image, location, category, status)')
           .eq('user_id', userId),
+        supabase
+          .from('event_cohosts')
+          .select('event_id')
+          .eq('user_id', userId),
       ]);
 
       const seen = new Set<string>();
       const results: (UserEvent & { ticketStatus: string })[] = [];
 
       const purchasedIds = new Set((orderResult.data || []).map((o) => o.event_id));
+
+      // Co-host event IDs: fetch event rows for merge
+      const cohostEventIds = [...new Set((cohostResult.data || []).map((r) => r.event_id))];
+      let cohostEvents: any[] = [];
+      if (cohostEventIds.length > 0) {
+        const { data: cohostEventRows } = await supabase
+          .from('events')
+          .select('id, title, event_date, cover_image, location, category, status')
+          .in('id', cohostEventIds);
+        cohostEvents = cohostEventRows || [];
+      }
 
       // RSVPs first
       for (const r of rsvpResult.data || []) {
@@ -83,6 +98,13 @@ export function useUserPlannedEvents(userId: string | undefined) {
         const ev = s.events as any;
         if (!ev) continue;
         results.push({ ...mapRow(ev), ticketStatus: 'saved' });
+      }
+
+      // Co-hosted events (not already in RSVP/order/saved)
+      for (const ev of cohostEvents) {
+        if (seen.has(ev.id)) continue;
+        seen.add(ev.id);
+        results.push({ ...mapRow(ev), ticketStatus: 'cohost' });
       }
 
       return results;

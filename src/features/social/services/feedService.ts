@@ -69,7 +69,15 @@ export async function buildFeedContext(userId: string | null): Promise<FeedConte
     friendIds.add(c.requester_id === userId ? c.addressee_id : c.requester_id);
   }
 
-  const followedOrgIds = new Set((followResult.data || []).map(f => f.organiser_profile_id));
+  let followedOrgIds = new Set((followResult.data || []).map(f => f.organiser_profile_id));
+
+  // Exclude organiser profiles the user owns — don't boost own organiser's posts on personal feed
+  const { data: ownedOrgs } = await supabase
+    .from('organiser_profiles')
+    .select('id')
+    .eq('owner_id', userId);
+  const ownedOrgIds = new Set((ownedOrgs || []).map(o => o.id));
+  followedOrgIds = new Set([...followedOrgIds].filter(id => !ownedOrgIds.has(id)));
 
   // Organisers that friends follow (secondary signal)
   let friendFollowedOrgIds = new Set<string>();
@@ -82,7 +90,7 @@ export async function buildFeedContext(userId: string | null): Promise<FeedConte
     friendFollowedOrgIds = new Set(
       (friendFollows || [])
         .map(f => f.organiser_profile_id)
-        .filter(id => !followedOrgIds.has(id)) // exclude already followed
+        .filter(id => !followedOrgIds.has(id) && !ownedOrgIds.has(id)) // exclude already followed and own orgs
     );
   }
 
@@ -95,6 +103,11 @@ function scorePost(
   ctx: FeedContext,
 ): number {
   if (!ctx.userId) return WEIGHT_PUBLIC;
+
+  // Own organiser post on personal feed — don't boost (only show as public if at all)
+  if (post.author_id === ctx.userId && post.organiser_profile_id) {
+    return WEIGHT_PUBLIC;
+  }
 
   // Repost by friend?
   if (post.reposted_by_user_id && ctx.friendIds.has(post.reposted_by_user_id)) {

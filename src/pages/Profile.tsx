@@ -78,6 +78,36 @@ const Profile = () => {
     enabled: !!user?.id && !isOrganiser,
   });
 
+  // ── Personal profile: events where user is co-host ──
+  const { data: coHostEvents } = useQuery({
+    queryKey: ["personal-cohost-events", user?.id],
+    queryFn: async () => {
+      const { data: cohostRows, error: cohostErr } = await supabase
+        .from("event_cohosts")
+        .select("event_id")
+        .eq("user_id", user!.id);
+      if (cohostErr) throw cohostErr;
+      if (!cohostRows || cohostRows.length === 0) return [];
+
+      const eventIds = cohostRows.map((r) => r.event_id);
+      const { data: events, error: evErr } = await supabase
+        .from("events")
+        .select("id, title, event_date, location, cover_image, category")
+        .in("id", eventIds)
+        .order("event_date", { ascending: false });
+      if (evErr) throw evErr;
+      return (events || []).map((e) => ({
+        id: e.id,
+        title: e.title,
+        eventDate: e.event_date,
+        location: e.location,
+        coverImage: e.cover_image,
+        category: e.category,
+      }));
+    },
+    enabled: !!user?.id && !isOrganiser,
+  });
+
   // ── Organiser profile: hosted events ──
   const { data: organiserEvents } = useQuery({
     queryKey: ["organiser-profile-events", activeProfile?.id],
@@ -100,7 +130,20 @@ const Profile = () => {
     enabled: isOrganiser && !!activeProfile?.id,
   });
 
-  const profileEvents = isOrganiser ? organiserEvents : rsvpEvents;
+  // Personal: RSVP events + co-hosted events, deduped and sorted by date
+  const profileEvents = isOrganiser
+    ? organiserEvents
+    : (() => {
+        const rsvp = rsvpEvents || [];
+        const cohost = coHostEvents || [];
+        const byId = new Map<string, EventItem>();
+        for (const e of [...rsvp, ...cohost]) {
+          if (!byId.has(e.id)) byId.set(e.id, e);
+        }
+        return [...byId.values()].sort(
+          (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
+        );
+      })();
 
   const activeOrg: OrganiserProfile | undefined = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
