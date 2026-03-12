@@ -33,6 +33,27 @@
 
 <!-- New entries are added below this line, newest first -->
 
+### 2026-03-11 — Enforce friend/follow button distinction by account type
+
+**Files changed:** `src/pages/UserProfile.tsx`
+
+**What changed (React/TS):**
+- **Personal accounts** now ONLY show "+ FRIEND" button (sends friend request with pending approval).
+- **Organiser accounts** ONLY show "FOLLOW"/"FOLLOWING" button (instant follow, no approval needed).
+- Removed the `targetIsPublic` state and logic that allowed "professional tier" personal profiles to be auto-followed like organisers.
+- Removed the `handleFollowPublic` function that created auto-accepted connections for personal profiles.
+- Updated event visibility: personal profile upcoming events now ONLY visible to accepted friends (removed the public profile exception).
+
+**Flutter migration notes:**
+- In the Flutter `UserProfile` widget, check `profile.type`:
+  - If `type == 'organiser'`, show "Follow"/"Following" button that calls the organiser_followers table.
+  - If `type == 'personal'` (or null), show "+ Friend" button that creates a `connections` row with `status: 'pending'`.
+- Remove any "public profile" or "professional tier" logic that allows personal accounts to be followed instead of friended.
+- For visibility checks, only allow friends (`connectionStatus == 'accepted'`) to see upcoming events on personal profiles; organisers always show all events publicly.
+- No new packages or database changes required — just enforce the business logic distinction between friend requests (personal) and follows (organiser).
+
+---
+
 ### 2026-03-11 — Extract reusable DateTimePicker and apply across all forms
 
 **Files changed:** `src/components/create-event/DateTimePicker.tsx` (new), `src/components/create-event/EventDetailsForm.tsx`, `src/components/create-event/GuestlistPanel.tsx`, `src/components/create-event/TicketingPanel.tsx`, `src/pages/CreateEvent.tsx`

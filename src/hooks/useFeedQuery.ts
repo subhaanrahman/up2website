@@ -72,6 +72,8 @@ export function usePaginatedFeed() {
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: query.fetchNextPage,
+    refetch: query.refetch,
+    isRefetching: query.isRefetching,
   };
 }
 

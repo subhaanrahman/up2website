@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bell, Plus, Calendar, DollarSign, Loader2, Users, Sparkles } from "lucide-react";
+import { Bell, Plus, Calendar, DollarSign, Loader2, Users, Sparkles, RefreshCw } from "lucide-react";
 import { useUnreadCount } from "@/hooks/useNotificationsQuery";
 import PostComposer from "@/components/PostComposer";
 import FeedPost from "@/components/FeedPost";
@@ -28,7 +28,7 @@ const Index = () => {
   const queryClient = useQueryClient();
 
   // v1 personalized feed with pagination
-  const { posts: feedPosts, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = usePaginatedFeed();
+  const { posts: feedPosts, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch: refetchFeed, isRefetching } = usePaginatedFeed();
 
   // DB-backed nearby events
   const { data: nearbyEvents = [] } = useNearbyEvents(4);
@@ -36,17 +36,99 @@ const Index = () => {
   const [suggestedProfiles, setSuggestedProfiles] = useState<SuggestedProfile[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
 
-  // Infinite scroll observer
+  // Pull-to-refresh: use a scroll container we control so "at top" is reliable
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartY = useRef(0);
+  const pullDistanceRef = useRef(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const PULL_THRESHOLD = 56;
+  const PULL_MAX = 80;
+
+  const handleRefresh = useCallback(async () => {
+    await refetchFeed();
+  }, [refetchFeed]);
+
+  const isAtTop = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return false;
+    return el.scrollTop <= 0;
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const applyPull = (clientY: number) => {
+      if (!isAtTop()) {
+        setPullDistance(0);
+        pullDistanceRef.current = 0;
+        return;
+      }
+      const delta = clientY - touchStartY.current;
+      if (delta > 0) {
+        const distance = Math.min(delta * 0.6, PULL_MAX);
+        pullDistanceRef.current = distance;
+        setPullDistance(distance);
+      }
+    };
+    const commitPull = () => {
+      const current = pullDistanceRef.current;
+      setPullDistance(0);
+      pullDistanceRef.current = 0;
+      if (current >= PULL_THRESHOLD) {
+        handleRefresh();
+      }
+    };
+    // Touch (mobile)
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY.current = e.touches[0].clientY;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      applyPull(e.touches[0].clientY);
+    };
+    const onTouchEnd = () => commitPull();
+    // Mouse (desktop — drag down at top to refresh)
+    const onMouseDown = (e: MouseEvent) => {
+      touchStartY.current = e.clientY;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (e.buttons !== 1) return;
+      applyPull(e.clientY);
+    };
+    const onMouseUp = () => commitPull();
+    const onMouseLeave = () => {
+      setPullDistance(0);
+      pullDistanceRef.current = 0;
+    };
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("mousedown", onMouseDown);
+    el.addEventListener("mousemove", onMouseMove);
+    el.addEventListener("mouseup", onMouseUp);
+    el.addEventListener("mouseleave", onMouseLeave);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("mousedown", onMouseDown);
+      el.removeEventListener("mousemove", onMouseMove);
+      el.removeEventListener("mouseup", onMouseUp);
+      el.removeEventListener("mouseleave", onMouseLeave);
+    };
+  }, [handleRefresh, isAtTop]);
+
+  // Infinite scroll observer (use scroll container as root)
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (!sentinelRef.current) return;
+    const scrollEl = scrollContainerRef.current;
+    if (!sentinelRef.current || !scrollEl) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
           fetchNextPage();
         }
       },
-      { rootMargin: '200px' },
+      { root: scrollEl, rootMargin: '200px' },
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
@@ -97,9 +179,9 @@ const Index = () => {
   const showSuggestedInline = suggestedProfiles.length > 0 && feedPosts.length > SUGGESTED_INSERT_INDEX;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="h-dvh flex flex-col bg-background md:min-h-screen md:h-auto">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
+      <header className="flex-shrink-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="flex items-center justify-center px-4 h-14 relative">
           <img src={logoImg} alt="Up2" className="h-8 w-auto animate-snakeSlide" />
           <div className="absolute right-4">
@@ -117,7 +199,30 @@ const Index = () => {
         </div>
       </header>
 
-      <main>
+      {/* Scrollable feed area — pull-to-refresh and infinite scroll use this container */}
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-20"
+      >
+        {/* Pull-to-refresh indicator */}
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all duration-200 ease-out shrink-0"
+          style={{ height: Math.max(pullDistance, isRefetching ? PULL_THRESHOLD : 0) }}
+        >
+          {(pullDistance > 0 || isRefetching) && (
+            <div className="flex flex-col items-center gap-1 py-2">
+              {isRefetching ? (
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              ) : (
+                <RefreshCw
+                  className="h-6 w-6 text-primary transition-transform duration-200"
+                  style={{ transform: `rotate(${Math.min(pullDistance * 4, 360)}deg)` }}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Post Composer */}
         <PostComposer
           displayName={displayName}
@@ -209,7 +314,7 @@ const Index = () => {
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* Floating Action Button - mobile only */}
       <div className="fixed bottom-24 z-40 w-full left-0 pointer-events-none md:hidden">

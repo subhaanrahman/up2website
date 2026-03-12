@@ -245,34 +245,34 @@ const Profile = () => {
           )}
 
           {(classification || city) && (
-            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm mb-3 mx-auto">
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/15 text-primary-foreground text-sm font-medium mb-3 mx-auto">
               {classification && (
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide text-foreground/80">
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide">
                   <span>{classification}</span>
                   {classification.toLowerCase() === "dj" && (
-                    <Disc className="h-3.5 w-3.5 text-primary" />
+                    <Disc className="h-3.5 w-3.5" />
                   )}
                   {classification.toLowerCase() === "promoter" && (
-                    <Megaphone className="h-3.5 w-3.5 text-primary" />
+                    <Megaphone className="h-3.5 w-3.5" />
                   )}
                   {classification.toLowerCase() === "artist" && (
-                    <Mic2 className="h-3.5 w-3.5 text-primary" />
+                    <Mic2 className="h-3.5 w-3.5" />
                   )}
                   {classification.toLowerCase() === "event" && (
-                    <Ticket className="h-3.5 w-3.5 text-primary" />
+                    <Ticket className="h-3.5 w-3.5" />
                   )}
                   {classification.toLowerCase() === "venue" && (
-                    <Home className="h-3.5 w-3.5 text-primary" />
+                    <Home className="h-3.5 w-3.5" />
                   )}
                 </span>
               )}
               {classification && city && (
-                <span className="text-sm font-medium tracking-wide text-foreground/40">·</span>
+                <span className="text-sm font-medium tracking-wide opacity-80">·</span>
               )}
               {city && (
-                <span className="inline-flex items-center gap-1 text-sm font-medium tracking-wide text-foreground/80">
+                <span className="inline-flex items-center gap-1 text-sm font-medium tracking-wide">
                   <span>{city}</span>
-                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  <MapPin className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>

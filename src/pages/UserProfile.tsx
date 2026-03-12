@@ -52,7 +52,6 @@ const UserProfile = () => {
   const [eventCount, setEventCount] = useState(0);
   const [isFollowingOrganiser, setIsFollowingOrganiser] = useState(false);
   const [organiserMuted, setOrganiserMuted] = useState(false);
-  const [targetIsPublic, setTargetIsPublic] = useState(true);
   const [optionsOpen, setOptionsOpen] = useState(false);
 
   useEffect(() => {
@@ -150,9 +149,6 @@ const UserProfile = () => {
         return;
       }
 
-      // Determine if target is public based on profile_tier
-      setTargetIsPublic(profile?.profile_tier === 'professional');
-
       // Check connections
       const { data: connData } = await supabase
         .from("connections")
@@ -240,30 +236,6 @@ const UserProfile = () => {
           },
         });
       }
-    } else {
-      toast.error("Failed to follow");
-    }
-    setConnectionLoading(false);
-  };
-
-  const handleFollowPublic = async () => {
-    if (!user || !userId) return;
-    setConnectionLoading(true);
-    const { data, error } = await supabase
-      .from("connections")
-      .insert({
-        requester_id: user.id,
-        addressee_id: userId,
-        status: "accepted",
-        accepted_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    if (!error && data) {
-      setConnectionStatus("accepted");
-      setConnectionId(data.id);
-      setSocialCount((c) => c + 1);
-      toast.success("Following!");
     } else {
       toast.error("Failed to follow");
     }
@@ -361,9 +333,9 @@ const UserProfile = () => {
   }, [user, userId, isOrg, navigate]);
 
   // ── Event visibility gating ──
-  // Personal profiles: upcoming only visible if friends or public profile
+  // Personal profiles: upcoming only visible if friends
   // Organiser profiles: always show all events
-  const canSeeUpcoming = isOrg || connectionStatus === "accepted" || targetIsPublic;
+  const canSeeUpcoming = isOrg || connectionStatus === "accepted";
 
   const upcomingEvents = canSeeUpcoming
     ? events.filter((e) => new Date(e.event_date) >= new Date())
@@ -441,17 +413,16 @@ const UserProfile = () => {
     }
 
     // Personal profiles: always require friend request
-    // Professional profiles: auto-accept (public)
     switch (connectionStatus) {
       case "none":
         return (
           <Button
             className="px-8 h-11 rounded-full font-semibold gap-2"
-            onClick={targetIsPublic ? handleFollowPublic : handleAddFriend}
+            onClick={handleAddFriend}
             disabled={connectionLoading}
           >
             <UserPlus className="h-4 w-4" />
-            {targetIsPublic ? "FOLLOW" : "+ FRIEND"}
+            + FRIEND
           </Button>
         );
       case "accepted":
@@ -580,34 +551,34 @@ const UserProfile = () => {
           )}
 
           {(profile.page_classification || profile.city) && (
-            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm mb-3 mx-auto">
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/15 text-primary-foreground text-sm font-medium mb-3 mx-auto">
               {profile.page_classification && (
-                <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide text-foreground/80">
+                <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide">
                   <span>{profile.page_classification}</span>
                   {profile.page_classification.toLowerCase() === "dj" && (
-                    <Disc className="h-3.5 w-3.5 text-primary" />
+                    <Disc className="h-3.5 w-3.5" />
                   )}
                   {profile.page_classification.toLowerCase() === "promoter" && (
-                    <Megaphone className="h-3.5 w-3.5 text-primary" />
+                    <Megaphone className="h-3.5 w-3.5" />
                   )}
                   {profile.page_classification.toLowerCase() === "artist" && (
-                    <Mic2 className="h-3.5 w-3.5 text-primary" />
+                    <Mic2 className="h-3.5 w-3.5" />
                   )}
                   {profile.page_classification.toLowerCase() === "event" && (
-                    <Ticket className="h-3.5 w-3.5 text-primary" />
+                    <Ticket className="h-3.5 w-3.5" />
                   )}
                   {profile.page_classification.toLowerCase() === "venue" && (
-                    <Home className="h-3.5 w-3.5 text-primary" />
+                    <Home className="h-3.5 w-3.5" />
                   )}
                 </span>
               )}
               {profile.page_classification && profile.city && (
-                <span className="text-sm font-medium tracking-wide text-foreground/40">·</span>
+                <span className="text-sm font-medium tracking-wide opacity-80">·</span>
               )}
               {profile.city && (
-                <span className="inline-flex items-center gap-1 text-sm font-medium tracking-wide text-foreground/80">
+                <span className="inline-flex items-center gap-1 text-sm font-medium tracking-wide">
                   <span>{profile.city}</span>
-                  <MapPin className="h-3.5 w-3.5 text-primary" />
+                  <MapPin className="h-3.5 w-3.5" />
                 </span>
               )}
             </div>

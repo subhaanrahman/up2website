@@ -28,7 +28,7 @@ const PhoneFrame = ({ children }: PhoneFrameProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background md:bg-[hsl(0_0%_4%)]">
+    <div className="min-h-screen bg-background" style={{backgroundColor: "purple"}}>
       <DesktopSidebar />
       <div className="md:ml-[72px] xl:ml-[240px] md:flex md:justify-center">
         <div
