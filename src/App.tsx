@@ -49,7 +49,17 @@ import EventEmbed from "./pages/EventEmbed";
 import BlockedUsers from "./pages/BlockedUsers";
 import MusicCallback from "./pages/MusicCallback";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Keep data \"fresh\" for a short window so navigating back/forth
+      // (e.g. Messages ↔️ Notifications) doesn't refetch and block the UI
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

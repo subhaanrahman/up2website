@@ -62,53 +62,31 @@ const useGroupChats = () => {
     queryFn: async (): Promise<GroupChat[]> => {
       if (!user) return [];
 
-      const { data: memberships, error: memErr } = await supabase
-        .from("group_chat_members")
-        .select("group_chat_id")
-        .eq("user_id", user.id);
-
-      if (memErr || !memberships || memberships.length === 0) return [];
-
-      const chatIds = memberships.map((m) => m.group_chat_id);
-
-      const { data: chats, error } = await supabase
-        .from("group_chats")
-        .select("*")
-        .in("id", chatIds)
-        .order("updated_at", { ascending: false });
-
+      const { data, error } = await supabase.rpc("get_user_group_chats", {
+        p_user_id: user.id,
+      });
       if (error) throw error;
 
-      const enriched = await Promise.all(
-        (chats ?? []).map(async (chat) => {
-          const [{ data: msgs }, { data: memberProfiles }] = await Promise.all([
-            supabase
-              .from("group_chat_messages")
-              .select("sender_name, content, created_at")
-              .eq("group_chat_id", chat.id)
-              .order("created_at", { ascending: false })
-              .limit(1),
-            supabase.rpc("get_group_chat_member_profiles", {
-              p_group_chat_id: chat.id,
-            }),
-          ]);
+      const rows = (data || []) as {
+        id: string;
+        name: string;
+        member_count: number;
+        last_message: string | null;
+        last_message_created_at: string | null;
+        member_previews: { user_id: string; display_name: string | null; avatar_url: string | null }[];
+      }[];
 
-          const lastMsg = msgs?.[0];
-          const timeDiff = lastMsg ? getRelativeTime(new Date(lastMsg.created_at)) : "";
-
-          return {
-            id: chat.id,
-            name: chat.name,
-            member_count: chat.member_count,
-            last_message: lastMsg ? `${lastMsg.sender_name}: ${lastMsg.content}` : undefined,
-            last_message_time: timeDiff,
-            unread: 0,
-            memberPreviews: ((memberProfiles as MemberPreview[]) || []).slice(0, 4),
-          };
-        })
-      );
-
-      return enriched;
+      return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        member_count: row.member_count,
+        last_message: row.last_message || undefined,
+        last_message_time: row.last_message_created_at
+          ? getRelativeTime(new Date(row.last_message_created_at))
+          : undefined,
+        unread: 0,
+        memberPreviews: (row.member_previews || []).slice(0, 4),
+      }));
     },
   });
 };
@@ -309,8 +287,9 @@ const Dashboard = () => {
     isOrganiser ? ownedOrgIds : undefined
   );
 
-  const isLoading = loading || chatsLoading || userDmsLoading || (isOrganiser && orgDmsLoading);
+  const isLoading = loading;
 
+  // While auth state is resolving, keep a simple full-screen loader.
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -332,7 +311,13 @@ const Dashboard = () => {
         <main className="px-4">
           {/* Inbox section */}
           <SectionDivider label="Inbox" />
-          {inboxThreads.length > 0 ? (
+          {orgDmsLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-16 rounded-xl bg-card animate-pulse" />
+              ))}
+            </div>
+          ) : inboxThreads.length > 0 ? (
             <div className="space-y-1">
               {inboxThreads.map((thread) => (
                 <DmThreadTile key={thread.id} thread={thread} isOrganiserView />
@@ -372,7 +357,13 @@ const Dashboard = () => {
 
       <main className="px-4">
         {/* Group chats grid */}
-        {groupChats.length > 0 ? (
+        {chatsLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-[168px] rounded-2xl bg-card animate-pulse" />
+            ))}
+          </div>
+        ) : groupChats.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {groupChats.map((chat) => (
               <GroupChatTile key={chat.id} chat={chat} unreadCount={perChat[chat.id] || 0} />
@@ -388,7 +379,13 @@ const Dashboard = () => {
 
         {/* Organisers DM section */}
         <SectionDivider label="Organisers" />
-        {dmThreads.length > 0 ? (
+        {userDmsLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-14 rounded-xl bg-card animate-pulse" />
+            ))}
+          </div>
+        ) : dmThreads.length > 0 ? (
           <div className="space-y-1">
             {dmThreads.map((thread) => (
               <DmThreadTile key={thread.id} thread={thread} isOrganiserView={false} />

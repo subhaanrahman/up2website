@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
@@ -19,6 +19,21 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [welcomeText, setWelcomeText] = useState("");
+
+  useEffect(() => {
+    const full = "Welcome";
+    let index = 0;
+    setWelcomeText("");
+    const id = setInterval(() => {
+      index += 1;
+      setWelcomeText(full.slice(0, index));
+      if (index >= full.length) {
+        clearInterval(id);
+      }
+    }, 80);
+    return () => clearInterval(id);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,12 +72,18 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
 
   return (
     <>
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Welcome</h1>
+      <div className="text-center mb-6 animate-in fade-in slide-in-from-bottom-2 duration-2000 ease-out">
+        <h1 className="text-2xl font-bold text-foreground mb-2">
+          {welcomeText}
+          <span className="inline-block w-[1ch] animate-pulse text-primary">|</span>
+        </h1>
         <p className="text-muted-foreground">Enter your phone number to get started</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-2000 ease-out delay-200"
+      >
         <div className="space-y-2">
           <Label htmlFor="phone" className="text-foreground">Phone number</Label>
           <PhoneInput value={phone} onChange={setPhone} disabled={loading} />
