@@ -1,6 +1,6 @@
 # Up2 Platform — Architecture Overview
 
-> Last updated: 2026-03-10  
+> Last updated: 2026-03-13  
 > Status: Codebase-grounded reference. Every claim references actual files.
 
 ---
@@ -11,13 +11,13 @@
 React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui (Radix primitives).  
 Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments: `@stripe/react-stripe-js`.
 
-### Key Pages (~45 routes in `src/App.tsx`)
+### Key Pages (~47 routes in `src/App.tsx`)
 
 | Page | Route | Purpose |
 |------|-------|---------|
 | `Index` | `/` | Home feed (personalized or public), post composer, nearby events, suggested friends |
 | `Events` | `/search` | Event discovery with search, filters, categories, city |
-| `EventDetail` | `/events/:id`, `/search/:id` | Full event view, RSVP, ticket purchase entry point |
+| `EventDetail` | `/events/:id`, `/search/:id` | Full event view, RSVP, ticket purchase, **Event Board** (attendee chat) |
 | `Tickets` | `/events` | "My Plans" (RSVP/purchased/saved) + "My Events" (created). Organiser profiles see `OrganiserDashboard` instead |
 | `Dashboard` | `/messages` | Messaging hub: group chats, organiser DMs, broadcast (coming soon) |
 | `Profile` | `/profile` | Active profile view (personal or organiser), posts feed, stats |
@@ -27,10 +27,11 @@ Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments:
 | `ManageEvent` | `/events/:id/manage` | Orders, guestlist CSV, refunds, attendee broadcast |
 | `EventCheckIn` | `/events/:id/checkin` | Attendee list with manual toggle + QR scan mode |
 | `EventAnalytics` | `/events/:id/analytics` | Event-level analytics |
+| `EventGuests` | `/events/:id/guests` | Public guest list view |
 | `Checkout` | `/checkout` | Stripe Elements payment form |
 | `CheckoutSuccess` | `/checkout/success` | Post-payment confirmation |
 | `Auth` | `/auth` | Phone → OTP → Password/Register flow |
-| `Settings` | `/settings/*` | Notifications, privacy, help, about, account, music, contact, email verification, payment methods |
+| `Settings` | `/settings/*` | Notifications, privacy, help, about, account, music, contact, email verification, payment methods, blocked users |
 | `CreateOrganiserProfile` | `/profile/create-organiser` | Organiser profile creation |
 | `EditOrganiserProfile` | `/profile/edit-organiser` | Organiser profile editing |
 | `OrganiserTeam` | `/profile/organiser-team` | Team member management |
@@ -38,6 +39,8 @@ Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments:
 | `MessageThread` | `/messages/:id` | Group chat thread |
 | `DmThread` | `/messages/dm/:id` | Direct message thread (user ↔ organiser) |
 | `EventEmbed` | `/embed/:id` | Embeddable event widget for external sites |
+| `BlockedUsers` | `/settings/blocked-users` | Manage blocked users |
+| `MusicCallback` | `/settings/music/callback` | OAuth callback for music service integrations |
 
 ### Route Protection
 - `<ProtectedRoute>` wraps all authenticated routes, redirects to `/auth` with return URL.
@@ -46,7 +49,7 @@ Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments:
 ### Contexts / Providers (wrap order in `App.tsx`)
 
 ```
-QueryClientProvider
+QueryClientProvider (staleTime: 30s, refetchOnWindowFocus: false)
   └── AuthProvider           (src/contexts/AuthContext.tsx)
        └── ActiveProfileProvider (src/contexts/ActiveProfileContext.tsx)
             └── GamificationProvider (src/hooks/useGamification.tsx)
@@ -81,6 +84,7 @@ QueryClientProvider
 | `useFriendsGoing` | `src/hooks/useFriendsGoing.ts` | Friends attending a specific event |
 | `useStripeConnectStatus` | `src/hooks/useStripeConnectStatus.ts` | Organiser Stripe onboarding status |
 | `useAdminMutations` | `src/hooks/useAdminMutations.ts` | Admin moderation actions |
+| `useUnreadMessages` | `src/hooks/useUnreadMessages.ts` | Unread message count for messaging badge |
 
 ### Active Profile Switching
 Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on profile tab. Persisted in `localStorage` under `active_profile`. On init: fetches owned organiser profiles AND accepted team memberships in parallel, then restores or defaults to personal. Syncs metadata (name/avatar) when org profile data changes.
@@ -90,6 +94,12 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - **Infinite scroll**: `IntersectionObserver` on a sentinel div with 200px rootMargin.
 - **Realtime**: Supabase channel on `posts` and `post_reposts` tables invalidates `['feed-posts']` query key.
 - **Profile feed** (`src/pages/Profile.tsx`): Uses `useUserFeedWithReposts()` from `src/hooks/usePostsQuery.ts` — separate, non-paginated path (limit 50).
+
+### Event Board (Attendee Chat)
+- **Component**: `src/components/EventBoard.tsx` — real-time message board on event detail pages.
+- **Access**: Visible only to users who are RSVP'd ("going"), have a valid ticket, or are the event host.
+- **Data**: Uses `event_messages` table with realtime subscription via `postgres_changes`.
+- **RLS**: Messages viewable/postable only by attendees (RSVP'd) or the event host.
 
 ### Events & Checkout Flow
 1. `EventDetail` → User selects ticket tier → navigates to `/checkout` with state (`eventId`, `tierId`, `quantity`, etc.)
@@ -126,7 +136,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - `events` — Event listings (host_id, organiser_profile_id, status, capacity, guestlist, scheduling)
 - `event_cohosts` — Co-host assignments
 - `event_media` — Additional media files
-- `event_messages` — Event chat
+- `event_messages` — Event attendee chat (realtime enabled)
 - `event_reminders` — Configurable reminder types
 - `rsvps` — RSVP records with guest_count
 - `saved_events` — Bookmarked events
@@ -166,6 +176,13 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - `check_ins` — Event check-in records
 - `notifications` — In-app notifications with 20-day expiry
 
+### Realtime-Enabled Tables
+- `posts` — Feed live updates
+- `post_reposts` — Repost live updates
+- `event_messages` — Event board live chat
+- `notifications` — Notification badge updates
+- `user_points` — Loyalty points live sync
+
 ### Edge Functions (40 endpoints in `supabase/functions/`)
 
 | Category | Functions |
@@ -200,7 +217,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | `is_profile_public(user_id)` | SECURITY DEFINER | **⚠️ Currently hardcoded to return `true` — does NOT check profile_tier** |
 | `get_mutual_friends(user_a, user_b)` | SECURITY DEFINER | Mutual friend lookup |
 | `get_friend_count(user_id)` | SECURITY DEFINER | Friend count |
-| `get_friends_and_following_count(user_id)` | SECURITY DEFINER | Same as get_friend_count (doesn't count organiser follows) |
+| `get_friends_and_following_count(user_id)` | SECURITY DEFINER | **⚠️ Same as get_friend_count (doesn't count organiser follows)** |
 | `get_organiser_follower_count(id)` | SECURITY DEFINER | Follower count |
 | `get_organiser_attendee_count(id)` | SECURITY DEFINER | Unique attendee count |
 | `get_organiser_past_event_count(id)` | SECURITY DEFINER | Past event count |
@@ -209,9 +226,12 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | `check_rate_limit(endpoint, user_id, ip, max, window)` | SECURITY DEFINER | Sliding window rate limiter |
 | `cleanup_old_rate_limits()` | SECURITY DEFINER | Rate limit cleanup |
 | `purge_expired_notifications()` | SECURITY DEFINER | Notification cleanup |
+| `purge_orphaned_notifications()` | SECURITY DEFINER | Orphaned notification cleanup (dead links) |
 | `handle_new_user()` | Trigger on auth.users | Auto-creates profile row on signup |
 | `validate_post_content()` | Trigger on posts | Ensures post has content/image/GIF |
 | `update_updated_at_column()` | Trigger | Auto-updates `updated_at` timestamps |
+
+**Missing RPC**: `get_user_group_chats` — referenced in `Dashboard.tsx` but does not exist in the database. This causes a build error (TS2345). Needs to be created or the query needs to be rewritten as a standard Supabase query.
 
 ### Write Path: Edge Functions vs Client-Side
 
@@ -232,6 +252,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | Connection request/accept | **Client-side direct** | RLS: `auth.uid() = requester_id/addressee_id` |
 | Saved events | **Client-side direct** | RLS: `auth.uid() = user_id` |
 | Group chat messages | **Client-side direct insert** | RLS: permissive authenticated |
+| Event board messages | **Client-side direct insert** | RLS: attendee/host check |
 | Notification mark read | **Client-side direct update** | RLS: `auth.uid() = user_id` |
 | Settings (privacy, notifications) | Edge Function (`settings-upsert`) | Upsert logic |
 | Report creation | Edge Function (`report-create`) | Validation |
@@ -280,7 +301,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | notifications | ❌ | ❌ | ❌ All logic in hooks |
 
 **Key violations**:
-- `src/features/social/services/feedService.ts` imports from `@/integrations/supabase/client` directly (line 17), bypassing `@/infrastructure/supabase`.
+- `src/features/social/services/feedService.ts` imports from `@/integrations/supabase/client` directly, bypassing `@/infrastructure/supabase`.
 - `src/features/identity/services/authorization.ts` is designed for edge function use but lives in frontend `src/` — dead code on the client side.
 - Many hooks (`useUserEventsQuery`, `useForYouEvents`, `useFriendsGoing`, `usePostsQuery`) query Supabase directly, bypassing the repository layer entirely.
 - The `social` module has no repository at all — service does direct DB access.
@@ -388,6 +409,12 @@ Within each bucket: newest-first. Final sort: weight DESC → recency DESC.
 - Paid events gated by Stripe Connect onboarding completion.
 - Co-hosts via `event_cohosts` table.
 
+### Event Board (Attendee Chat)
+- `event_messages` table with realtime enabled (`supabase_realtime` publication).
+- RLS restricts access to users with an RSVP or the event host.
+- `EventBoard` component (`src/components/EventBoard.tsx`) renders a scrollable message feed with composer.
+- Access check on EventDetail page: `userRsvp || isHost || hasTicket`.
+
 ### My Plans vs My Events (Tickets page — `src/pages/Tickets.tsx` / `src/hooks/useUserEventsQuery.ts`)
 
 **My Plans** (`useUserPlannedEvents`):
@@ -410,7 +437,8 @@ Event
 │   └── orders (reservation → payment → confirmation)
 │       └── tickets (issued post-payment via webhook)
 ├── saved_events (bookmarks)
-└── waitlist (capacity overflow)
+├── waitlist (capacity overflow)
+└── event_messages (attendee chat — realtime)
 ```
 
 - Free events: RSVP directly, no order/ticket.
@@ -601,59 +629,66 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 4. **`publish_at` scheduling not enforced**
    - Events with future `publish_at` timestamps appear in all public queries. No filter in `eventsRepository.list()` or `eventsRepository.search()` excludes them.
 
+5. **Missing `get_user_group_chats` RPC**
+   - `Dashboard.tsx` calls `supabase.rpc("get_user_group_chats")` but this function does not exist in the database. Causes a TypeScript build error and runtime failure on the messages page.
+
 ### Architectural Mismatches
 
-5. **Dual feed systems**
+6. **Dual feed systems**
    - `usePostsQuery.ts` → `useFeedPosts()` (legacy, limit 50, no pagination, no scoring)
    - `useFeedQuery.ts` → `usePaginatedFeed()` (v1 personalized, paginated, scored)
    - Both subscribe to same realtime channel. Index page uses new system; profile pages use old system. Should consolidate.
 
-6. **Social module bypasses infrastructure layer**
+7. **Social module bypasses infrastructure layer**
    - `src/features/social/services/feedService.ts` imports `@/integrations/supabase/client` directly (should use `@/infrastructure/supabase`).
    - No repository layer — service does direct DB queries, violating the architecture's read path.
 
-7. **`authorization.ts` is dead frontend code**
+8. **`authorization.ts` is dead frontend code**
    - `src/features/identity/services/authorization.ts` contains server-side authorization patterns (`requireAuth`, `requireEventOwner`) but lives in the frontend bundle. Edge functions have their own inline auth checks. This file is never imported by any frontend code.
 
-8. **Frontend queue abstraction is unused**
+9. **Frontend queue abstraction is unused**
    - `src/infrastructure/queue.ts` defines `QueueAdapter` and `InMemoryQueue` but nothing imports or uses it.
 
-9. **Orders module is empty**
-   - `src/features/orders/index.ts` exports nothing. Order logic is split across `useOrderFlow` hook, `orders-reserve` edge function, `payments-intent` edge function, and `stripe-webhook`. No domain types, service, or repository.
+10. **Orders module is empty**
+    - `src/features/orders/index.ts` exports nothing. Order logic is split across `useOrderFlow` hook, `orders-reserve` edge function, `payments-intent` edge function, and `stripe-webhook`. No domain types, service, or repository.
 
-10. **Notifications module is just re-exports**
+11. **Notifications module is just re-exports**
     - `src/features/notifications/index.ts` re-exports hooks from `src/hooks/`. No service, repository, or domain types.
 
 ### Incomplete Flows
 
-11. **Waitlist is schema-only**
+12. **Waitlist is schema-only**
     - `waitlist` table exists with `position` and `notified_at` columns, but `rsvp_join` raises an exception at capacity instead of enqueuing to waitlist. No notification flow when spots open.
 
-12. **Event reminders have no processing**
+13. **Event reminders have no processing**
     - `event_reminders` table allows hosts to configure reminders, but no scheduled job actually sends them.
 
-13. **Guestlist approval is partial**
+14. **Guestlist approval is partial**
     - `guestlist_require_approval` and `guestlist_deadline` exist on events, but no approval/rejection UI or enforcement logic.
 
-14. **Admin UI doesn't exist**
+15. **Admin UI doesn't exist**
     - Reports, moderation actions, support requests have full schema but no admin pages, no admin routes, no admin dashboard.
 
-15. **`get_friends_and_following_count` is misleading**
+16. **`get_friends_and_following_count` is misleading**
     - Function name implies it counts friends AND organiser follows, but implementation is identical to `get_friend_count` — only counts accepted connections.
 
 ### Frontend/Backend Inconsistencies
 
-16. **Profile update dual path**
+17. **Profile update dual path**
     - `identityService.updateProfile()` checks for session: if present, calls `profile-update` edge function; if not, writes directly via Supabase client (for mock/dev login). This means dev path bypasses all server-side validation.
 
-17. **Blocked users not filtered in feed**
+18. **Blocked users not filtered in feed**
     - `blocked_users` table has proper RLS, but `feedService.ts` and `usePostsQuery.ts` don't filter posts from blocked users.
 
-18. **Muted connections not used**
+19. **Muted connections not used**
     - `connections.muted` column exists but feed scoring ignores it entirely.
 
-19. **Event status not filtered**
+20. **Event status not filtered**
     - Events have a `status` column (default 'published') but queries don't filter by status — draft or cancelled events could appear in listings.
 
-20. **Organiser verification is implicit vs explicit**
-    - Feed enrichment hardcodes `author_is_verified = true` for all organiser profile posts (feedService line 183, usePostsQuery line 121), but personal profile verification is DB-driven (`is_verified` column). These are semantically different verification concepts treated identically in the UI.
+21. **Organiser verification is implicit vs explicit**
+    - Feed enrichment hardcodes `author_is_verified = true` for all organiser profile posts, but personal profile verification is DB-driven (`is_verified` column). These are semantically different verification concepts treated identically in the UI.
+
+---
+
+*Last updated: 13 March 2026*

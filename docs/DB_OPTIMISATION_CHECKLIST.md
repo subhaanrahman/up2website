@@ -1,7 +1,8 @@
 # Database Optimisation Checklist
 
 > Comprehensive review of database health, size management, and best practices across the platform.  
-> ✅ = implemented, 🔲 = recommended, ⚠️ = high priority
+> ✅ = implemented, 🔲 = recommended, ⚠️ = high priority  
+> Last updated: 2026-03-13
 
 ---
 
@@ -9,14 +10,16 @@
 
 | # | Table | Recommendation | Status | Impact |
 |---|-------|----------------|--------|--------|
-| 1.1 | `notifications` | Auto-expire after 20 days via `expires_at` default + `purge_expired_notifications` cron (daily) | ✅ Done | Prevents unbounded growth — biggest offender for per-user row accumulation |
-| 1.2 | `rate_limits` | Cleanup via `cleanup_old_rate_limits()` called probabilistically (5% of requests) | ✅ Done | Could accumulate during low-traffic periods; consider adding a daily cron as backup |
-| 1.3 | `point_transactions` | No retention policy — grows indefinitely per user action | 🔲 Pending | Archive transactions older than 12 months to a `point_transactions_archive` table or add a summary row |
-| 1.4 | `post_likes` | No cleanup — deleted posts leave orphaned likes (FK cascade should handle) | 🔲 Review | Verify `ON DELETE CASCADE` is set on `post_id` FK; if not, add it |
-| 1.5 | `post_reposts` | Same as likes — verify cascade delete | 🔲 Review | Orphaned reposts inflate counts |
-| 1.6 | `post_collaborators` | Same — verify cascade on post deletion | 🔲 Review | Low volume but good hygiene |
-| 1.7 | `event_messages` | No TTL — old event chat messages persist forever | 🔲 Pending | Add 90-day expiry or archive after event ends + 30 days |
-| 1.8 | `check_ins` | Historical data, rarely queried after event ends | 🔲 Pending | Consider partitioning by month or archiving after 6 months |
+| 1.1 | `notifications` | Auto-expire after 20 days via `expires_at` default + `purge_expired_notifications` cron (daily) | ✅ Done | Prevents unbounded growth |
+| 1.2 | `notifications` | Purge orphaned notifications (dead links) via `purge_orphaned_notifications()` | ✅ Done | Removes stale references to deleted events/posts/users |
+| 1.3 | `rate_limits` | Cleanup via `cleanup_old_rate_limits()` called probabilistically (5% of requests) | ✅ Done | Could accumulate during low-traffic periods; consider adding a daily cron as backup |
+| 1.4 | `point_transactions` | No retention policy — grows indefinitely per user action | 🔲 Pending | Archive transactions older than 12 months to a `point_transactions_archive` table or add a summary row |
+| 1.5 | `post_likes` | No cleanup — deleted posts leave orphaned likes (FK cascade should handle) | 🔲 Review | Verify `ON DELETE CASCADE` is set on `post_id` FK; if not, add it |
+| 1.6 | `post_reposts` | Same as likes — verify cascade delete | 🔲 Review | Orphaned reposts inflate counts |
+| 1.7 | `post_collaborators` | Same — verify cascade on post deletion | 🔲 Review | Low volume but good hygiene |
+| 1.8 | `event_messages` | No TTL — old event chat messages persist forever | 🔲 Pending | Add 90-day expiry or archive after event ends + 30 days |
+| 1.9 | `check_ins` | Historical data, rarely queried after event ends | 🔲 Pending | Consider partitioning by month or archiving after 6 months |
+| 1.10 | `orders` | Expired reservations (`status = 'reserved'`, `expires_at < now()`) never cleaned up | ⚠️ High Priority | Phantom reservations may block inventory. Need cleanup cron. |
 
 ---
 
@@ -37,6 +40,7 @@
 | 2.11 | `post_likes(post_id)` | Reaction count aggregation | 🔲 Pending | Medium — every feed post fetches this |
 | 2.12 | `profiles(phone)` | Already has unique index | ✅ Done | Auth login speed |
 | 2.13 | `profiles(username)` | For @mention and profile lookups | 🔲 Pending | Medium |
+| 2.14 | `event_messages(event_id, created_at)` | Event board message ordering | 🔲 Pending | Medium — grows with active events |
 
 ---
 
@@ -46,10 +50,11 @@
 |---|------|----------------|--------|--------|
 | 3.1 | Feed post interactions | Currently N+1 — each post fires a separate `usePostInteractions` query. Batch into a single RPC that returns counts for multiple post IDs | ⚠️ High Priority | High — 10 posts = 40 queries (likes, reposts, my-like, my-repost × 10) |
 | 3.2 | Notification unread count | Use a DB function `get_unread_notification_count(user_id)` instead of fetching all unread rows | 🔲 Pending | Medium — reduces data transfer |
-| 3.3 | Profile queries | Cache with `staleTime: 60000` in React Query — profiles rarely change mid-session | 🔲 Pending | Medium |
+| 3.3 | Profile queries | React Query `staleTime` set to 30s globally | ✅ Done | Reduces redundant refetches on navigation |
 | 3.4 | Friend suggestions | Current query fetches all profiles then filters in JS. Move filtering to a DB function with `LIMIT` | 🔲 Pending | Medium — scales poorly as user count grows |
 | 3.5 | Dashboard analytics | `dashboard-analytics` edge function runs multiple sequential queries. Use `LATERAL JOIN` or parallel `Promise.all` | 🔲 Pending | Medium |
-| 3.6 | Event detail page | Fetches event, RSVP status, guest count, and media in separate queries. Consolidate into single RPC | 🔲 Pending | Medium |
+| 3.6 | Event detail page | Fetches event, RSVP status, guest count, ticket status, and media in separate queries. Consolidate into single RPC | 🔲 Pending | Medium |
+| 3.7 | Group chat loading | `Dashboard.tsx` calls non-existent `get_user_group_chats` RPC. Needs creation. | ⚠️ Blocking | Build error — must fix |
 
 ---
 
@@ -60,7 +65,8 @@
 | 4.1 | `events` SELECT policy | `is_public = true OR host_id = auth.uid()` — efficient, index-friendly | ✅ OK | — |
 | 4.2 | `check_ins` policy | Uses 3 `EXISTS` subqueries with JOINs — could be slow on large tables | ⚠️ Review | Medium — consider caching permission in a materialised column |
 | 4.3 | `event_media` policy | Similar multi-JOIN EXISTS pattern | 🔲 Review | Low — small table currently |
-| 4.4 | `profiles` SELECT policy | Calls `is_profile_public()` function — SECURITY DEFINER functions bypass RLS but add function-call overhead per row | 🔲 Review | Medium at scale — consider inlining the check |
+| 4.4 | `profiles` SELECT policy | Calls `is_profile_public()` function — currently hardcoded to `true` so no real overhead, but when fixed will add function-call cost per row | 🔲 Review | Medium at scale — consider inlining the check |
+| 4.5 | `event_messages` policies | Two `EXISTS` subqueries (rsvps + events) on every SELECT/INSERT | 🔲 Review | Medium — will grow with active event boards |
 
 ---
 
@@ -82,7 +88,7 @@
 | # | Area | Recommendation | Status | Impact |
 |---|------|----------------|--------|--------|
 | 6.1 | Edge functions | Each invocation creates a new Supabase client. For high-frequency functions, reuse client at module level | 🔲 Pending | Medium — reduces connection overhead |
-| 6.2 | Realtime subscriptions | Multiple channels per page (notifications, feed). Consolidate into fewer channels with broader filters | 🔲 Pending | Medium — each channel = 1 WebSocket subscription |
+| 6.2 | Realtime subscriptions | Multiple channels per page (notifications, feed, event messages, points). Consolidate into fewer channels with broader filters | 🔲 Pending | Medium — each channel = 1 WebSocket subscription |
 
 ---
 
@@ -91,10 +97,11 @@
 | # | Job | Recommendation | Status | Impact |
 |---|-----|----------------|--------|--------|
 | 7.1 | Purge expired notifications | Daily cron via `pg_cron` | ✅ Done | Core retention |
-| 7.2 | Purge expired orders | Orders with `status = 'reserved'` and `expires_at < now()` should be cancelled/deleted | 🔲 Pending | Medium — prevents phantom reservations from blocking capacity |
-| 7.3 | VACUUM ANALYZE | Postgres auto-vacuums but heavy-write tables (`notifications`, `rate_limits`, `post_likes`) benefit from more aggressive settings | 🔲 Pending | Medium — reduces table bloat after bulk deletes |
-| 7.4 | Stale connections cleanup | Pending friend requests older than 30 days — auto-expire | 🔲 Pending | Low — good hygiene |
-| 7.5 | Session/token cleanup | Supabase handles auth sessions, but verify `auth.sessions` isn't bloating | 🔲 Review | Low — managed by Supabase |
+| 7.2 | Purge orphaned notifications | Can be run periodically via `purge_orphaned_notifications()` | ✅ Done | Cleans dead links |
+| 7.3 | Purge expired orders | Orders with `status = 'reserved'` and `expires_at < now()` should be cancelled/deleted | ⚠️ High Priority | Prevents phantom reservations from blocking capacity |
+| 7.4 | VACUUM ANALYZE | Postgres auto-vacuums but heavy-write tables (`notifications`, `rate_limits`, `post_likes`) benefit from more aggressive settings | 🔲 Pending | Medium — reduces table bloat after bulk deletes |
+| 7.5 | Stale connections cleanup | Pending friend requests older than 30 days — auto-expire | 🔲 Pending | Low — good hygiene |
+| 7.6 | Session/token cleanup | Supabase handles auth sessions, but verify `auth.sessions` isn't bloating | 🔲 Review | Low — managed by Supabase |
 
 ---
 
@@ -110,4 +117,4 @@
 
 ---
 
-*Last updated: 9 March 2026*
+*Last updated: 13 March 2026*

@@ -1,5 +1,15 @@
 # Backend TODO
 
+> Last updated: 2026-03-13
+
+## Critical Fixes
+
+- [ ] **Create `get_user_group_chats` RPC** — Dashboard.tsx calls this function but it doesn't exist. Causes build error (TS2345). Needs to return group chats with latest message for the authenticated user.
+- [ ] **Fix `is_profile_public()` function** — Currently hardcoded to `return true`. Should check `profiles.profile_tier` and `privacy_settings.go_public`.
+- [ ] **Add expired order cleanup cron** — Job type `cleanup.expired_orders` defined in queue but no trigger. Reserved orders with `expires_at < now()` remain indefinitely.
+- [ ] **Add `publish_at` filter to event queries** — Events with future `publish_at` appear in public listings.
+- [ ] **Add `status` filter to event queries** — Draft/cancelled events not filtered.
+
 ## Check-In System
 - [x] Create `check_ins` table (event_id, user_id, checked_in_at, checked_in_by, method: 'manual' | 'qr')
 - [x] Edge function: `checkin-toggle` — mark/unmark a guest as checked in
@@ -12,20 +22,29 @@
 - [x] `orders` table exists
 - [x] `orders-reserve` edge function
 - [x] `payments-intent` edge function
-- [ ] Edge function: `orders-list` — list orders for an event (host-only)
-- [ ] Webhook: `stripe-webhook` — confirm order on payment success
-- [ ] Add `ticket_tier_id` to orders for tier-specific tracking
+- [x] `orders-list` edge function — list orders for an event (host-only)
+- [x] Webhook: `stripe-webhook` — confirm order on payment success
+- [x] `ticket_tier_id` added to orders for tier-specific tracking
 
 ## Refunds
-- [ ] Create `refund_requests` table (order_id, reason, status, created_at, processed_at)
-- [ ] Edge function: `refunds-request` — guest requests refund
-- [ ] Edge function: `refunds-process` — host approves/denies refund
-- [ ] Stripe refund integration via webhook
+- [x] `refunds` table exists (order_id, stripe_refund_id, amount_cents, reason, status, initiated_by)
+- [ ] Edge function: `refunds-create` — initiate Stripe refund, update order, cancel tickets
+- [ ] Edge function: `orders-cancel` — cancel reserved (unpaid) order
+- [ ] Edge function: `orders-expire-cleanup` — scheduled cron for expired reservations
+- [ ] Event cancellation flow — bulk refund all confirmed orders
 
 ## Media Gallery
 - [x] Create `event_media` table (event_id, url, sort_order, uploaded_by, created_at)
 - [ ] Edge function or direct storage upload for event media
 - [ ] RLS: host/organiser can upload, public can view
+
+## Event Board (Attendee Chat)
+- [x] `event_messages` table with RLS (attendees + host only)
+- [x] Realtime enabled on `event_messages`
+- [x] `EventBoard` component with live message feed
+- [x] Access gated by RSVP, ticket, or host status
+- [ ] Message deletion by author or host
+- [ ] Rate limiting on message sends
 
 ## Share & Ticket Links
 - [x] Share event link & RSVP link with copy-to-clipboard
@@ -33,17 +52,43 @@
 - [ ] Track link clicks / conversions
 
 ## Direct Messaging (Organiser DMs)
-- [ ] Design DM schema (conversations table, messages table, participants)
-- [ ] Any user can message an organiser profile (contact form → DM)
-- [ ] Organiser profiles can also create group chats like personal users
-- [ ] Real-time messaging support
-- [ ] Notification integration for new messages
+- [x] DM schema implemented (`dm_threads`, `dm_messages`)
+- [x] User can message organiser profiles
+- [x] Organiser can view/respond to DMs
+- [ ] Organiser-initiated DMs (outbound)
+- [ ] Realtime enabled on DM tables
+- [ ] Notification integration for new DM messages
+- [ ] Unread message counts per thread
 
-## Analytics (Future)
+## Group Chat Improvements
+- [ ] Create `get_user_group_chats` RPC (immediate — blocking build)
+- [ ] Realtime on group chat messages
+- [ ] Group chat notification integration
+
+## Analytics
+- [x] `dashboard-analytics` edge function (basic)
 - [ ] Per-event view tracking
-- [ ] Sales & revenue dashboard
+- [ ] Detailed sales & revenue dashboard
 - [ ] Attendee demographics
+
+## Waitlist
+- [ ] Wire `rsvp_join` to enqueue to waitlist instead of raising exception at capacity
+- [ ] Notification flow when spots open
+- [ ] Waitlist position management
+
+## Event Reminders
+- [ ] Scheduled job to send configured reminders (24h before, 1h before, etc.)
+- [ ] Use existing `event_reminders` table configuration
+
+## Guestlist Approval
+- [ ] Approval/rejection UI for hosts
+- [ ] Enforce `guestlist_deadline` in RSVP flow
+- [ ] Enforce `guestlist_require_approval` — hold RSVPs as pending until approved
 
 ## VIP Tables (Future)
 - [ ] Design table booking schema
 - [ ] Payment flow for table reservations
+
+---
+
+*Last updated: 13 March 2026*

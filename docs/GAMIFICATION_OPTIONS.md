@@ -1,13 +1,22 @@
 # Gamification Options & Roadmap
 
+> Last updated: 2026-03-13
+
 ## Currently Implemented
 
 ### Points & Ranks
 - **5 ranks**: Bronze → Silver → Gold → Platinum → Diamond
 - **Thresholds**: 0 / 1,000 / 2,000 / 3,000 / 4,000 points
 - **Point actions**: Add friend (5), Save event (5), Like post (5), Follow organiser (10), Share event (10), RSVP (25), Buy ticket (50), Create event (50), App review (50)
-- **Rank-up vouchers**: $5 reward voucher auto-issued on each rank promotion
-- **Realtime sync**: Points & rank update live via Supabase realtime subscription
+- **Rank-up vouchers**: $5 reward voucher auto-issued on each rank promotion (90-day expiry)
+- **Realtime sync**: Points & rank update live via Supabase realtime subscription on `user_points` table
+- **DB function**: `award_points` RPC with row locking to prevent race conditions
+
+### Database Schema (Implemented)
+- `user_points` — total_points, current_rank (enum)
+- `point_transactions` — audit log of all point awards
+- `user_vouchers` — reward vouchers with expiry and status
+- `user_badges` — badge type + unlock date (schema exists, **no awarding logic yet**)
 
 ### Notifications (Gamification-Related)
 - Friend rank-up alerts: "Your friend just moved into Silver — catch up?"
@@ -16,6 +25,11 @@
 ### Post Reactions
 - 5 reaction types: ❤️ Heart, 🔥 Fire/Lit, 👀 Watch Out, 🙏 Yessir, 🩷 Mood
 - Long-press picker with stacked emoji breakdown on feed posts
+
+### UI Status
+- Rewards UI (modal, progress ring) **hidden from profile page** — QR code modal shown instead
+- Gamification backend fully intact and functional
+- `GamificationProvider` context active in app wrapper
 
 ---
 
@@ -36,6 +50,7 @@
 - **Promoter Pro**: Sell 100+ tickets across events
 - **City Explorer**: Attend events in 3+ different cities
 - Display badges on profile with unlock dates
+- **DB ready**: `user_badges` table exists, needs awarding triggers/functions
 
 ### 3. Leaderboards
 - **Weekly city leaderboard**: Top 10 most active users per city
@@ -63,6 +78,7 @@
 - **Reward structure**: Inviter gets 50 pts + invitee gets 25 pts on first event attendance
 - **Milestone bonuses**: 5 referrals = Silver boost, 15 referrals = Gold boost
 - **Organiser referrals**: Organisers earn commission credits for referred ticket sales
+- **Partial implementation**: `referrals-track` edge function exists
 
 ### 7. Nightlife-Specific Mechanics
 - **Venue loyalty cards**: Digital stamp card — attend 5 times, get a free drink voucher
@@ -106,4 +122,4 @@
 
 ---
 
-*Last updated: 9 March 2026*
+*Last updated: 13 March 2026*

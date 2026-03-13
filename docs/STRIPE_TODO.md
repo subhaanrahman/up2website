@@ -1,5 +1,7 @@
 # Stripe Integration TODO — Up2 Marketplace
 
+> Last updated: 2026-03-13
+
 ## Status
 
 | Phase | Status | Description |
@@ -34,72 +36,46 @@ All items implemented:
 
 ### Remaining Phase 1 pre-launch items
 
-- [ ] **Add Stripe publishable key** — replace `pk_test_PLACEHOLDER` in `src/lib/stripe.ts`
-- [ ] **Add `STRIPE_WEBHOOK_SECRET`** — create webhook endpoint in Stripe dashboard, add signing secret as backend secret
+- [ ] **Replace Stripe publishable key** — move `pk_test_PLACEHOLDER` in `src/lib/stripe.ts` to `VITE_STRIPE_PUBLISHABLE_KEY` env var
+- [ ] **Verify `STRIPE_WEBHOOK_SECRET`** — create webhook endpoint in Stripe dashboard, confirm signing secret matches
 - [ ] **Add unique constraint on `rsvps (event_id, user_id)`** — needed for upsert in webhook
 - [ ] **Test end-to-end** with Stripe test mode
 
 ---
 
-## Phase 2 — Payout Architecture (Stripe Connect)
-
-Up2 is a marketplace. Organisers/venues are the payout recipients. This phase adds Stripe Connect so money flows correctly.
+## Phase 2 — Payout Architecture (Stripe Connect) ✅
 
 ### 2.1 Database
-
-- [x] Create `organiser_stripe_accounts` table:
-  ```
-  organiser_profile_id (FK → organiser_profiles, UNIQUE)
-  stripe_account_id (text, acct_xxx)
-  onboarding_complete (boolean)
-  charges_enabled (boolean)
-  payouts_enabled (boolean)
-  created_at, updated_at
-  ```
-- [x] Add `stripe_account_id` column to `orders` — records which connected account received funds
+- [x] `organiser_stripe_accounts` table with onboarding/capability tracking
+- [x] `stripe_account_id` column on `orders` for audit
 
 ### 2.2 Edge Functions
+- [x] `stripe-connect-onboard` — creates Express connected account, returns Account Link URL
+- [x] `stripe-connect-status` — fetches and updates capabilities from Stripe
+- [x] `stripe-connect-dashboard` — creates login link for organiser payout dashboard
 
-- [x] `stripe-connect-onboard` — creates a Stripe Express connected account for an organiser profile, returns an Account Link URL for onboarding
-- [x] `stripe-connect-status` — fetches and updates `charges_enabled` / `payouts_enabled` from Stripe for a connected account
-- [x] `stripe-connect-dashboard` — creates a Stripe login link so organisers can view their payouts
-
-### 2.3 Payment Flow Changes
-
-- [x] Update `payments-intent` to use **destination charges** with `application_fee_amount` and `transfer_data.destination`
-- [x] Before allowing ticket sales, check that the organiser's connected account has `charges_enabled = true`
-- [x] Store `stripe_account_id` on the order for audit
+### 2.3 Payment Flow
+- [x] `payments-intent` uses destination charges with `application_fee_amount` and `transfer_data.destination`
+- [x] Pre-sale check: organiser must have `charges_enabled = true`
+- [x] `stripe_account_id` stored on order for audit
 
 ### 2.4 Webhook Updates
-
 - [ ] Handle `account.updated` — update `organiser_stripe_accounts` when Stripe reports capability changes
 - [ ] Handle `payout.paid` / `payout.failed` — optional, for organiser payout status tracking
 
 ### 2.5 UI
-
-- [x] Add "Set up payouts" button/flow on organiser profile settings
-- [x] Show payout status indicator on organiser dashboard settings
-- [x] Block paid ticket tier creation if organiser hasn't completed Stripe onboarding
+- [x] "Set up payouts" button/flow on organiser profile settings
+- [x] Payout status indicator on organiser dashboard settings
+- [x] Block paid ticket tier creation if organiser hasn't completed onboarding
 
 ---
 
 ## Phase 3 — Refunds, Cleanup & Audit
 
 ### 3.1 Database
-
-- [ ] Create `refunds` table:
-  ```
-  order_id (FK → orders)
-  stripe_refund_id (text)
-  amount_cents (integer)
-  reason (text)
-  status (text: pending, succeeded, failed)
-  initiated_by (uuid — user or admin)
-  created_at
-  ```
+- [x] `refunds` table exists (order_id, stripe_refund_id, amount_cents, reason, status, initiated_by)
 
 ### 3.2 Edge Functions
-
 - [ ] `refunds-create` — initiates a Stripe refund, records in `refunds` table, updates order status, cancels tickets
 - [ ] `orders-cancel` — cancels a reserved (unpaid) order, cancels associated Stripe PaymentIntent if exists
 - [ ] `orders-expire-cleanup` — scheduled/cron function that:
@@ -109,7 +85,6 @@ Up2 is a marketplace. Organisers/venues are the payout recipients. This phase ad
   - Releases capacity
 
 ### 3.3 Webhook Updates
-
 - [ ] Handle `charge.refunded` — update order status to `refunded`, mark tickets as `cancelled`
 - [ ] Handle `charge.dispute.created` — flag order, notify admin
 
@@ -124,7 +99,6 @@ reserved → payment_pending → confirmed → refunded
 ```
 
 ### 3.5 Event Cancellation Flow
-
 - [ ] When an organiser cancels an event:
   - Find all `confirmed` orders for that event
   - Initiate Stripe refunds for each
@@ -133,8 +107,7 @@ reserved → payment_pending → confirmed → refunded
   - Notify all ticket holders
 
 ### 3.6 Audit & Observability
-
-- [ ] `payment_events` table already exists — ensure all webhook events are logged
+- [x] `payment_events` table exists for webhook logging
 - [ ] Add admin-facing order history view (future)
 - [ ] Add reconciliation query: compare Stripe PaymentIntents with local orders
 
@@ -143,7 +116,6 @@ reserved → payment_pending → confirmed → refunded
 ## Architecture Notes
 
 ### Stripe Connect Model: Destination Charges
-
 Up2 uses **destination charges** because:
 - Up2 is merchant of record (handles disputes, refunds)
 - Single charge to customer, automatic transfer to organiser
@@ -151,7 +123,6 @@ Up2 uses **destination charges** because:
 - Simpler than separate charges + transfers
 
 ### Security Invariants
-
 - All prices are derived server-side from `ticket_tiers` or `events.ticket_price_cents`
 - Client never sends amounts — only `event_id`, `ticket_tier_id`, `quantity`
 - Webhook verifies Stripe signature before processing
@@ -159,8 +130,11 @@ Up2 uses **destination charges** because:
 - Order confirmation only happens via webhook, never client-side
 
 ### Future Considerations
-
 - Multi-currency: currently defaults to ZAR, will need per-event currency
 - Ticket transfers: `tickets` table supports `status = 'transferred'`
-- Discount codes: `orders` has `discount_code_id` column ready, server validation needed in `orders-reserve`
+- Discount codes: `validate-discount` edge function exists, server validation in place
 - Mobile: Stripe Elements works in WebView; React Native would use `@stripe/stripe-react-native`
+
+---
+
+*Last updated: 13 March 2026*
