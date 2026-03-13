@@ -1,5 +1,11 @@
 # Haan (Subhaan Rahman) — Handover Notes
 
+## 13 March 2026
+
+- **Comprehensive docs update**: Full review and update of all docs/ files — ARCHITECTURE.md, DATABASE_ARCHITECTURE.md (new), BACKEND_TODO.md, API_CHECKLIST.md, DB_OPTIMISATION_CHECKLIST.md, GAMIFICATION_OPTIONS.md, OPTIMISE_CHECKLIST.md, SECURITY_CHECKLIST.md, STRIPE_TODO.md. Deleted stale CHANGELOG_2026-03-03.md.
+- **Event Board (attendee chat)**: Added Partiful-style message board to event detail pages. Uses `event_messages` table with realtime enabled. Access restricted to RSVP'd users, ticket holders, or host. Component: `EventBoard.tsx`.
+- **Build error identified**: `Dashboard.tsx` calls `supabase.rpc("get_user_group_chats")` but this RPC doesn't exist in the database. Needs to be created.
+
 ## 7 March 2026
 
 ### Summary of Changes
