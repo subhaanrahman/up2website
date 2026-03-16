@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const reserveSchema = z.object({
   event_id: z.string().uuid('Invalid event ID'),
@@ -20,13 +17,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -37,9 +34,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     // Rate limit
@@ -50,9 +45,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = reserveSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
     const { event_id, ticket_tier_id, quantity, currency } = parsed.data;
@@ -70,16 +63,12 @@ Deno.serve(async (req) => {
       .single();
 
     if (eventError || !event) {
-      return new Response(JSON.stringify({ error: 'Event not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Event not found', { requestId });
     }
 
     // Only allow purchases for published events
     if (event.status !== 'published') {
-      return new Response(JSON.stringify({ error: 'Event is not available for ticket sales' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Event is not available for ticket sales', { requestId });
     }
 
     // Derive price from ticket tier (preferred) or fallback to event price
@@ -95,9 +84,7 @@ Deno.serve(async (req) => {
         .single();
 
       if (tierError || !tier) {
-        return new Response(JSON.stringify({ error: 'Ticket tier not found for this event' }), {
-          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(404, 'Ticket tier not found for this event', { requestId });
       }
 
       // Check tier-level inventory — SUM(quantity) not COUNT(*)
@@ -112,9 +99,7 @@ Deno.serve(async (req) => {
 
         const tierSoldQty = (soldRows ?? []).reduce((sum: number, r: any) => sum + (r.quantity ?? 0), 0);
         if (tierSoldQty + quantity > tier.available_quantity) {
-          return new Response(JSON.stringify({ error: 'This ticket tier is sold out' }), {
-            status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return errorResponse(409, 'This ticket tier is sold out', { requestId });
         }
       }
 
@@ -144,15 +129,10 @@ Deno.serve(async (req) => {
           .maybeSingle();
 
         if (!stripeAcct || !stripeAcct.charges_enabled) {
-          return new Response(JSON.stringify({ error: 'This organiser has not completed payout setup. Tickets cannot be purchased yet.' }), {
-            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return errorResponse(400, 'This organiser has not completed payout setup. Tickets cannot be purchased yet.', { requestId });
         }
       } else {
-        // Paid event without an organiser profile — should not happen, but block it
-        return new Response(JSON.stringify({ error: 'Paid events require an organiser with payout setup' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(400, 'Paid events require an organiser with payout setup', { requestId });
       }
     }
 
@@ -184,9 +164,7 @@ Deno.serve(async (req) => {
       const pureRsvps = Math.max(0, (freeRsvpCount ?? 0) - (confirmedOrderCount ?? 0));
       const totalOccupied = orderQty + pureRsvps;
       if (totalOccupied + quantity > event.max_guests) {
-        return new Response(JSON.stringify({ error: 'Not enough capacity for this event' }), {
-          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(409, 'Not enough capacity for this event', { requestId });
       }
     }
 
@@ -201,9 +179,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingOrder) {
-      return new Response(JSON.stringify({ error: 'You already have an active reservation for this event', order_id: existingOrder.id }), {
-        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(409, 'You already have an active reservation for this event', { requestId, details: { order_id: existingOrder.id } });
     }
 
     // platform_fee_cents = service fee (7%) passed as application_fee_amount to Stripe
@@ -230,19 +206,15 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error('Order insert error:', insertError);
-      return new Response(JSON.stringify({ error: 'Failed to create reservation' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Order insert error', { requestId, error: String(insertError) });
+      return errorResponse(500, 'Failed to create reservation', { requestId });
     }
 
-    return new Response(JSON.stringify(order), {
+    return new Response(JSON.stringify({ ...order, request_id: requestId }), {
       status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
+import { supportRepository } from "@/features/support/repositories/supportRepository";
 import { useAuth } from "@/contexts/AuthContext";
 
 const ContactUs = () => {
@@ -28,12 +28,7 @@ const ContactUs = () => {
     }
     setSending(true);
     try {
-      const { error } = await supabase.from("contact_messages").insert({
-        user_id: user?.id || null,
-        subject: subject.trim(),
-        message: message.trim(),
-      });
-      if (error) throw error;
+      await supportRepository.submitContactMessage({ userId: user?.id || null, subject: subject.trim(), message: message.trim() });
       setSubject("");
       setMessage("");
       toast({ title: "Message sent!", description: "We'll get back to you within 24 hours." });

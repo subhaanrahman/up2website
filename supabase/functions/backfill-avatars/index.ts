@@ -5,14 +5,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
+  const requestId = getRequestId(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -49,7 +47,7 @@ Deno.serve(async (req) => {
           .eq("user_id", p.user_id);
         updatedProfiles++;
       } catch (err) {
-        console.error(`Failed for profile ${p.user_id}:`, err);
+        edgeLog('error', `Failed for profile ${p.user_id}`, { requestId, error: String(err) });
       }
     }
   }
@@ -74,17 +72,14 @@ Deno.serve(async (req) => {
           .eq("id", o.id);
         updatedOrgs++;
       } catch (err) {
-        console.error(`Failed for org ${o.id}:`, err);
+        edgeLog('error', `Failed for org ${o.id}`, { requestId, error: String(err) });
       }
     }
   }
 
-  return new Response(
-    JSON.stringify({
-      success: true,
-      updated_profiles: updatedProfiles,
-      updated_organiser_profiles: updatedOrgs,
-    }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  return successResponse({
+    success: true,
+    updated_profiles: updatedProfiles,
+    updated_organiser_profiles: updatedOrgs,
+  }, requestId);
 });

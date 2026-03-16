@@ -3,11 +3,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const CATEGORIES = ['Venue', 'Event'] as const;
 
@@ -25,12 +22,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Missing authorization', { requestId });
     }
 
     const supabase = createClient(
@@ -41,9 +38,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Unauthorized', { requestId });
     }
 
     const allowed = await checkRateLimit('organiser-profile-create', user.id, getClientIp(req));
@@ -52,9 +47,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = createSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
     // Use service role to insert (DML revoked from authenticated)
@@ -74,7 +67,7 @@ Deno.serve(async (req) => {
         parsed.data.display_name,
       );
     } catch (avatarErr) {
-      console.error('Organiser avatar generation failed (non-fatal):', avatarErr);
+      edgeLog('error', 'Organiser avatar generation failed (non-fatal)', { requestId, error: String(avatarErr) });
     }
 
     const { data, error } = await serviceClient
@@ -94,21 +87,14 @@ Deno.serve(async (req) => {
 
     if (error) {
       if (error.code === '23505') {
-        return new Response(JSON.stringify({ error: 'Username already taken' }), {
-          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(409, 'Username already taken', { requestId });
       }
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(500, error.message, { requestId });
     }
 
-    return new Response(JSON.stringify({ success: true, profile: data }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ success: true, profile: data }, requestId);
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Internal error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal error', { requestId });
   }
 });

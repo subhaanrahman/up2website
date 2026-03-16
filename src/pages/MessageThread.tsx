@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send, MoreVertical } from "lucide-react";
 import GroupChatSettingsSheet from "@/components/GroupChatSettingsSheet";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
@@ -38,29 +39,14 @@ const MessageThread = () => {
 
   const { data: chat } = useQuery({
     queryKey: ["group-chat", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("group_chats")
-        .select("*")
-        .eq("id", id!)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => messagingRepository.getGroupChat(id!),
     enabled: !!id,
   });
 
   const { data: messages } = useQuery({
     queryKey: ["group-chat-messages", id],
-    queryFn: async (): Promise<ChatMessage[]> => {
-      const { data, error } = await supabase
-        .from("group_chat_messages")
-        .select("*")
-        .eq("group_chat_id", id!)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as ChatMessage[];
-    },
+    queryFn: async (): Promise<ChatMessage[]> =>
+      messagingRepository.getGroupMessages(id!) as Promise<ChatMessage[]>,
     enabled: !!id,
   });
 
@@ -75,23 +61,18 @@ const MessageThread = () => {
     const content = message.trim();
     setMessage("");
 
-    await supabase.from("group_chat_messages").insert({
-      group_chat_id: id!,
-      sender_name: senderDisplayName,
-      sender_id: user.id,
+    await messagingRepository.sendGroupMessage({
+      groupChatId: id!,
+      senderId: user.id,
+      senderName: senderDisplayName,
       content,
-      is_from_current_user: true, // legacy field, kept for compat
     });
 
     queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
     queryClient.invalidateQueries({ queryKey: ["group-chats"] });
 
     // Notify other group members (fire-and-forget)
-    const { data: members } = await supabase
-      .from("group_chat_members")
-      .select("user_id")
-      .eq("group_chat_id", id!)
-      .neq("user_id", user.id);
+    const members = await messagingRepository.getGroupMembers(id!, user.id);
 
     if (members && members.length > 0) {
       const chatLabel = chatName || "Group Chat";

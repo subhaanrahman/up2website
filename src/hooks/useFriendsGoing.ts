@@ -1,6 +1,6 @@
 // P-06 & P-19: Hook to get friends going to an event
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface FriendGoing {

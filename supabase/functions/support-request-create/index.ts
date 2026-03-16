@@ -1,15 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const requestId = getRequestId(req);
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -34,22 +32,13 @@ Deno.serve(async (req) => {
 
     const validCategories = ["general", "bug", "feature_request", "account", "billing", "safety", "other"];
     if (category && !validCategories.includes(category)) {
-      return new Response(JSON.stringify({ error: "Invalid category" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "Invalid category", { requestId });
     }
     if (!subject || typeof subject !== "string" || subject.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "subject is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "subject is required", { requestId });
     }
     if (!message || typeof message !== "string" || message.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "message is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "message is required", { requestId });
     }
 
     // Rate limit
@@ -62,10 +51,7 @@ Deno.serve(async (req) => {
         p_window_seconds: 3600,
       });
       if (allowed === false) {
-        return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse(429, "Too many requests. Please try again later.", { requestId });
       }
     }
 
@@ -87,15 +73,12 @@ Deno.serve(async (req) => {
 
     if (insertError) throw insertError;
 
-    return new Response(JSON.stringify({ success: true, request }), {
+    return new Response(JSON.stringify({ success: true, request, request_id: requestId }), {
       status: 201,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("support-request-create error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    edgeLog("error", "support-request-create error", { requestId, error: String(err) });
+    return errorResponse(500, "Internal server error", { requestId });
   }
 });

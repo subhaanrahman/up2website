@@ -3,18 +3,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { hashPassword } from "../_shared/password.ts";
 import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
-
-function errorResponse(msg: string, status: number, details?: string) {
-  return new Response(
-    JSON.stringify({ error: msg, ...(details ? { details } : {}) }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-  );
-}
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 function phoneToInternalEmail(phone: string): string {
   return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
@@ -28,6 +18,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const ip = getClientIp(req);
     const allowed = await checkRateLimit('register', null, ip);
@@ -37,25 +29,22 @@ Deno.serve(async (req) => {
 
     // ── Validation ──
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
-      return errorResponse('Invalid phone number', 400);
+      return errorResponse(400, 'Invalid phone number', { requestId });
     }
     if (!password || typeof password !== 'string') {
-      return errorResponse('Password is required', 400);
+      return errorResponse(400, 'Password is required', { requestId });
     }
     if (!PASSWORD_REGEX.test(password)) {
-      return errorResponse(
-        'Password must be 8+ characters with at least 1 letter, 1 number, and 1 special character',
-        400,
-      );
+      return errorResponse(400, 'Password must be 8+ characters with at least 1 letter, 1 number, and 1 special character', { requestId });
     }
     if (!firstName || typeof firstName !== 'string' || firstName.trim().length < 1) {
-      return errorResponse('First name is required', 400);
+      return errorResponse(400, 'First name is required', { requestId });
     }
     if (!lastName || typeof lastName !== 'string' || lastName.trim().length < 1) {
-      return errorResponse('Last name is required', 400);
+      return errorResponse(400, 'Last name is required', { requestId });
     }
     if (!username || typeof username !== 'string' || !USERNAME_REGEX.test(username)) {
-      return errorResponse('Username must be 3-30 characters (letters, numbers, underscores only)', 400);
+      return errorResponse(400, 'Username must be 3-30 characters (letters, numbers, underscores only)', { requestId });
     }
 
     const supabaseAdmin = createClient(
@@ -71,7 +60,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingProfile) {
-      return errorResponse('Username is already taken', 409);
+      return errorResponse(409, 'Username is already taken', { requestId });
     }
 
     // ── Check if phone already registered (fast indexed lookup) ──
@@ -84,7 +73,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingPhoneProfile) {
-      return errorResponse('An account with this phone number already exists. Please log in instead.', 409);
+      return errorResponse(409, 'An account with this phone number already exists. Please log in instead.', { requestId });
     }
 
     // ── Create user with real password for signInWithPassword ──
@@ -107,16 +96,16 @@ Deno.serve(async (req) => {
     });
 
     if (createError) {
-      console.error('Create user error:', JSON.stringify(createError));
-      return errorResponse('Failed to create account', 500, createError.message);
+      edgeLog('error', 'Create user error', { requestId, error: JSON.stringify(createError) });
+      return errorResponse(500, 'Failed to create account', { requestId, details: createError.message });
     }
 
     if (!newUser?.user) {
-      return errorResponse('Failed to create account: no user returned', 500);
+      return errorResponse(500, 'Failed to create account: no user returned', { requestId });
     }
 
     const userId = newUser.user.id;
-    console.log(`Created user ${userId} for phone ${phone}`);
+    edgeLog('info', `Created user ${userId} for phone ${phone}`, { requestId });
 
     // ── Update profile with registration data + phone ──
     const profileData = {
@@ -133,7 +122,7 @@ Deno.serve(async (req) => {
       .eq('user_id', userId);
 
     if (profileError) {
-      console.error('Profile update error:', JSON.stringify(profileError));
+      edgeLog('error', 'Profile update error', { requestId, error: JSON.stringify(profileError) });
       await supabaseAdmin.from('profiles').insert({ user_id: userId, ...profileData });
     }
 
@@ -148,9 +137,9 @@ Deno.serve(async (req) => {
         .from('profiles')
         .update({ avatar_url: avatarUrl })
         .eq('user_id', userId);
-      console.log(`Generated initials avatar for user ${userId}`);
+      edgeLog('info', `Generated initials avatar for user ${userId}`, { requestId });
     } catch (avatarErr) {
-      console.error('Initials avatar generation failed (non-fatal):', avatarErr);
+      edgeLog('error', 'Initials avatar generation failed (non-fatal)', { requestId, error: String(avatarErr) });
     }
 
     // ── Create session via signInWithPassword using phone (single fast call) ──
@@ -165,23 +154,20 @@ Deno.serve(async (req) => {
     });
 
     if (signInError || !signInData?.session) {
-      console.error('signInWithPassword error:', JSON.stringify(signInError));
-      return errorResponse('Account created but sign-in failed. Please log in manually.', 500);
+      edgeLog('error', 'signInWithPassword error', { requestId, error: JSON.stringify(signInError) });
+      return errorResponse(500, 'Account created but sign-in failed. Please log in manually.', { requestId });
     }
 
-    console.log(`Registration complete for user ${userId}`);
+    edgeLog('info', `Registration complete for user ${userId}`, { requestId });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        access_token: signInData.session.access_token,
-        refresh_token: signInData.session.refresh_token,
-        user_id: userId,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return successResponse({
+      success: true,
+      access_token: signInData.session.access_token,
+      refresh_token: signInData.session.refresh_token,
+      user_id: userId,
+    }, requestId);
   } catch (err) {
-    console.error('register error:', err);
-    return errorResponse('Internal server error', 500, String(err));
+    edgeLog('error', 'register error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

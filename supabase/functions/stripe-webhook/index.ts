@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 // Register all job handlers before any enqueue() calls
 import "../_shared/job-handlers.ts";
@@ -11,11 +13,6 @@ import type {
   LoyaltyAwardPayload,
 } from "../_shared/queue.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
-
 /**
  * Stripe Webhook handler
  * Side-effects (tickets, RSVP, loyalty) are dispatched via the queue abstraction.
@@ -25,6 +22,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
     apiVersion: '2025-08-27.basil',
   });
@@ -33,10 +32,8 @@ Deno.serve(async (req) => {
   const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
 
   if (!signature || !webhookSecret) {
-    console.error('Missing signature or webhook secret');
-    return new Response(JSON.stringify({ error: 'Missing signature' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Missing signature or webhook secret', { requestId });
+    return errorResponse(400, 'Missing signature', { requestId });
   }
 
   const body = await req.text();
@@ -45,10 +42,8 @@ Deno.serve(async (req) => {
   try {
     event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err);
-    return new Response(JSON.stringify({ error: 'Invalid signature' }), {
-      status: 400, headers: { 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Webhook signature verification failed', { requestId, error: String(err) });
+    return errorResponse(400, 'Invalid signature', { requestId });
   }
 
   const serviceClient = createClient(
@@ -64,10 +59,8 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (existing) {
-    console.log(`Already processed event ${event.id}, skipping`);
-    return new Response(JSON.stringify({ received: true }), {
-      status: 200, headers: { 'Content-Type': 'application/json' },
-    });
+    edgeLog('info', `Already processed event ${event.id}, skipping`, { requestId });
+    return successResponse({ received: true }, requestId);
   }
 
   try {
@@ -76,7 +69,7 @@ Deno.serve(async (req) => {
         const pi = event.data.object as Stripe.PaymentIntent;
         const orderId = pi.metadata?.order_id;
         if (!orderId) {
-          console.error('No order_id in payment intent metadata');
+          edgeLog('error', 'No order_id in payment intent metadata', { requestId });
           break;
         }
 
@@ -87,12 +80,12 @@ Deno.serve(async (req) => {
           .single();
 
         if (orderErr || !order) {
-          console.error('Order not found:', orderId);
+          edgeLog('error', 'Order not found', { requestId, orderId });
           break;
         }
 
         if (order.status !== 'reserved') {
-          console.log(`Order ${orderId} already ${order.status}, skipping`);
+          edgeLog('info', `Order ${orderId} already ${order.status}, skipping`, { requestId });
           break;
         }
 
@@ -125,7 +118,7 @@ Deno.serve(async (req) => {
           }),
         ]);
 
-        console.log(`Order ${orderId} confirmed, side-effects enqueued`);
+        edgeLog('info', `Order ${orderId} confirmed, side-effects enqueued`, { requestId });
         break;
       }
 
@@ -133,7 +126,7 @@ Deno.serve(async (req) => {
         const pi = event.data.object as Stripe.PaymentIntent;
         const orderId = pi.metadata?.order_id;
         if (!orderId) break;
-        console.log(`Payment failed for order ${orderId} — reservation still active until expiry`);
+        edgeLog('info', `Payment failed for order ${orderId} — reservation still active until expiry`, { requestId });
         break;
       }
 
@@ -149,7 +142,7 @@ Deno.serve(async (req) => {
           .single();
 
         if (!refundOrder) {
-          console.error('No order found for refunded charge PI:', pi);
+          edgeLog('error', 'No order found for refunded charge PI', { requestId, paymentIntent: pi });
           break;
         }
 
@@ -174,7 +167,7 @@ Deno.serve(async (req) => {
             initiated_by: null,
           });
 
-        console.log(`Order ${refundOrder.id} refunded, tickets cancelled`);
+        edgeLog('info', `Order ${refundOrder.id} refunded, tickets cancelled`, { requestId });
         break;
       }
 
@@ -195,15 +188,15 @@ Deno.serve(async (req) => {
           .eq('stripe_account_id', stripeAccountId);
 
         if (updateErr) {
-          console.error('Failed to update organiser stripe account:', updateErr);
+          edgeLog('error', 'Failed to update organiser stripe account', { requestId, error: String(updateErr) });
         } else {
-          console.log(`Updated stripe account ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}`);
+          edgeLog('info', `Updated stripe account ${stripeAccountId}: charges=${chargesEnabled}, payouts=${payoutsEnabled}`, { requestId });
         }
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        edgeLog('info', `Unhandled event type: ${event.type}`, { requestId });
     }
 
     // Record for idempotency
@@ -217,10 +210,8 @@ Deno.serve(async (req) => {
       });
 
   } catch (err) {
-    console.error('Error processing webhook:', err);
+    edgeLog('error', 'Error processing webhook', { requestId, error: String(err) });
   }
 
-  return new Response(JSON.stringify({ received: true }), {
-    status: 200, headers: { 'Content-Type': 'application/json' },
-  });
+  return successResponse({ received: true }, requestId);
 });

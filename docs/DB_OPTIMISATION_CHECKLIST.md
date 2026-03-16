@@ -2,7 +2,7 @@
 
 > Comprehensive review of database health, size management, and best practices across the platform.  
 > ✅ = implemented, 🔲 = recommended, ⚠️ = high priority  
-> Last updated: 2026-03-13
+> Last updated: 2026-03-16
 
 ---
 
@@ -54,7 +54,7 @@
 | 3.4 | Friend suggestions | Current query fetches all profiles then filters in JS. Move filtering to a DB function with `LIMIT` | 🔲 Pending | Medium — scales poorly as user count grows |
 | 3.5 | Dashboard analytics | `dashboard-analytics` edge function runs multiple sequential queries. Use `LATERAL JOIN` or parallel `Promise.all` | 🔲 Pending | Medium |
 | 3.6 | Event detail page | Fetches event, RSVP status, guest count, ticket status, and media in separate queries. Consolidate into single RPC | 🔲 Pending | Medium |
-| 3.7 | Group chat loading | `Dashboard.tsx` calls non-existent `get_user_group_chats` RPC. Needs creation. | ⚠️ Blocking | Build error — must fix |
+| 3.7 | Group chat loading | `get_user_group_chats` RPC created. | ✅ Done | Created in migration `20260312130000_optimize_group_chats.sql` |
 
 ---
 
@@ -117,4 +117,4 @@
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

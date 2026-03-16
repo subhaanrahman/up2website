@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Users, Image as ImageIcon } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { DatePicker, TimePicker } from "./DateTimePicker";
 
 export interface CohostEntry {
@@ -89,32 +91,23 @@ const EventDetailsForm = ({
     if (query.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
 
     searchTimeoutRef.current = setTimeout(async () => {
-      const term = `%${query}%`;
+      const term = query;
       const cohostIds = new Set(cohosts.map(c => c.id));
 
-      const [profilesRes, organisersRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name, username, avatar_url")
-          .or(`username.ilike.${term},display_name.ilike.${term}`).neq("user_id", user?.id ?? "").limit(10),
-        supabase.from("organiser_profiles").select("id, display_name, username, avatar_url, owner_id")
-          .or(`username.ilike.${term},display_name.ilike.${term}`).limit(10),
+      const [profilesData, organisersData] = await Promise.all([
+        profilesRepository.searchProfiles(term, { excludeUserId: user?.id, limit: 10 }),
+        profilesRepository.searchOrganisers(term, { limit: 10, includeOwner: true }),
       ]);
 
-      let friendIds = new Set<string>();
-      if (user) {
-        const { data: connections } = await supabase.from("connections")
-          .select("requester_id, addressee_id").eq("status", "accepted")
-          .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-        if (connections) connections.forEach((c) => {
-          friendIds.add(c.requester_id === user.id ? c.addressee_id : c.requester_id);
-        });
-      }
+      const friendIds = user ? await connectionsRepository.getFriendIds(user.id) : new Set<string>();
 
       const results: SearchResult[] = [];
-      for (const o of organisersRes.data || []) {
-        if (cohostIds.has(o.id) || o.owner_id === user?.id) continue;
-        results.push({ id: o.id, type: "organiser", display_name: o.display_name, username: o.username, avatar_url: o.avatar_url, isFriend: false });
+      for (const o of organisersData || []) {
+        const org = o as { id: string; display_name: string | null; username: string | null; avatar_url: string | null; owner_id?: string };
+        if (cohostIds.has(org.id) || org.owner_id === user?.id) continue;
+        results.push({ id: org.id, type: "organiser", display_name: org.display_name, username: org.username, avatar_url: org.avatar_url, isFriend: false });
       }
-      for (const p of profilesRes.data || []) {
+      for (const p of profilesData || []) {
         if (cohostIds.has(p.user_id)) continue;
         results.push({ id: p.user_id, type: "personal", display_name: p.display_name, username: p.username, avatar_url: p.avatar_url, isFriend: friendIds.has(p.user_id) });
       }

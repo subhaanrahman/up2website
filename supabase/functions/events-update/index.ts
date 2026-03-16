@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const updateSchema = z.object({
   action: z.enum(['update', 'delete']),
@@ -27,12 +24,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -43,9 +40,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     const allowed = await checkRateLimit('events-update', user.id, getClientIp(req));
@@ -54,9 +49,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
     const { action, event_id, ...fields } = parsed.data;
@@ -75,9 +68,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (fetchErr || !event) {
-      return new Response(JSON.stringify({ error: 'Event not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Event not found', { requestId });
     }
 
     let isAuthorized = event.host_id === user.id;
@@ -103,21 +94,15 @@ Deno.serve(async (req) => {
     }
 
     if (!isAuthorized) {
-      return new Response(JSON.stringify({ error: 'Not authorized' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(403, 'Not authorized', { requestId });
     }
 
     if (action === 'delete') {
       const { error: delErr } = await serviceClient.from('events').delete().eq('id', event_id);
       if (delErr) {
-        return new Response(JSON.stringify({ error: delErr.message }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(400, delErr.message, { requestId });
       }
-      return new Response(JSON.stringify({ success: true, deleted: true }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return successResponse({ success: true, deleted: true }, requestId);
     }
 
     // Build update object
@@ -133,9 +118,7 @@ Deno.serve(async (req) => {
     if (fields.cover_image !== undefined) updateData.cover_image = fields.cover_image;
 
     if (Object.keys(updateData).length === 0) {
-      return new Response(JSON.stringify({ error: 'No fields to update' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'No fields to update', { requestId });
     }
 
     const { data: updated, error: updErr } = await serviceClient
@@ -146,18 +129,12 @@ Deno.serve(async (req) => {
       .single();
 
     if (updErr) {
-      return new Response(JSON.stringify({ error: updErr.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, updErr.message, { requestId });
     }
 
-    return new Response(JSON.stringify(updated), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse(updated, requestId);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

@@ -6,7 +6,9 @@ import { Users, Plus, MessageSquare, Radio } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useQuery } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
 import { getOptimizedUrl } from "@/lib/imageUtils";
@@ -62,38 +64,20 @@ const useGroupChats = () => {
     queryFn: async (): Promise<GroupChat[]> => {
       if (!user) return [];
 
-      const { data: memberships, error: memErr } = await supabase
-        .from("group_chat_members")
-        .select("group_chat_id")
-        .eq("user_id", user.id);
+      const chatIds = await messagingRepository.getGroupChatIdsForUser(user.id);
+      if (chatIds.length === 0) return [];
 
-      if (memErr || !memberships || memberships.length === 0) return [];
-
-      const chatIds = memberships.map((m) => m.group_chat_id);
-
-      const { data: chats, error } = await supabase
-        .from("group_chats")
-        .select("*")
-        .in("id", chatIds)
-        .order("updated_at", { ascending: false });
-
-      if (error) throw error;
+      const chats = await messagingRepository.getGroupChatsByIds(chatIds);
 
       const enriched = await Promise.all(
         (chats ?? []).map(async (chat) => {
-          const [{ data: msgs }, { data: memberProfiles }] = await Promise.all([
-            supabase
-              .from("group_chat_messages")
-              .select("sender_name, content, created_at")
-              .eq("group_chat_id", chat.id)
-              .order("created_at", { ascending: false })
-              .limit(1),
+          const [lastMsg, memberProfiles] = await Promise.all([
+            messagingRepository.getLatestGroupMessage(chat.id),
             supabase.rpc("get_group_chat_member_profiles", {
               p_group_chat_id: chat.id,
             }),
           ]);
 
-          const lastMsg = msgs?.[0];
           const timeDiff = lastMsg ? getRelativeTime(new Date(lastMsg.created_at)) : "";
 
           return {
@@ -103,7 +87,7 @@ const useGroupChats = () => {
             last_message: lastMsg ? `${lastMsg.sender_name}: ${lastMsg.content}` : undefined,
             last_message_time: timeDiff,
             unread: 0,
-            memberPreviews: ((memberProfiles as MemberPreview[]) || []).slice(0, 4),
+            memberPreviews: ((memberProfiles.data as MemberPreview[]) || []).slice(0, 4),
           };
         })
       );
@@ -121,42 +105,26 @@ const useDmThreads = (mode: "user" | "organiser", organiserProfileIds?: string[]
     queryFn: async (): Promise<DmThread[]> => {
       if (!user) return [];
 
-      let query = supabase.from("dm_threads").select("*").order("updated_at", { ascending: false });
-
-      if (mode === "user") {
-        query = query.eq("user_id", user.id);
-      } else if (organiserProfileIds && organiserProfileIds.length > 0) {
-        query = query.in("organiser_profile_id", organiserProfileIds);
-      } else {
-        return [];
-      }
-
-      const { data: threads, error } = await query;
-      if (error || !threads || threads.length === 0) return [];
+      const threads = await messagingRepository.listDmThreads({
+        mode,
+        userId: user.id,
+        organiserProfileIds,
+      });
+      if (!threads || threads.length === 0) return [];
 
       // Fetch organiser profiles
       const orgIds = [...new Set(threads.map((t: any) => t.organiser_profile_id))];
-      const { data: orgs } = await supabase
-        .from("organiser_profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", orgIds);
+      const orgs = await profilesRepository.getOrganisersByIds(orgIds);
       const orgMap = new Map((orgs || []).map((o) => [o.id, o]));
 
       // Fetch user profiles (for organiser view)
       const userIds = [...new Set(threads.map((t: any) => t.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url")
-        .in("user_id", userIds);
+      const profiles = await profilesRepository.getProfileDisplayInfo(userIds);
       const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
 
       // Fetch last message per thread
       const threadIds = threads.map((t: any) => t.id);
-      const { data: allMsgs } = await supabase
-        .from("dm_messages")
-        .select("thread_id, content, created_at")
-        .in("thread_id", threadIds)
-        .order("created_at", { ascending: false });
+      const allMsgs = await messagingRepository.getLatestDmMessages(threadIds);
 
       const lastMsgMap = new Map<string, { content: string; created_at: string }>();
       for (const msg of allMsgs || []) {

@@ -1,6 +1,6 @@
 # Up2 Platform — Architecture Overview
 
-> Last updated: 2026-03-13  
+> Last updated: 2026-03-16  
 > Status: Codebase-grounded reference. Every claim references actual files.
 
 ---
@@ -183,25 +183,45 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - `notifications` — Notification badge updates
 - `user_points` — Loyalty points live sync
 
-### Edge Functions (40 endpoints in `supabase/functions/`)
+### Edge Functions (42 endpoints in `supabase/functions/`)
 
 | Category | Functions |
 |----------|-----------|
 | **Auth** | `check-phone`, `send-otp`, `verify-otp`, `login`, `register`, `dev-login`, `dev-profile` |
 | **Profile** | `profile-update`, `avatar-upload`, `backfill-avatars`, `account-delete` |
 | **Email** | `email-verify-send`, `email-verify-confirm` |
-| **Events** | `events-create`, `events-update` |
+| **Events** | `events-create`, `events-update`, `event-media-manage` |
 | **RSVP** | `rsvp` (join/leave via action param) |
-| **Organiser** | `organiser-profile-create`, `organiser-profile-update` |
+| **Organiser** | `organiser-profile-create`, `organiser-profile-update`, `organiser-team-manage` |
 | **Ticketing** | `orders-reserve`, `orders-list`, `validate-discount`, `ticket-transfer`, `checkin-toggle` |
 | **Payments** | `payments-intent`, `stripe-connect-onboard`, `stripe-connect-status`, `stripe-connect-dashboard`, `stripe-webhook` |
-| **Social** | `attendee-broadcast`, `referrals-track`, `report-create`, `gif-search` |
+| **Social** | `attendee-broadcast`, `referrals-track`, `report-create`, `moderation-block`, `gif-search` |
+| **Messaging** | `message-send`, `group-chat-manage` |
 | **Loyalty** | `loyalty-award-points` |
 | **Notifications** | `notifications-send`, `notifications-process` |
 | **Settings** | `settings-upsert` |
 | **Support** | `support-request-create` |
 | **Analytics** | `dashboard-analytics` |
 | **Infra** | `health` |
+
+### Edge Function Infrastructure
+
+All edge functions use shared helpers from `supabase/functions/_shared/`:
+
+| File | Purpose |
+|------|---------|
+| `logger.ts` | `edgeLog(level, message, context)` — structured JSON logging with timestamp and request ID |
+| `response.ts` | `corsHeaders`, `getRequestId(req)`, `errorResponse()`, `successResponse()` — standardized responses |
+| `queue.ts` | In-process job queue with 3-attempt retry, `enqueue()` and `enqueueBatch()` |
+| `job-handlers.ts` | Handlers for `notification.send`, `loyalty.award_points`, `tickets.issue`, `cleanup.*`, etc. |
+| `rate-limit.ts` | `checkRateLimit()` — DB-backed sliding window rate limiter |
+| `password.ts` | `hashPassword()` and `verifyPassword()` via PBKDF2 |
+| `avatar.ts` | `generateAndUploadInitialsAvatar()` — initials avatar generation + storage upload |
+
+Every edge function:
+- Imports `edgeLog` and `getRequestId` for structured logging with `X-Request-ID` correlation.
+- Uses `errorResponse()` / `successResponse()` for standardized JSON envelopes: `{ data, request_id }` on success, `{ error, code?, request_id, details? }` on failure.
+- Shared `corsHeaders` — no local CORS definitions.
 
 ### Postgres Functions / RPCs
 
@@ -223,6 +243,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | `get_organiser_past_event_count(id)` | SECURITY DEFINER | Past event count |
 | `get_personal_combined_event_count(user_id)` | SECURITY DEFINER | Past attended count |
 | `get_group_chat_member_profiles(group_id)` | SECURITY DEFINER | Chat member profiles |
+| `get_user_group_chats(p_user_id)` | SECURITY DEFINER | User's group chats with last message + member previews |
 | `check_rate_limit(endpoint, user_id, ip, max, window)` | SECURITY DEFINER | Sliding window rate limiter |
 | `cleanup_old_rate_limits()` | SECURITY DEFINER | Rate limit cleanup |
 | `purge_expired_notifications()` | SECURITY DEFINER | Notification cleanup |
@@ -230,8 +251,6 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | `handle_new_user()` | Trigger on auth.users | Auto-creates profile row on signup |
 | `validate_post_content()` | Trigger on posts | Ensures post has content/image/GIF |
 | `update_updated_at_column()` | Trigger | Auto-updates `updated_at` timestamps |
-
-**Missing RPC**: `get_user_group_chats` — referenced in `Dashboard.tsx` but does not exist in the database. This causes a build error (TS2345). Needs to be created or the query needs to be rewritten as a standard Supabase query.
 
 ### Write Path: Edge Functions vs Client-Side
 
@@ -246,17 +265,40 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | Payment intent | Edge Function (`payments-intent`) | Stripe secret key required |
 | Ticket issuance | Edge Function (`stripe-webhook`) | Webhook-driven, service role |
 | Points award | Edge Function → RPC (`award_points`) | Race condition prevention |
+| Report creation | Edge Function (`report-create`) | Validation, rate limiting |
+| User blocking | Edge Function (`moderation-block`) | Service-role insert, prevents bypass |
+| Organiser team manage | Edge Function (`organiser-team-manage`) | Ownership validation, invite/remove/role |
+| Group chat management | Edge Function (`group-chat-manage`) | Membership validation, atomic member count |
+| Event media manage | Edge Function (`event-media-manage`) | Host/organiser ownership validation |
+| DM / group / event messages | Edge Function (`message-send`) | Participant/membership validation |
+| Organiser profile create/update | Edge Function | Avatar generation, validation |
 | Post creation | **Client-side direct insert** | RLS: `auth.uid() = author_id` |
 | Post like/unlike | **Client-side direct insert/delete** | RLS: `auth.uid() = user_id` |
 | Post repost | **Client-side direct insert/delete** | RLS: `auth.uid() = user_id` |
 | Connection request/accept | **Client-side direct** | RLS: `auth.uid() = requester_id/addressee_id` |
 | Saved events | **Client-side direct** | RLS: `auth.uid() = user_id` |
-| Group chat messages | **Client-side direct insert** | RLS: permissive authenticated |
-| Event board messages | **Client-side direct insert** | RLS: attendee/host check |
 | Notification mark read | **Client-side direct update** | RLS: `auth.uid() = user_id` |
 | Settings (privacy, notifications) | Edge Function (`settings-upsert`) | Upsert logic |
-| Report creation | Edge Function (`report-create`) | Validation |
-| Organiser profile create/update | Edge Function | Avatar generation, validation |
+
+### Infrastructure Layer (`src/infrastructure/`)
+
+| File | Purpose |
+|------|---------|
+| `supabase.ts` | Canonical Supabase client re-export — all app code imports from here |
+| `api-client.ts` | `callEdgeFunction()` — auth, `X-Request-ID` generation, structured logging, `captureApiError` on failure |
+| `config.ts` | Vite env config: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`, `functionsUrl` |
+| `logger.ts` | `createLogger(context)` — structured JSON logging (prod) / readable (dev) with debug/info/warn/error |
+| `errors.ts` | `AppError`, `ValidationError`, `AuthError`, `ApiError`, `parseApiError()` (extracts `request_id` from edge responses) |
+| `errorCapture.ts` | `captureApiError()` — centralized error logging, Sentry placeholder |
+| `queue.ts` | In-memory `QueueAdapter` — mirror of edge queue types; **currently unused** |
+
+### Request Correlation
+
+- `api-client.ts` generates a unique `X-Request-ID` per edge function call.
+- Edge functions extract it via `getRequestId(req)` from `_shared/response.ts`.
+- All `edgeLog` calls include the request ID for correlation.
+- Error responses include `request_id` in the JSON envelope.
+- `parseApiError` on the client extracts `request_id` from error responses for debugging.
 
 ### Queue Abstraction
 
@@ -282,29 +324,50 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 
 | Module | Path | Status | Owns |
 |--------|------|--------|------|
-| **identity** | `src/features/identity/` | ✅ Active | `identityService` (getProfile, updateProfile, uploadAvatar), `identityRepository` (getProfile with dev-login fallback), `authorization.ts` (requireAuth, requireEventOwner — designed for edge functions but lives in frontend src) |
-| **events** | `src/features/events/` | ✅ Active | `eventsService` (list, search, getEvent, getHostEvents, getRsvps, getUserRsvp), `eventsRepository` (direct Supabase queries with date/category/city/free filters), domain types |
-| **loyalty** | `src/features/loyalty/` | ✅ Active | `loyaltyService` (getUserPoints, getVouchers, getTransactions, subscribeToPoints), `loyaltyRepository` (reads + realtime subscription), domain types (ranks, thresholds, action labels) |
-| **social** | `src/features/social/` | ✅ Active | `feedService` (buildFeedContext, fetchFeedPage, fetchPublicFeedPage, fetchNearbyEvents), `recommendationService` (getSuggestedFriends) — no repository layer |
-| **orders** | `src/features/orders/` | 🔲 **Empty scaffold** | `export {}` — order logic lives in `useOrderFlow` hook + edge functions |
-| **notifications** | `src/features/notifications/` | ⚠️ **Re-export only** | Re-exports hooks from `src/hooks/useNotificationsQuery.ts` — no service or repository |
+| **identity** | `src/features/identity/` | ✅ Active | `identityService`, `identityRepository`, `authorization.ts` (dead frontend code — edge fns do their own inline auth) |
+| **events** | `src/features/events/` | ✅ Active | `eventsService`, `eventsRepository` (list, search, save/unsave, summaries), `eventManagementRepository` (waitlist, cohosts, reminders, media, ticket tiers, ownership checks) |
+| **loyalty** | `src/features/loyalty/` | ✅ Active | `loyaltyService`, `loyaltyRepository` (read-only + realtime), domain types (ranks, thresholds, action labels) |
+| **social** | `src/features/social/` | ✅ Active | `feedService`, `recommendationService`, `postsRepository` (create, delete, collaborators, report→edge, block→edge), `connectionsRepository` (friend CRUD, organiser follows), `profilesRepository` (search, batch lookups), `organiserTeamRepository` (invite/remove/role→edge) |
+| **messaging** | `src/features/messaging/` | ✅ Active | `messagingRepository` (group chats, DMs, event board — sends→edge, group manage→edge, reads direct) |
+| **support** | `src/features/support/` | ✅ Active | `supportRepository` (contact message submission) |
+| **notifications** | `src/features/notifications/` | ⚠️ Re-export only | `notificationsRepository` (delete). Re-exports hooks. No service layer. |
+| **orders** | `src/features/orders/` | 🔲 Empty scaffold | Order logic lives in `useOrderFlow` hook + edge functions |
+
+### Repositories (11 total)
+
+| Repository | Module | Read Methods | Write Methods | Edge-Backed Writes |
+|-----------|--------|:---:|:---:|---|
+| `identityRepository` | identity | 1 | 0 | — |
+| `eventsRepository` | events | 12 | 2 | — |
+| `eventManagementRepository` | events | 10 | 9 | `insertMedia`→`event-media-manage`, `deleteMedia`→`event-media-manage` |
+| `postsRepository` | social | 1 | 5 | `reportPost`→`report-create`, `blockUser`→`moderation-block` |
+| `connectionsRepository` | social | 7 | 10 | — |
+| `profilesRepository` | social | 8 | 0 | — |
+| `organiserTeamRepository` | social | 1 | 3 | `inviteMember`/`removeMember`/`updateRole`→`organiser-team-manage` |
+| `messagingRepository` | messaging | 12 | 7 | `sendGroupMessage`/`sendDm`/`sendEventMessage`→`message-send`, `addGroupMembers`/`removeGroupMember`/`updateGroupChatName`→`group-chat-manage` |
+| `supportRepository` | support | 0 | 1 | — |
+| `loyaltyRepository` | loyalty | 4 | 0 | — |
+| `notificationsRepository` | notifications | 0 | 1 | — |
+
+All write methods have structured `createLogger` logging with "who/what/outcome" context. All repositories import Supabase from `@/infrastructure/supabase`.
 
 ### Repository/Service Boundary Compliance
 
 | Module | Repository | Service | Boundary Followed? |
 |--------|-----------|---------|---------------------|
-| identity | ✅ | ✅ | ⚠️ Mostly — service has fallback direct supabase write for mock login |
-| events | ✅ | ✅ | ✅ Yes — reads through repo, writes through API |
+| identity | ✅ | ✅ | ⚠️ Mostly — service has fallback direct write for mock/dev login |
+| events | ✅ (2 repos) | ✅ | ✅ Yes — reads through repo, writes through API/edge |
 | loyalty | ✅ | ✅ | ✅ Yes |
-| social | ❌ No repo | ❌ feedService imports supabase directly | ❌ **Violates architecture** — feedService directly uses `@/integrations/supabase/client` instead of `@/infrastructure/supabase` |
+| social | ✅ (4 repos) | ✅ (feed + recommendation) | ⚠️ Mostly — feedService still does direct Supabase for core post/repost queries; enrichment uses repos |
+| messaging | ✅ | — | ✅ Writes through repos/edge, reads through repos |
+| support | ✅ | — | ✅ Yes |
+| notifications | ✅ (partial) | — | ⚠️ Most logic still in hooks |
 | orders | ❌ | ❌ | N/A — not implemented |
-| notifications | ❌ | ❌ | ❌ All logic in hooks |
 
-**Key violations**:
-- `src/features/social/services/feedService.ts` imports from `@/integrations/supabase/client` directly, bypassing `@/infrastructure/supabase`.
-- `src/features/identity/services/authorization.ts` is designed for edge function use but lives in frontend `src/` — dead code on the client side.
-- Many hooks (`useUserEventsQuery`, `useForYouEvents`, `useFriendsGoing`, `usePostsQuery`) query Supabase directly, bypassing the repository layer entirely.
-- The `social` module has no repository at all — service does direct DB access.
+**Remaining boundary gaps**:
+- `feedService.ts` does direct Supabase queries for core post/repost fetching (uses repos for enrichment lookups).
+- Several hooks (`usePostInteractions`, `usePostsQuery`, `useForYouEvents`, `useFriendsGoing`, `useUserEventsQuery`, `useNotificationsQuery`) still do direct `supabase.from()` reads — acceptable for now but not ideal.
+- `authorization.ts` in `src/features/identity/services/` is dead frontend code (edge functions do inline auth).
 
 ---
 
@@ -629,66 +692,62 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 4. **`publish_at` scheduling not enforced**
    - Events with future `publish_at` timestamps appear in all public queries. No filter in `eventsRepository.list()` or `eventsRepository.search()` excludes them.
 
-5. **Missing `get_user_group_chats` RPC**
-   - `Dashboard.tsx` calls `supabase.rpc("get_user_group_chats")` but this function does not exist in the database. Causes a TypeScript build error and runtime failure on the messages page.
-
 ### Architectural Mismatches
 
-6. **Dual feed systems**
+5. **Dual feed systems**
    - `usePostsQuery.ts` → `useFeedPosts()` (legacy, limit 50, no pagination, no scoring)
    - `useFeedQuery.ts` → `usePaginatedFeed()` (v1 personalized, paginated, scored)
    - Both subscribe to same realtime channel. Index page uses new system; profile pages use old system. Should consolidate.
 
-7. **Social module bypasses infrastructure layer**
-   - `src/features/social/services/feedService.ts` imports `@/integrations/supabase/client` directly (should use `@/infrastructure/supabase`).
-   - No repository layer — service does direct DB queries, violating the architecture's read path.
+6. **feedService still does direct Supabase for core queries**
+   - Enrichment lookups (profiles, organisers, events, collaborators) use repositories, but core post/repost queries are still direct.
 
-8. **`authorization.ts` is dead frontend code**
+7. **`authorization.ts` is dead frontend code**
    - `src/features/identity/services/authorization.ts` contains server-side authorization patterns (`requireAuth`, `requireEventOwner`) but lives in the frontend bundle. Edge functions have their own inline auth checks. This file is never imported by any frontend code.
 
-9. **Frontend queue abstraction is unused**
+8. **Frontend queue abstraction is unused**
    - `src/infrastructure/queue.ts` defines `QueueAdapter` and `InMemoryQueue` but nothing imports or uses it.
 
-10. **Orders module is empty**
+9. **Orders module is empty**
     - `src/features/orders/index.ts` exports nothing. Order logic is split across `useOrderFlow` hook, `orders-reserve` edge function, `payments-intent` edge function, and `stripe-webhook`. No domain types, service, or repository.
 
-11. **Notifications module is just re-exports**
-    - `src/features/notifications/index.ts` re-exports hooks from `src/hooks/`. No service, repository, or domain types.
+10. **Notifications module is thin**
+    - `src/features/notifications/index.ts` re-exports hooks. `notificationsRepository` only has `deleteNotification`. Most logic in hooks.
 
 ### Incomplete Flows
 
-12. **Waitlist is schema-only**
+11. **Waitlist is schema-only**
     - `waitlist` table exists with `position` and `notified_at` columns, but `rsvp_join` raises an exception at capacity instead of enqueuing to waitlist. No notification flow when spots open.
 
-13. **Event reminders have no processing**
+12. **Event reminders have no processing**
     - `event_reminders` table allows hosts to configure reminders, but no scheduled job actually sends them.
 
-14. **Guestlist approval is partial**
+13. **Guestlist approval is partial**
     - `guestlist_require_approval` and `guestlist_deadline` exist on events, but no approval/rejection UI or enforcement logic.
 
-15. **Admin UI doesn't exist**
+14. **Admin UI doesn't exist**
     - Reports, moderation actions, support requests have full schema but no admin pages, no admin routes, no admin dashboard.
 
-16. **`get_friends_and_following_count` is misleading**
+15. **`get_friends_and_following_count` is misleading**
     - Function name implies it counts friends AND organiser follows, but implementation is identical to `get_friend_count` — only counts accepted connections.
 
 ### Frontend/Backend Inconsistencies
 
-17. **Profile update dual path**
+16. **Profile update dual path**
     - `identityService.updateProfile()` checks for session: if present, calls `profile-update` edge function; if not, writes directly via Supabase client (for mock/dev login). This means dev path bypasses all server-side validation.
 
-18. **Blocked users not filtered in feed**
+17. **Blocked users not filtered in feed**
     - `blocked_users` table has proper RLS, but `feedService.ts` and `usePostsQuery.ts` don't filter posts from blocked users.
 
-19. **Muted connections not used**
+18. **Muted connections not used**
     - `connections.muted` column exists but feed scoring ignores it entirely.
 
-20. **Event status not filtered**
+19. **Event status not filtered**
     - Events have a `status` column (default 'published') but queries don't filter by status — draft or cancelled events could appear in listings.
 
-21. **Organiser verification is implicit vs explicit**
+20. **Organiser verification is implicit vs explicit**
     - Feed enrichment hardcodes `author_is_verified = true` for all organiser profile posts, but personal profile verification is DB-driven (`is_verified` column). These are semantically different verification concepts treated identically in the UI.
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

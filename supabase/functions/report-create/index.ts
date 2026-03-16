@@ -1,24 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     // Auth
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "Missing authorization", { requestId });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -31,10 +26,7 @@ Deno.serve(async (req) => {
     });
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "Unauthorized", { requestId });
     }
 
     // Parse & validate body
@@ -43,22 +35,13 @@ Deno.serve(async (req) => {
 
     const validTypes = ["post", "user", "organiser_profile", "event", "message"];
     if (!target_type || !validTypes.includes(target_type)) {
-      return new Response(JSON.stringify({ error: "Invalid target_type" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "Invalid target_type", { requestId });
     }
     if (!target_id || typeof target_id !== "string") {
-      return new Response(JSON.stringify({ error: "target_id is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "target_id is required", { requestId });
     }
     if (!reason || typeof reason !== "string" || reason.trim().length === 0) {
-      return new Response(JSON.stringify({ error: "reason is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "reason is required", { requestId });
     }
 
     // Rate limit: max 10 reports per hour per user
@@ -70,10 +53,7 @@ Deno.serve(async (req) => {
       p_window_seconds: 3600,
     });
     if (allowed === false) {
-      return new Response(JSON.stringify({ error: "Too many reports. Please try again later." }), {
-        status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(429, "Too many reports. Please try again later.", { requestId });
     }
 
     // Check for duplicate report
@@ -87,10 +67,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existing) {
-      return new Response(JSON.stringify({ error: "You have already reported this content" }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(409, "You have already reported this content", { requestId });
     }
 
     // Insert report via service role (bypasses RLS)
@@ -115,15 +92,12 @@ Deno.serve(async (req) => {
 
     if (insertError) throw insertError;
 
-    return new Response(JSON.stringify({ success: true, report }), {
+    return new Response(JSON.stringify({ success: true, report, request_id: requestId }), {
       status: 201,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("report-create error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    edgeLog("error", "report-create error", { requestId, error: String(err) });
+    return errorResponse(500, "Internal server error", { requestId });
   }
 });

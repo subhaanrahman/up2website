@@ -1,23 +1,20 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -28,9 +25,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     // Rate limit
@@ -41,14 +36,10 @@ Deno.serve(async (req) => {
     const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id, publish_at } = body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      return new Response(JSON.stringify({ error: 'title is required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'title is required', { requestId });
     }
     if (!event_date) {
-      return new Response(JSON.stringify({ error: 'event_date is required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'event_date is required', { requestId });
     }
 
     // Validate organiser_profile_id if provided
@@ -70,9 +61,7 @@ Deno.serve(async (req) => {
       });
 
       if (!isOwner && !isMember) {
-        return new Response(JSON.stringify({ error: 'You do not have access to this organiser profile' }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(403, 'You do not have access to this organiser profile', { requestId });
       }
 
       validatedOrgId = organiser_profile_id;
@@ -102,10 +91,8 @@ Deno.serve(async (req) => {
       .single();
 
     if (error) {
-      console.error('Insert error:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Insert error', { requestId, error: String(error) });
+      return errorResponse(400, error.message, { requestId });
     }
 
     // Auto-create a post for this event in the feed
@@ -119,16 +106,14 @@ Deno.serve(async (req) => {
         image_url: data.cover_image || null,
       });
     } catch (postErr) {
-      console.error('Failed to create event post (non-fatal):', postErr);
+      edgeLog('error', 'Failed to create event post (non-fatal)', { requestId, error: String(postErr) });
     }
 
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify({ ...data, request_id: requestId }), {
       status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

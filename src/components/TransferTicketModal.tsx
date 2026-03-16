@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFriends, type Friend } from "@/hooks/useFriends";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 
 interface TransferTicketModalProps {
   open: boolean;
@@ -77,11 +77,12 @@ export default function TransferTicketModal({
     setTransferring(true);
     setError(null);
     try {
-      const { error: rpcError } = await supabase.rpc("rsvp_transfer", {
-        p_event_id: eventId,
-        p_to_user_id: selectedFriend.userId,
+      await callEdgeFunction('ticket-transfer', {
+        body: {
+          event_id: eventId,
+          recipient_user_id: selectedFriend.userId,
+        },
       });
-      if (rpcError) throw rpcError;
       toast({
         title: "Ticket transferred",
         description: `Your ticket has been transferred to ${selectedFriend.displayName}.`,

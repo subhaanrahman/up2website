@@ -1,23 +1,18 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "Unauthorized", { requestId });
     }
 
     // Verify user identity
@@ -34,10 +29,7 @@ Deno.serve(async (req) => {
       error: authError,
     } = await userClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(401, "Unauthorized", { requestId });
     }
 
     // Use service role to delete user data and auth record
@@ -59,24 +51,13 @@ Deno.serve(async (req) => {
     const { error: deleteError } =
       await adminClient.auth.admin.deleteUser(user.id);
     if (deleteError) {
-      console.error("Failed to delete auth user:", deleteError);
-      return new Response(
-        JSON.stringify({ error: "Failed to delete account" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      edgeLog('error', 'Failed to delete auth user', { requestId, error: String(deleteError) });
+      return errorResponse(500, "Failed to delete account", { requestId });
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return successResponse({ success: true }, requestId);
   } catch (err) {
-    console.error("account-delete error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    edgeLog('error', 'account-delete error', { requestId, error: String(err) });
+    return errorResponse(500, "Internal server error", { requestId });
   }
 });

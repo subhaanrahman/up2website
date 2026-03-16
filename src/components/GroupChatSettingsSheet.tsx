@@ -4,7 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
@@ -81,30 +84,27 @@ const GroupChatSettingsSheet = ({
     queryFn: async (): Promise<Friend[]> => {
       if (!user) return [];
 
-      const { data: connections } = await supabase
-        .from("connections")
-        .select("requester_id, addressee_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-
-      if (!connections || connections.length === 0) return [];
+      const connections = await connectionsRepository.getAcceptedConnections(user.id);
+      if (connections.length === 0) return [];
 
       const friendIds = connections.map((c) =>
         c.requester_id === user.id ? c.addressee_id : c.requester_id
       );
 
       // Exclude existing members
-      const memberIds = members.map((m) => m.user_id);
+      const memberRows = await messagingRepository.getGroupMembers(chatId);
+      const memberIds = memberRows.map((m) => m.user_id);
       const newFriendIds = friendIds.filter((id) => !memberIds.includes(id));
 
       if (newFriendIds.length === 0) return [];
 
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .in("user_id", newFriendIds);
-
-      return (profiles as Friend[]) || [];
+      const profiles = await profilesRepository.getProfilesByIds(newFriendIds);
+      return profiles.map((p) => ({
+        user_id: p.user_id,
+        display_name: p.display_name,
+        username: p.username,
+        avatar_url: p.avatar_url,
+      })) as Friend[];
     },
     enabled: open && showAddMembers,
   });
@@ -116,17 +116,13 @@ const GroupChatSettingsSheet = ({
       return;
     }
     setSaving(true);
-    const { error } = await supabase
-      .from("group_chats")
-      .update({ name: newName.trim() })
-      .eq("id", chatId);
-
-    if (error) {
-      toast({ title: "Failed to rename group", variant: "destructive" });
-    } else {
+    try {
+      await messagingRepository.updateGroupChatName(chatId, newName.trim());
       toast({ title: "Group renamed" });
       queryClient.invalidateQueries({ queryKey: ["group-chat", chatId] });
       queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+    } catch {
+      toast({ title: "Failed to rename group", variant: "destructive" });
     }
     setIsEditing(false);
     setSaving(false);
@@ -136,16 +132,12 @@ const GroupChatSettingsSheet = ({
     if (selectedIds.size === 0) return;
     setSaving(true);
     try {
-      const memberRows = Array.from(selectedIds).map((uid) => ({
-        group_chat_id: chatId,
-        user_id: uid,
-      }));
-      const { error } = await supabase.from("group_chat_members").insert(memberRows);
-      if (error) throw error;
+      const selectedIds_array = Array.from(selectedIds);
+      await messagingRepository.addGroupMembers(chatId, selectedIds_array);
 
       // Update member count
       const newCount = memberCount + selectedIds.size;
-      await supabase.from("group_chats").update({ member_count: newCount }).eq("id", chatId);
+      await messagingRepository.updateGroupMemberCount(chatId, newCount);
 
       queryClient.invalidateQueries({ queryKey: ["group-chat-members", chatId] });
       queryClient.invalidateQueries({ queryKey: ["group-chat", chatId] });
@@ -166,17 +158,11 @@ const GroupChatSettingsSheet = ({
     if (!user) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("group_chat_members")
-        .delete()
-        .eq("group_chat_id", chatId)
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      await messagingRepository.removeGroupMember(chatId, user.id);
 
       // Update member count
       const newCount = Math.max(0, memberCount - 1);
-      await supabase.from("group_chats").update({ member_count: newCount }).eq("id", chatId);
+      await messagingRepository.updateGroupMemberCount(chatId, newCount);
 
       queryClient.invalidateQueries({ queryKey: ["group-chats"] });
       toast({ title: "You left the group" });
@@ -202,15 +188,10 @@ const GroupChatSettingsSheet = ({
   const handleRemoveMember = async (memberId: string) => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("group_chat_members")
-        .delete()
-        .eq("group_chat_id", chatId)
-        .eq("user_id", memberId);
-      if (error) throw error;
+      await messagingRepository.removeGroupMember(chatId, memberId);
 
       const newCount = Math.max(0, memberCount - 1);
-      await supabase.from("group_chats").update({ member_count: newCount }).eq("id", chatId);
+      await messagingRepository.updateGroupMemberCount(chatId, newCount);
 
       queryClient.invalidateQueries({ queryKey: ["group-chat-members", chatId] });
       queryClient.invalidateQueries({ queryKey: ["group-chat", chatId] });

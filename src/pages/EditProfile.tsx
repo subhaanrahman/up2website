@@ -28,7 +28,7 @@ import { CITIES } from "@/data/cities";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile, useUploadAvatar } from "@/hooks/useProfileQuery";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 
 const PAGE_CLASSIFICATIONS = ["DJ", "Promoter", "Artist"];
 

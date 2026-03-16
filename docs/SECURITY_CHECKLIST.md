@@ -1,6 +1,6 @@
 # Security Checklist
 
-> Last updated: 2026-03-13
+> Last updated: 2026-03-16
 
 ## Client-Write Locked Tables
 
@@ -31,6 +31,11 @@ All writes below are routed through Edge Functions even though RLS may allow the
 | `privacy_settings` | `settings-upsert` | Auth, table whitelist |
 | `notification_settings` | `settings-upsert` | Auth, table whitelist |
 | `organiser_profiles` | `organiser-profile-create`, `organiser-profile-update` | Auth, avatar generation |
+| `blocked_users` | `moderation-block` | Auth, service-role insert |
+| `organiser_members` | `organiser-team-manage` | Auth, ownership validation |
+| `group_chat_members` | `group-chat-manage` | Auth, membership validation |
+| `event_media` | `event-media-manage` | Auth, host/organiser ownership |
+| `dm_messages`, `group_chat_messages`, `event_messages` | `message-send` | Auth, participant/membership validation |
 
 ## Tables With Direct Client Writes (RLS-Protected)
 
@@ -64,6 +69,11 @@ All writes below are routed through Edge Functions even though RLS may allow the
 - ✅ Avatar upload (`avatar-upload`) — file type/size validation
 - ✅ Report creation (`report-create`) — validation
 - ✅ Support request creation (`support-request-create`) — validation
+- ✅ Block user (`moderation-block`)
+- ✅ Organiser team management (`organiser-team-manage`)
+- ✅ Group chat management (`group-chat-manage`)
+- ✅ Event media management (`event-media-manage`)
+- ✅ Send messages (`message-send`)
 
 ## RSVP Race Condition Protection
 
@@ -100,6 +110,10 @@ All edge functions use DB-backed `check_rate_limit` RPC:
 - [ ] Add rate limiting to `event_messages` INSERT (event board spam prevention)
 - [ ] Implement content moderation pipeline (report → review → action)
 - [ ] Move Stripe publishable key to environment variable
+- [ ] **Create `src/utils/fileValidation.ts`** — reusable `validateImageFile(file, { maxSizeMB, allowedTypes })` helper
+- [ ] Wire file validation into all 4 upload points: avatar (`EditProfile`), flyer (`EventDetailsForm`), media gallery (`ManageEvent`), post image (`PostComposer`)
+- [ ] Add client-side text length limits to bio, event description, posts, DMs, group/event messages, contact form
+- [ ] Backend: malware scanning for stored media, strict storage RLS, output escaping strategy
 - [x] ~~Move avatar file upload to Edge Function~~ — `avatar-upload` with type/size validation, rate limiting
 - [x] ~~Implement `orders-reserve` and `payments-intent`~~ — Zod validation, rate limiting, Stripe integration
 - [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC
@@ -110,4 +124,4 @@ All edge functions use DB-backed `check_rate_limit` RPC:
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

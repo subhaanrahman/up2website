@@ -9,7 +9,10 @@ import { toPng } from "html-to-image";
 import StoryCardPreview from "@/components/StoryCardPreview";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
+import { postsRepository } from "@/features/social/repositories/postsRepository";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
@@ -59,25 +62,15 @@ const ShareEventSheet = ({
     queryKey: ["share-friends", user?.id],
     queryFn: async () => {
       if (!user) return [];
-      // Get accepted connections where user is requester or addressee
-      const { data: connections } = await supabase
-        .from("connections")
-        .select("requester_id, addressee_id")
-        .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
-
-      if (!connections?.length) return [];
+      const connections = await connectionsRepository.getAcceptedConnections(user.id);
+      if (!connections.length) return [];
 
       const friendIds = connections.map((c) =>
         c.requester_id === user.id ? c.addressee_id : c.requester_id
       );
 
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url, username")
-        .in("user_id", friendIds);
-
-      return (profiles as FriendProfile[]) || [];
+      const profiles = await profilesRepository.getProfilesByIds(friendIds);
+      return profiles as FriendProfile[];
     },
     enabled: !!user && open,
   });
@@ -153,19 +146,18 @@ const ShareEventSheet = ({
   };
 
   const handleShareToFriend = async (friend: FriendProfile) => {
-    // Send a notification to this friend about the event
     if (!user) return;
     try {
-      const { error } = await supabase.from("notifications").insert({
-        user_id: friend.user_id,
-        title: "Event shared with you",
-        message: `shared "${eventTitle}" with you`,
-        type: "event_share",
-        link: eventUrl,
-        avatar_url: null,
-        event_image: eventImage || null,
+      await callEdgeFunction("notifications-send", {
+        body: {
+          type: "event_share",
+          recipient_user_id: friend.user_id,
+          title: "Event shared with you",
+          message: `shared "${eventTitle}" with you`,
+          link: eventUrl,
+          event_image: eventImage || null,
+        },
       });
-      if (error) throw error;
       toast.success(`Shared with ${friend.display_name || friend.username || "friend"}!`);
     } catch {
       toast.error("Failed to share");
@@ -175,12 +167,11 @@ const ShareEventSheet = ({
   const handlePostToFeed = async () => {
     if (!user || !eventId) return;
     try {
-      const { error } = await supabase.from("posts").insert({
-        author_id: user.id,
+      await postsRepository.createPost({
+        authorId: user.id,
         content: `Check out this event: ${eventTitle}! 🎉`,
-        event_id: eventId,
+        eventId,
       });
-      if (error) throw error;
       toast.success("Event shared to your feed!");
       onOpenChange(false);
     } catch {

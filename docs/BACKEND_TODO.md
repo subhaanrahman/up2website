@@ -1,10 +1,10 @@
 # Backend TODO
 
-> Last updated: 2026-03-13
+> Last updated: 2026-03-16
 
 ## Critical Fixes
 
-- [ ] **Create `get_user_group_chats` RPC** — Dashboard.tsx calls this function but it doesn't exist. Causes build error (TS2345). Needs to return group chats with latest message for the authenticated user.
+- [x] **Create `get_user_group_chats` RPC** — Created in migration `20260312130000_optimize_group_chats.sql`.
 - [ ] **Fix `is_profile_public()` function** — Currently hardcoded to `return true`. Should check `profiles.profile_tier` and `privacy_settings.go_public`.
 - [ ] **Add expired order cleanup cron** — Job type `cleanup.expired_orders` defined in queue but no trigger. Reserved orders with `expires_at < now()` remain indefinitely.
 - [ ] **Add `publish_at` filter to event queries** — Events with future `publish_at` appear in public listings.
@@ -61,7 +61,7 @@
 - [ ] Unread message counts per thread
 
 ## Group Chat Improvements
-- [ ] Create `get_user_group_chats` RPC (immediate — blocking build)
+- [x] Create `get_user_group_chats` RPC — Done in migration `20260312130000_optimize_group_chats.sql`
 - [ ] Realtime on group chat messages
 - [ ] Group chat notification integration
 
@@ -91,4 +91,4 @@
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

@@ -1,0 +1,297 @@
+# Up2 Platform — Developer Context & Coding Standards
+
+**This file is auto-loaded by Cursor AI agents.** Every rule here is mandatory. Violations break the architecture and must be fixed before committing.
+
+---
+
+## Tech Stack
+
+- **Frontend:** React 18 + Vite + TypeScript + Tailwind CSS + shadcn/ui (Radix)
+- **Server state:** `@tanstack/react-query`
+- **Routing:** `react-router-dom` v6
+- **Payments:** `@stripe/react-stripe-js` + Stripe Connect (destination charges)
+- **Backend:** Supabase (PostgreSQL, Auth, Storage, Edge Functions, Realtime)
+- **Edge functions:** Deno (TypeScript), deployed via Supabase
+
+---
+
+## 1. Single Supabase Client Boundary
+
+**RULE:** All app code imports the Supabase client from `@/infrastructure/supabase`. Never import from `@/integrations/supabase/client` — that file is internal and auto-managed by Lovable.
+
+```ts
+// CORRECT
+import { supabase } from '@/infrastructure/supabase';
+
+// WRONG — never do this in app code
+import { supabase } from '@/integrations/supabase/client';
+```
+
+The only file allowed to import from `@/integrations/supabase/client` is `src/infrastructure/supabase.ts` itself.
+
+---
+
+## 2. Repository Pattern — DB Access Rules
+
+**RULE:** All database reads and writes go through repository files under `src/features/*/repositories/`. No `supabase.from()` calls in pages, components, hooks, or services.
+
+### Allowed exceptions in pages/components/hooks
+- `supabase.storage.from(...)` — file uploads
+- `supabase.rpc(...)` — aggregation RPCs (counts, member profiles)
+- `supabase.channel(...)` / `supabase.removeChannel(...)` — realtime subscriptions
+- `supabase.auth.*` — auth operations
+
+### Current repositories (11 total)
+
+| Repository | Module | Location |
+|-----------|--------|----------|
+| `identityRepository` | identity | `src/features/identity/repositories/` |
+| `eventsRepository` | events | `src/features/events/repositories/` |
+| `eventManagementRepository` | events | `src/features/events/repositories/` |
+| `postsRepository` | social | `src/features/social/repositories/` |
+| `connectionsRepository` | social | `src/features/social/repositories/` |
+| `profilesRepository` | social | `src/features/social/repositories/` |
+| `organiserTeamRepository` | social | `src/features/social/repositories/` |
+| `messagingRepository` | messaging | `src/features/messaging/repositories/` |
+| `supportRepository` | support | `src/features/support/repositories/` |
+| `loyaltyRepository` | loyalty | `src/features/loyalty/repositories/` |
+| `notificationsRepository` | notifications | `src/features/notifications/repositories/` |
+
+### When adding a new feature
+1. Create `src/features/{domain}/repositories/{name}Repository.ts`
+2. Import supabase from `@/infrastructure/supabase`
+3. Add `createLogger` with structured logging on all write methods
+4. If the write is sensitive (see Section 4), route it through an edge function via `callEdgeFunction`
+5. Export the repository and use it from hooks/pages — never call Supabase directly
+
+---
+
+## 3. Structured Logging
+
+### Frontend (repositories and services)
+
+Every repository and service with write methods must use `createLogger`:
+
+```ts
+import { createLogger } from '@/infrastructure/logger';
+const log = createLogger('posts.repository');
+
+async createPost(params: { authorId: string; content: string }) {
+  log.info('createPost', { authorId: params.authorId });
+  // ... database operation
+}
+```
+
+### Edge Functions
+
+Every edge function must use `edgeLog` from `_shared/logger.ts`. Never use `console.log` or `console.error` directly.
+
+```ts
+import { edgeLog } from '../_shared/logger.ts';
+import { corsHeaders, getRequestId, errorResponse, successResponse } from '../_shared/response.ts';
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const requestId = getRequestId(req);
+
+  try {
+    edgeLog('info', 'Processing request', { requestId });
+    // ... logic
+    return successResponse(data, requestId);
+  } catch (err) {
+    edgeLog('error', 'Failed', { requestId, error: err.message });
+    return errorResponse(500, 'Internal error', { requestId });
+  }
+});
+```
+
+### Request Correlation
+
+- `api-client.ts` generates a unique `X-Request-ID` per edge function call
+- Edge functions extract it via `getRequestId(req)` from `_shared/response.ts`
+- All logs include the request ID for end-to-end traceability
+- Error responses include `request_id` in the JSON envelope
+
+---
+
+## 4. Edge Functions — Sensitive Writes
+
+**RULE:** Sensitive mutations MUST go through Edge Functions, not direct client Supabase calls. The client calls `callEdgeFunction()` from `@/infrastructure/api-client`.
+
+### Operations that MUST use Edge Functions
+- Auth (login, register, OTP, phone check)
+- Profile updates (`profile-update`)
+- Avatar uploads (`avatar-upload`)
+- Event create/update (`events-create`, `events-update`)
+- RSVP join/leave (`rsvp` → RPCs)
+- Order reservation (`orders-reserve`)
+- Payment intents (`payments-intent`)
+- Ticket issuance (via `stripe-webhook` queue)
+- Points awards (`loyalty-award-points`)
+- Reports (`report-create`)
+- User blocking (`moderation-block`)
+- Organiser team management (`organiser-team-manage`)
+- Group chat management (`group-chat-manage`)
+- Event media management (`event-media-manage`)
+- Sending messages (`message-send`)
+- Settings upsert (`settings-upsert`)
+- Organiser profile CRUD (`organiser-profile-create`, `organiser-profile-update`)
+
+### Operations allowed as direct client writes (RLS-protected)
+- Post likes/reactions
+- Post reposts
+- Saved events (bookmark)
+- Connection requests/accepts
+- DM thread creation
+
+### When creating a new Edge Function
+
+1. Create `supabase/functions/{name}/index.ts`
+2. Import shared helpers:
+   ```ts
+   import { edgeLog } from '../_shared/logger.ts';
+   import { corsHeaders, getRequestId, errorResponse, successResponse } from '../_shared/response.ts';
+   ```
+3. Handle CORS preflight: `if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })`
+4. Extract request ID: `const requestId = getRequestId(req);`
+5. Authenticate: verify JWT from `Authorization` header
+6. Validate input with Zod or manual checks
+7. Use `edgeLog` for all logging — never `console.*`
+8. Return `errorResponse(status, message, { requestId })` on failure
+9. Return `successResponse(data, requestId)` on success
+10. **Never** define local `corsHeaders` — always import from `_shared/response.ts`
+
+### Standardized error envelope
+
+```json
+// Error response
+{ "error": "Human-readable message", "code": "MACHINE_CODE", "request_id": "abc123", "details": {} }
+
+// Success response
+{ "...data fields", "request_id": "abc123" }
+```
+
+---
+
+## 5. Actor Context — Profile Switching
+
+Up2 supports personal profiles and organiser profiles. The active profile determines attribution for writes.
+
+**Convention:**
+- **Personal actions:** `organiser_profile_id = null`
+- **Organiser actions:** Set `organiser_profile_id` to the active organiser profile
+
+**When writing code that creates data (posts, notifications, events):**
+- Check if the user is acting as an organiser (via `useActiveProfile()` context)
+- If yes, include `organiser_profile_id` in the write payload
+- Edge functions that accept organiser context must validate ownership
+
+---
+
+## 6. Feature Module Structure
+
+```
+src/features/{domain}/
+  ├── domain/
+  │   └── types.ts          # Domain types/interfaces
+  ├── repositories/
+  │   └── {name}Repository.ts  # All DB access
+  ├── services/
+  │   └── {name}Service.ts     # Business logic (calls repos)
+  └── index.ts              # Barrel exports
+```
+
+**Data flow:** Pages/Hooks → Services → Repositories → Supabase
+
+Services must call repositories, not Supabase directly. The one known exception is `feedService.ts` which still does direct post/repost queries (slated for cleanup).
+
+---
+
+## 7. Infrastructure Layer
+
+| File | Purpose | When to use |
+|------|---------|-------------|
+| `src/infrastructure/supabase.ts` | Canonical Supabase client | Import this, never `@/integrations/...` |
+| `src/infrastructure/api-client.ts` | `callEdgeFunction()` with auth + request IDs | All edge function calls from client |
+| `src/infrastructure/config.ts` | Env config, `functionsUrl` | Accessing config values |
+| `src/infrastructure/logger.ts` | `createLogger(context)` | All structured logging in frontend |
+| `src/infrastructure/errors.ts` | Error types + `parseApiError()` | Error handling |
+| `src/infrastructure/errorCapture.ts` | `captureApiError()` + Sentry placeholder | Centralized error reporting |
+
+---
+
+## 8. Edge Function Shared Utilities
+
+Located in `supabase/functions/_shared/`:
+
+| File | Exports | Use |
+|------|---------|-----|
+| `logger.ts` | `edgeLog(level, message, context)` | ALL logging in edge functions |
+| `response.ts` | `corsHeaders`, `getRequestId()`, `errorResponse()`, `successResponse()` | ALL responses + CORS |
+| `queue.ts` | `enqueue()`, `enqueueBatch()` | Async job dispatch |
+| `job-handlers.ts` | Handler registry | Job processing |
+| `rate-limit.ts` | `checkRateLimit()`, `getClientIp()` | Rate limiting |
+| `password.ts` | `hashPassword()`, `verifyPassword()` | Auth password ops |
+| `avatar.ts` | `generateAndUploadInitialsAvatar()` | Avatar creation |
+
+---
+
+## 9. Payment Architecture
+
+- **Model:** Stripe Connect with destination charges
+- **Flow:** Reserve → PaymentIntent → Checkout → Webhook → Confirm + Issue Tickets
+- **Webhook:** `stripe-webhook` is the SINGLE entry point for all Stripe events
+- **Idempotency:** `payment_events` table deduplicates webhook events
+- **Service fee:** 7% added on top of ticket price, retained as `application_fee_amount`
+- **Organiser payout:** Full ticket price transferred to connected account
+- **Stripe key:** Currently hardcoded in `src/lib/stripe.ts` — MUST move to env var before production
+
+**Never:**
+- Create tickets from client code — only via webhook queue (`tickets.issue`)
+- Trust client-sent amounts — prices derived server-side from `ticket_tiers`
+- Confirm orders from client — only via webhook (`payment_intent.succeeded`)
+
+---
+
+## 10. Key Files Reference
+
+| Purpose | File |
+|---------|------|
+| App routes & providers | `src/App.tsx` |
+| Auth context | `src/contexts/AuthContext.tsx` |
+| Profile switching | `src/contexts/ActiveProfileContext.tsx` |
+| Gamification | `src/hooks/useGamification.tsx` |
+| Supabase types (auto-generated) | `src/integrations/supabase/types.ts` |
+| Architecture docs | `docs/ARCHITECTURE.md` |
+| Database schema docs | `docs/DATABASE_ARCHITECTURE.md` |
+| Cleanup roadmap | `docs/CLEANUP_ARCHITECTURE_TODO.md` |
+| Security checklist | `docs/SECURITY_CHECKLIST.md` (includes upload validation TODOs) |
+| Stripe integration plan | `docs/STRIPE_TODO.md` |
+| Backend TODOs | `docs/BACKEND_TODO.md` |
+
+---
+
+## 11. Known Issues — Do NOT "Fix" These Without Discussion
+
+These are known architectural decisions or issues that require deliberate planning:
+
+1. **`is_profile_public()` returns `true` unconditionally** — privacy enforcement is a deliberate future task
+2. **`authorization.ts` in frontend is dead code** — edge functions do their own inline auth
+3. **`src/infrastructure/queue.ts` is unused** — frontend queue reserved for future Cloud Tasks
+4. **`feedService.ts` does direct Supabase queries** — planned migration to repos
+5. **Hooks with direct `supabase.from()` reads** — some reads not yet migrated to repos; do not add MORE
+6. **`orders` feature module is empty** — order logic intentionally in hooks + edge functions for now
+7. **Dual feed systems** — `usePaginatedFeed` (new) and `useFeedPosts` (legacy) coexist; consolidation planned
+
+---
+
+## 12. Checklist Before Committing
+
+- [ ] No new `supabase.from()` calls in pages/components/hooks (use repos)
+- [ ] No new `@/integrations/supabase/client` imports in app code
+- [ ] All new edge functions use `edgeLog`, `getRequestId`, `errorResponse`, `successResponse`
+- [ ] No `console.log`/`console.error` in edge functions
+- [ ] All new repo write methods have `createLogger` logging
+- [ ] Sensitive writes go through edge functions, not direct client
+- [ ] `npx tsc --noEmit` passes
+- [ ] `flutterchanges.md` updated with new entry (see flutter-changelog rule)

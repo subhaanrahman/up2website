@@ -24,7 +24,7 @@ import { useProfile } from "@/hooks/useProfileQuery";
 import { useActiveProfile, type OrganiserProfile } from "@/contexts/ActiveProfileContext";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";

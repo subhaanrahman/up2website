@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const sendSchema = z.object({
   type: z.enum([
@@ -35,12 +32,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -51,9 +48,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     const allowed = await checkRateLimit('notifications-send', user.id, getClientIp(req));
@@ -62,18 +57,14 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = sendSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten() }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten() });
     }
 
     const { type, recipient_user_id, title, message, avatar_url, event_image, link, organiser_profile_id } = parsed.data;
 
     // Don't let users notify themselves (unless it's a notification scoped to a different profile)
     if (recipient_user_id === user.id && !organiser_profile_id) {
-      return new Response(JSON.stringify({ error: 'Cannot notify yourself' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Cannot notify yourself', { requestId });
     }
 
     const serviceClient = createClient(
@@ -101,9 +92,7 @@ Deno.serve(async (req) => {
         (type === 'group_message' && settings.messages === false);
 
       if (blocked) {
-        return new Response(JSON.stringify({ success: true, sent: false, reason: 'User has disabled this notification type' }), {
-          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return successResponse({ success: true, sent: false, reason: 'User has disabled this notification type' }, requestId);
       }
     }
 
@@ -119,9 +108,7 @@ Deno.serve(async (req) => {
       .limit(1);
 
     if (existing && existing.length > 0) {
-      return new Response(JSON.stringify({ success: true, sent: false, reason: 'Duplicate notification suppressed' }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return successResponse({ success: true, sent: false, reason: 'Duplicate notification suppressed' }, requestId);
     }
 
     // Insert notification
@@ -139,19 +126,13 @@ Deno.serve(async (req) => {
       });
 
     if (insertError) {
-      console.error('Failed to insert notification:', insertError);
-      return new Response(JSON.stringify({ error: 'Failed to send notification' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Failed to insert notification', { requestId, error: String(insertError) });
+      return errorResponse(500, 'Failed to send notification', { requestId });
     }
 
-    return new Response(JSON.stringify({ success: true, sent: true }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ success: true, sent: true }, requestId);
   } catch (err) {
-    console.error('Notifications send error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Notifications send error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

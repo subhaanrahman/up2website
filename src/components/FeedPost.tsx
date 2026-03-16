@@ -9,7 +9,7 @@ import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
 import ReactionPicker from "@/components/ReactionPicker";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -63,8 +63,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
   const handleDelete = async () => {
     try {
-      const { error } = await supabase.from("posts").delete().eq("id", postId);
-      if (error) throw error;
+      await postsRepository.deletePost(postId);
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       toast({ title: "Post deleted" });
     } catch {
@@ -75,13 +74,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
   const handleReport = async () => {
     if (!user) return;
     try {
-      const { error } = await supabase.from("reports").insert({
-        reporter_id: user.id,
-        reported_post_id: postId,
-        reported_user_id: authorId,
-        reason: "inappropriate",
-      });
-      if (error) throw error;
+      await postsRepository.reportPost({ postId, reporterUserId: user.id, reportedUserId: authorId, reason: "inappropriate" });
       toast({ title: "Post reported", description: "We'll review this shortly." });
     } catch {
       toast({ title: "Failed to report", variant: "destructive" });
@@ -91,11 +84,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
   const handleBlock = async () => {
     if (!user) return;
     try {
-      const { error } = await supabase.from("blocked_users").insert({
-        blocker_id: user.id,
-        blocked_id: authorId,
-      });
-      if (error) throw error;
+      await postsRepository.blockUser({ blockerUserId: user.id, blockedUserId: authorId });
       queryClient.invalidateQueries({ queryKey: ["feed-context"] });
       queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
       toast({ title: "User blocked", description: "You won't see their posts anymore." });

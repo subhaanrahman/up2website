@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const schema = z.object({
   email: z.string().email().max(255),
@@ -17,12 +14,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Missing authorization', { requestId });
     }
 
     const supabase = createClient(
@@ -33,9 +30,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Unauthorized', { requestId });
     }
 
     const allowed = await checkRateLimit('email-verify-send', user.id, getClientIp(req));
@@ -44,9 +39,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid email' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid email', { requestId });
     }
 
     const { email } = parsed.data;
@@ -65,9 +58,7 @@ Deno.serve(async (req) => {
     });
 
     if (updateErr) {
-      return new Response(JSON.stringify({ error: 'Failed to initiate verification' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(500, 'Failed to initiate verification', { requestId });
     }
 
     // Send OTP via Twilio Verify email channel
@@ -76,10 +67,8 @@ Deno.serve(async (req) => {
     const serviceSid = Deno.env.get('TWILIO_VERIFY_SERVICE_SID');
 
     if (!accountSid || !authToken || !serviceSid) {
-      console.error('Missing Twilio credentials');
-      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Missing Twilio credentials', { requestId });
+      return errorResponse(500, 'Email service not configured', { requestId });
     }
 
     const twilioUrl = `https://verify.twilio.com/v2/Services/${serviceSid}/Verifications`;
@@ -100,19 +89,13 @@ Deno.serve(async (req) => {
     const twilioData = await twilioRes.json();
 
     if (!twilioRes.ok) {
-      console.error('Twilio email verify error:', twilioData);
-      return new Response(JSON.stringify({ error: twilioData.message || 'Failed to send verification email' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Twilio email verify error', { requestId, twilioData });
+      return errorResponse(400, twilioData.message || 'Failed to send verification email', { requestId });
     }
 
-    return new Response(JSON.stringify({ success: true, message: 'Verification code sent to your email' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ success: true, message: 'Verification code sent to your email' }, requestId);
   } catch (err) {
-    console.error('email-verify-send error:', err);
-    return new Response(JSON.stringify({ error: 'Internal error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'email-verify-send error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

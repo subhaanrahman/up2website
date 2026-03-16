@@ -1,6 +1,6 @@
 # Up2 Platform — Database Architecture
 
-> Last updated: 2026-03-13  
+> Last updated: 2026-03-16  
 > Companion to `docs/ARCHITECTURE.md` — deep-dive into the PostgreSQL schema, relationships, RLS policies, and future table plans.
 
 ---
@@ -241,7 +241,7 @@ Event attendance verification. `method`: 'manual' or 'qr'. `checked_in_by` track
 #### `group_chats` + `group_chat_members` + `group_chat_messages`
 Multi-user group chats. 3-member minimum enforced in UI. `member_count` denormalized on `group_chats`.
 
-**⚠️ Known issue**: `Dashboard.tsx` calls `supabase.rpc("get_user_group_chats")` but this RPC does not exist in the database. Needs to be created.
+**RPC**: `get_user_group_chats(p_user_id)` fetches user's group chats with last message + member previews in a single optimised query.
 
 ---
 
@@ -333,6 +333,7 @@ DB-backed sliding window rate limiter. Used by all edge functions. Probabilistic
 | `get_organiser_past_event_count(id)` | Past event count |
 | `get_personal_combined_event_count(user_id)` | Past attended count |
 | `get_group_chat_member_profiles(group_id)` | Chat member profiles |
+| `get_user_group_chats(p_user_id)` | User group chats with last message + member previews |
 
 ### Utility Functions
 | Function | Purpose |
@@ -385,7 +386,6 @@ See `docs/DB_OPTIMISATION_CHECKLIST.md` for full list. High-priority:
 
 | # | Issue | Severity | Details |
 |---|-------|----------|---------|
-| 1 | Missing `get_user_group_chats` RPC | 🔴 High | `Dashboard.tsx` calls this function but it doesn't exist. Build error. |
 | 2 | `is_profile_public()` hardcoded | 🔴 High | Returns `true` always. Privacy not enforced at DB level. |
 | 3 | Missing unique constraint `rsvps(event_id, user_id)` | 🟡 Medium | Needed for upsert in webhook auto-RSVP. Currently relies on RPC logic. |
 | 4 | `get_friends_and_following_count` misleading | 🟡 Medium | Identical to `get_friend_count`. Should include organiser follows. |
@@ -394,6 +394,12 @@ See `docs/DB_OPTIMISATION_CHECKLIST.md` for full list. High-priority:
 | 7 | `event.status` not filtered | 🟡 Medium | Draft/cancelled events appear in listings. |
 | 8 | No cascade deletes verified | 🟢 Low | Post likes/reposts/collaborators may orphan on post delete. |
 
+Note: I need to renumber the issues after removing #1. Actually looking at the table, the user said to remove the whole row - so I just need to remove that row. The remaining rows will keep their numbers (2, 3, 4...) or should I renumber them? The user said "REMOVED entirely (the whole row)" - so I'm just removing the row. I'll keep the numbering as 2, 3, 4... since that's simpler and the user didn't ask for renumbering.
+
+Actually wait - if we remove row 1, we'll have rows 2-8. That might look odd. Let me check the replacement I did. I removed the row for #1 and the table now starts with #2. The user didn't ask to renumber, so I'll leave it. If they want renumbering they can ask.
+
+Let me also do the Planned table removal and the bottom date.
+
 ---
 
 ## 9. Future Tables / Schema Changes
@@ -401,7 +407,6 @@ See `docs/DB_OPTIMISATION_CHECKLIST.md` for full list. High-priority:
 ### Planned
 | Table/Change | Purpose | Priority |
 |-------------|---------|----------|
-| `get_user_group_chats` RPC | Fix messaging page build error | 🔴 Immediate |
 | Fix `is_profile_public()` | Enforce privacy tiers | 🔴 High |
 | Add unique constraint `rsvps(event_id, user_id)` | RSVP deduplication | 🟡 Medium |
 | Fix `get_friends_and_following_count()` | Include organiser follows in count | 🟡 Medium |
@@ -440,4 +445,4 @@ All migrations are managed via Lovable Cloud and stored in `supabase/migrations/
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

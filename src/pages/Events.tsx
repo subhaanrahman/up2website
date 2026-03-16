@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Search, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
-import { supabase } from "@/integrations/supabase/client";
+import { eventsRepository } from "@/features/events/repositories/eventsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useSearchEvents } from "@/hooks/useEventsQuery";
 import { useForYouEvents } from "@/hooks/useForYouEvents";
 import { useAuth } from "@/contexts/AuthContext";
@@ -68,11 +69,7 @@ const Events = () => {
     queryKey: ["saved-event-ids", user?.id],
     queryFn: async () => {
       if (!user) return new Set<string>();
-      const { data } = await supabase
-        .from("saved_events")
-        .select("event_id")
-        .eq("user_id", user.id);
-      return new Set((data || []).map(d => d.event_id));
+      return eventsRepository.getSavedEventIds(user.id);
     },
     enabled: !!user,
   });
@@ -84,10 +81,10 @@ const Events = () => {
     setSavingId(eventId);
     try {
       if (savedEventIds.has(eventId)) {
-        await supabase.from("saved_events").delete().eq("event_id", eventId).eq("user_id", user.id);
+        await eventsRepository.unsaveEvent(user.id, eventId);
         toast({ title: "Removed from saved" });
       } else {
-        await supabase.from("saved_events").insert({ user_id: user.id, event_id: eventId });
+        await eventsRepository.saveEvent(user.id, eventId);
         toast({ title: "Saved!" });
       }
       queryClient.invalidateQueries({ queryKey: ["saved-event-ids", user.id] });
@@ -119,12 +116,12 @@ const Events = () => {
     if (!searchQuery.trim()) { setPeopleResults([]); return; }
     const timer = setTimeout(async () => {
       setPeopleLoading(true);
-      const q = `%${searchQuery.trim()}%`;
+      const q_raw = searchQuery.trim();
       const [profilesRes, organisersRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, display_name, username, avatar_url").or(`display_name.ilike.${q},username.ilike.${q}`).limit(5),
-        supabase.from("organiser_profiles").select("id, display_name, username, avatar_url").or(`display_name.ilike.${q},username.ilike.${q}`).limit(5),
+        profilesRepository.searchProfiles(q_raw, { limit: 5 }),
+        profilesRepository.searchOrganisers(q_raw, { limit: 5 }),
       ]);
-      setPeopleResults([...mapOrganisers(organisersRes.data || []), ...mapProfiles(profilesRes.data || [])]);
+      setPeopleResults([...mapOrganisers(organisersRes), ...mapProfiles(profilesRes)]);
       setPeopleLoading(false);
     }, 300);
     return () => clearTimeout(timer);

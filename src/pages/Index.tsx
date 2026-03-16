@@ -14,7 +14,7 @@ import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { usePaginatedFeed, useNearbyEvents } from "@/hooks/useFeedQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { getSuggestedFriends, type SuggestedProfile } from "@/features/social/services/recommendationService";
-import { supabase } from "@/integrations/supabase/client";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
@@ -150,27 +150,20 @@ const Index = () => {
     if (!user) return;
     setPendingRequests((prev) => new Set(prev).add(friendUserId));
     try {
-      const { error } = await supabase.from("connections").insert({
-        requester_id: user.id,
-        addressee_id: friendUserId,
-        status: "pending",
-      });
-      if (error) {
-        if (error.code === "23505") {
-          toast({ title: "Request already sent" });
-        } else {
-          throw error;
-        }
+      await connectionsRepository.sendRequest(user.id, friendUserId);
+      toast({ title: "Friend request sent!" });
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === "23505") {
+        toast({ title: "Request already sent" });
       } else {
-        toast({ title: "Friend request sent!" });
+        setPendingRequests((prev) => {
+          const next = new Set(prev);
+          next.delete(friendUserId);
+          return next;
+        });
+        toast({ title: "Failed to send request", variant: "destructive" });
       }
-    } catch {
-      setPendingRequests((prev) => {
-        const next = new Set(prev);
-        next.delete(friendUserId);
-        return next;
-      });
-      toast({ title: "Failed to send request", variant: "destructive" });
     }
   }, [user]);
 
