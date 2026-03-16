@@ -2,6 +2,50 @@
 
 <!-- New entries -->
 
+### 2026-03-16 — Revert repositories from undeployed edge functions to direct Supabase
+
+**Files changed:** `src/features/messaging/repositories/messagingRepository.ts`, `src/features/events/repositories/eventManagementRepository.ts`, `src/features/social/repositories/organiserTeamRepository.ts`, `src/features/social/repositories/postsRepository.ts`
+
+**What changed (React/TS):**
+- Reverted all write operations back to direct Supabase inserts/updates/deletes instead of routing through undeployed edge functions (`message-send`, `group-chat-manage`, `event-media-manage`, `organiser-team-manage`, `moderation-block`, `report-create`).
+- Fixed: group chat messaging (send), DM messaging (send), event board messaging (send), add/remove group members, rename group chats, update member counts, event media management, organiser team invites/removes/role updates, user blocking, post reporting.
+- `updateGroupMemberCount` restored as a real DB operation (was a no-op stub).
+
+**Flutter migration notes:**
+- Use `supabase_flutter` direct table operations for these writes until edge functions are deployed.
+- Group messages: insert into `group_chat_messages` with `sender_id`, `sender_name`, `content`, `is_from_current_user: true`.
+- DMs: insert into `dm_messages` with `thread_id`, `sender_id`, `content`.
+- Event messages: insert into `event_messages` with `event_id`, `user_id`, `content`.
+- Block user: insert into `blocked_users` with `blocker_id`, `blocked_id`.
+- Report post: insert into `reports` with `reporter_id`, `reported_user_id`, `target_type`, `target_id`, `reason`.
+
+### 2026-03-16 — Switch ticket transfer back to rsvp_transfer RPC
+
+**Files changed:** `src/components/TransferTicketModal.tsx`, `src/integrations/supabase/types.ts`
+
+**What changed (React/TS):**
+- Reverted `TransferTicketModal` from `callEdgeFunction('ticket-transfer', ...)` back to `supabase.rpc("rsvp_transfer", ...)` now that the migration is deployed.
+- Added `rsvp_transfer` type to the Supabase generated types (`Functions` section).
+
+**Flutter migration notes:**
+- Use `supabase_flutter`'s `.rpc('rsvp_transfer', params: {'p_event_id': eventId, 'p_to_user_id': recipientId})` for ticket/RSVP transfers.
+- The RPC is `SECURITY DEFINER`, handles auth checks, friend validation, and atomic transfer in one transaction.
+- No edge function call needed for this operation.
+
+### 2026-03-16 — Fix notification unread count mismatch
+
+**Files changed:** `src/hooks/useNotificationsQuery.ts`, `src/pages/Notifications.tsx`, `src/features/notifications/index.ts`
+
+**What changed (React/TS):**
+- Fixed `useUnreadCount` to exclude hidden notification types (`suggested_account`) so the badge count matches the visible notification list.
+- Extracted `HIDDEN_NOTIFICATION_TYPES` as a shared constant from the hook file, replacing the local `HIDDEN_TYPES` in `Notifications.tsx`.
+- Added a "Mark all as read" button (CheckCheck icon) to the Notifications page header, using the existing `useMarkAllRead` hook that was previously unused.
+
+**Flutter migration notes:**
+- In the Flutter notifications screen, ensure the unread badge count applies the same type filter as the visible list.
+- Add a "Mark all as read" action in the app bar (e.g. `IconButton` with `Icons.done_all`).
+- Use `supabase_flutter` to batch-update `read: true` on all matching notifications.
+
 ### 2026-03-16 — Developer context files for AI agent consistency
 
 **Files changed:** `.cursor/rules/dev-context.mdc` (new), `docs/DEV_CONTEXT.md` (new)

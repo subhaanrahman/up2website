@@ -1,20 +1,22 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import PendingOrganiserInvites from "@/components/PendingOrganiserInvites";
 import FriendRequestsSection from "@/components/FriendRequestsSection";
 import NotificationItem from "@/components/notifications/NotificationItem";
 import {
   useNotifications,
+  useMarkAllRead,
+  HIDDEN_NOTIFICATION_TYPES,
 } from "@/hooks/useNotificationsQuery";
-
-const HIDDEN_TYPES = new Set(["suggested_account"]);
 
 const Notifications = () => {
   const navigate = useNavigate();
   const { data: notifications = [], isLoading } = useNotifications();
+  const markAllRead = useMarkAllRead();
 
-  const filtered = notifications.filter((n) => !HIDDEN_TYPES.has(n.type));
+  const filtered = notifications.filter((n) => !HIDDEN_NOTIFICATION_TYPES.has(n.type));
+  const hasUnread = filtered.some((n) => !n.read);
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -24,6 +26,16 @@ const Notifications = () => {
           <button onClick={() => navigate(-1)} className="absolute left-2 p-2 -ml-2">
             <ArrowLeft className="h-6 w-6 text-foreground" />
           </button>
+          {hasUnread && (
+            <button
+              onClick={() => markAllRead.mutate()}
+              disabled={markAllRead.isPending}
+              className="absolute right-3 p-2 text-primary hover:text-primary/80 transition-colors"
+              aria-label="Mark all as read"
+            >
+              <CheckCheck className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </header>
 

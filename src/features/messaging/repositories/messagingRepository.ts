@@ -1,6 +1,5 @@
 import { supabase } from '@/infrastructure/supabase';
 import { createLogger } from '@/infrastructure/logger';
-import { callEdgeFunction } from '@/infrastructure/api-client';
 
 const log = createLogger('messaging.repository');
 
@@ -34,14 +33,14 @@ export const messagingRepository = {
     content: string;
   }) {
     log.info('sendGroupMessage', { groupChatId: params.groupChatId, senderId: params.senderId });
-    await callEdgeFunction('message-send', {
-      body: {
-        type: 'group',
-        group_chat_id: params.groupChatId,
-        sender_name: params.senderName,
-        content: params.content,
-      },
+    const { error } = await supabase.from('group_chat_messages').insert({
+      group_chat_id: params.groupChatId,
+      sender_id: params.senderId,
+      sender_name: params.senderName,
+      content: params.content,
+      is_from_current_user: true,
     });
+    if (error) throw error;
   },
 
   async getGroupMembers(groupChatId: string, excludeUserId?: string) {
@@ -60,28 +59,38 @@ export const messagingRepository = {
   async addGroupMembers(chatId: string, userIds: string[]) {
     if (userIds.length === 0) return;
     log.info('addGroupMembers', { chatId, count: userIds.length });
-    await callEdgeFunction('group-chat-manage', {
-      body: { action: 'add-members', chat_id: chatId, user_ids: userIds },
-    });
+    const { error } = await supabase
+      .from('group_chat_members')
+      .insert(userIds.map(uid => ({ group_chat_id: chatId, user_id: uid })));
+    if (error) throw error;
   },
 
   async removeGroupMember(chatId: string, userId: string) {
     log.info('removeGroupMember', { chatId, userId });
-    await callEdgeFunction('group-chat-manage', {
-      body: { action: 'remove-member', chat_id: chatId, user_id: userId },
-    });
+    const { error } = await supabase
+      .from('group_chat_members')
+      .delete()
+      .eq('group_chat_id', chatId)
+      .eq('user_id', userId);
+    if (error) throw error;
   },
 
-  async updateGroupMemberCount(_chatId: string, _newCount: number) {
-    // Member count is now managed atomically by the group-chat-manage edge function.
-    // This method is kept for backward compatibility but is a no-op.
+  async updateGroupMemberCount(chatId: string, newCount: number) {
+    log.info('updateGroupMemberCount', { chatId, newCount });
+    const { error } = await supabase
+      .from('group_chats')
+      .update({ member_count: newCount })
+      .eq('id', chatId);
+    if (error) throw error;
   },
 
   async updateGroupChatName(chatId: string, name: string) {
     log.info('updateGroupChatName', { chatId });
-    await callEdgeFunction('group-chat-manage', {
-      body: { action: 'rename', chat_id: chatId, name },
-    });
+    const { error } = await supabase
+      .from('group_chats')
+      .update({ name })
+      .eq('id', chatId);
+    if (error) throw error;
   },
 
   async getGroupChatIdsForUser(userId: string) {
@@ -139,9 +148,12 @@ export const messagingRepository = {
 
   async sendDm(params: { threadId: string; senderId: string; content: string }) {
     log.info('sendDm', { threadId: params.threadId, senderId: params.senderId });
-    await callEdgeFunction('message-send', {
-      body: { type: 'dm', thread_id: params.threadId, content: params.content },
+    const { error } = await supabase.from('dm_messages').insert({
+      thread_id: params.threadId,
+      sender_id: params.senderId,
+      content: params.content,
     });
+    if (error) throw error;
   },
 
   async listDmThreads(params: {
@@ -214,8 +226,11 @@ export const messagingRepository = {
 
   async sendEventMessage(params: { eventId: string; userId: string; content: string }) {
     log.info('sendEventMessage', { eventId: params.eventId, userId: params.userId });
-    await callEdgeFunction('message-send', {
-      body: { type: 'event-board', event_id: params.eventId, content: params.content },
+    const { error } = await supabase.from('event_messages').insert({
+      event_id: params.eventId,
+      user_id: params.userId,
+      content: params.content,
     });
+    if (error) throw error;
   },
 };
