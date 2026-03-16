@@ -19,6 +19,13 @@ export interface AppNotification {
   organiser_profile_id: string | null;
 }
 
+/** Notification types that are hidden from the user-facing list and unread count. */
+export const HIDDEN_NOTIFICATION_TYPES = new Set(["suggested_account"]);
+
+function notificationsKey(userId: string | undefined, activeOrgId: string | null) {
+  return ["notifications", userId, activeOrgId] as const;
+}
+
 export function useNotifications() {
   const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
@@ -26,9 +33,10 @@ export function useNotifications() {
 
   const isOrganiserView = activeProfile?.type === "organiser";
   const activeOrgId = isOrganiserView ? activeProfile.id : null;
+  const qk = notificationsKey(user?.id, activeOrgId);
 
   const query = useQuery({
-    queryKey: ["notifications", user?.id, activeOrgId],
+    queryKey: qk,
     queryFn: async () => {
       let q = supabase
         .from("notifications")
@@ -38,10 +46,8 @@ export function useNotifications() {
         .order("created_at", { ascending: false });
 
       if (isOrganiserView && activeOrgId) {
-        // Business profile: only show notifications scoped to this organiser
         q = q.eq("organiser_profile_id", activeOrgId);
       } else {
-        // Personal/Professional: show notifications without an organiser scope
         q = q.is("organiser_profile_id", null);
       }
 
@@ -56,21 +62,18 @@ export function useNotifications() {
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
-      .channel("notifications-realtime")
+      .channel(`notifications-${user.id}-${activeOrgId ?? "personal"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => queryClient.invalidateQueries({ queryKey: ["notifications", user.id, activeOrgId] })
+        () => queryClient.invalidateQueries({ queryKey: qk })
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user?.id, activeOrgId, queryClient]);
+  }, [user?.id, activeOrgId, queryClient, qk]);
 
   return query;
 }
-
-/** Notification types that are hidden from the user-facing list. */
-export const HIDDEN_NOTIFICATION_TYPES = new Set(["suggested_account"]);
 
 export function useUnreadCount() {
   const { data: notifications } = useNotifications();
@@ -86,6 +89,8 @@ export function useMarkNotificationRead() {
   const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
   const activeOrgId = activeProfile?.type === "organiser" ? activeProfile.id : null;
+  const qk = notificationsKey(user?.id, activeOrgId);
+
   return useMutation({
     mutationFn: async (notificationId: string) => {
       const { error } = await supabase
@@ -94,7 +99,18 @@ export function useMarkNotificationRead() {
         .eq("id", notificationId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id, activeOrgId] }),
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries({ queryKey: qk });
+      const prev = queryClient.getQueryData<AppNotification[]>(qk);
+      queryClient.setQueryData<AppNotification[]>(qk, (old) =>
+        old?.map((n) => (n.id === notificationId ? { ...n, read: true } : n)),
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(qk, context.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: qk }),
   });
 }
 
@@ -103,6 +119,8 @@ export function useMarkAllRead() {
   const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
   const activeOrgId = activeProfile?.type === "organiser" ? activeProfile.id : null;
+  const qk = notificationsKey(user?.id, activeOrgId);
+
   return useMutation({
     mutationFn: async () => {
       if (!user?.id) return;
@@ -121,6 +139,17 @@ export function useMarkAllRead() {
       const { error } = await q;
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id, activeOrgId] }),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: qk });
+      const prev = queryClient.getQueryData<AppNotification[]>(qk);
+      queryClient.setQueryData<AppNotification[]>(qk, (old) =>
+        old?.map((n) => ({ ...n, read: true })),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(qk, context.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: qk }),
   });
 }

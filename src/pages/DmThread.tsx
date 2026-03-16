@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useToast } from "@/hooks/use-toast";
 
 interface DmMessage {
   id: string;
@@ -87,49 +88,69 @@ const DmThread = () => {
   }, [id, queryClient]);
 
   const senderDisplayName = profile?.displayName || profile?.username || "You";
+  const { toast } = useToast();
 
   const handleSend = async () => {
-    if (!message.trim() || !user || !thread) return;
+    if (!message.trim() || !user || !thread || !id) return;
     const content = message.trim();
     setMessage("");
 
-    await messagingRepository.sendDm({
-      threadId: thread.id,
-      senderId: user.id,
+    const optimisticMsg: DmMessage = {
+      id: `optimistic-${Date.now()}`,
+      sender_id: user.id,
       content,
-    });
+      created_at: new Date().toISOString(),
+    };
 
-    queryClient.invalidateQueries({ queryKey: ["dm-messages", id] });
-    queryClient.invalidateQueries({ queryKey: ["dm-threads"] });
+    queryClient.setQueryData<DmMessage[]>(
+      ["dm-messages", id],
+      (prev = []) => [...prev, optimisticMsg],
+    );
 
-    // Notify the other party — scope notification to the organiser profile
-    const recipientId = isOrganiserSide ? thread.user_id : organiser?.owner_id;
-    if (recipientId && recipientId !== user.id) {
-      callEdgeFunction("notifications-send", {
-        body: {
-          type: "group_message",
-          recipient_user_id: recipientId,
-          title: `Message from ${senderDisplayName}`,
-          message: content.length > 80 ? content.slice(0, 80) + "…" : content,
-          avatar_url: profile?.avatarUrl || null,
-          link: `/messages/dm/${thread.id}`,
-          // If recipient is the organiser side, scope this notification to their organiser profile
-          organiser_profile_id: !isOrganiserSide ? thread.organiser_profile_id : null,
-        },
-      }).catch(() => {});
-    } else if (recipientId === user.id && !isOrganiserSide) {
-      // User is DMing their own business profile — still send notification scoped to organiser
-      callEdgeFunction("notifications-send", {
-        body: {
-          type: "group_message",
-          recipient_user_id: user.id,
-          title: `Message from ${senderDisplayName}`,
-          message: content.length > 80 ? content.slice(0, 80) + "…" : content,
-          avatar_url: profile?.avatarUrl || null,
-          link: `/messages/dm/${thread.id}`,
-          organiser_profile_id: thread.organiser_profile_id,
-        },
-      }).catch(() => {});
+    try {
+      await messagingRepository.sendDm({
+        threadId: thread.id,
+        senderId: user.id,
+        content,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["dm-messages", id] });
+      queryClient.invalidateQueries({ queryKey: ["dm-threads"] });
+
+      // Notify the other party — scope notification to the organiser profile
+      const recipientId = isOrganiserSide ? thread.user_id : organiser?.owner_id;
+      if (recipientId && recipientId !== user.id) {
+        callEdgeFunction("notifications-send", {
+          body: {
+            type: "group_message",
+            recipient_user_id: recipientId,
+            title: `Message from ${senderDisplayName}`,
+            message: content.length > 80 ? content.slice(0, 80) + "…" : content,
+            avatar_url: profile?.avatarUrl || null,
+            link: `/messages/dm/${thread.id}`,
+            organiser_profile_id: !isOrganiserSide ? thread.organiser_profile_id : null,
+          },
+        }).catch(() => {});
+      } else if (recipientId === user.id && !isOrganiserSide) {
+        callEdgeFunction("notifications-send", {
+          body: {
+            type: "group_message",
+            recipient_user_id: user.id,
+            title: `Message from ${senderDisplayName}`,
+            message: content.length > 80 ? content.slice(0, 80) + "…" : content,
+            avatar_url: profile?.avatarUrl || null,
+            link: `/messages/dm/${thread.id}`,
+            organiser_profile_id: thread.organiser_profile_id,
+          },
+        }).catch(() => {});
+      }
+    } catch (err: unknown) {
+      queryClient.setQueryData<DmMessage[]>(
+        ["dm-messages", id],
+        (prev = []) => prev.filter((m) => m.id !== optimisticMsg.id),
+      );
+      const msg = err instanceof Error ? err.message : "Failed to send message";
+      toast({ title: "Send failed", description: msg, variant: "destructive" });
     }
   };
 
