@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ArrowRightLeft } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { Button } from "@/components/ui/button";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
 
@@ -13,6 +14,7 @@ interface TicketEventCardProps {
   isPast: boolean;
   ticketStatus: TicketStatus;
   onQrClick?: (e: React.MouseEvent) => void;
+  onTransferClick?: (e: React.MouseEvent) => void;
 }
 
 const statusConfig: Record<TicketStatus, { label: string; className: string }> = {
@@ -32,8 +34,9 @@ const TicketEventCard = ({
   isPast,
   ticketStatus,
   onQrClick,
+  onTransferClick,
 }: TicketEventCardProps) => {
-  const cfg = statusConfig[ticketStatus];
+  const showTransfer = onTransferClick != null && !isPast;
 
   return (
     <Link
@@ -60,7 +63,22 @@ const TicketEventCard = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 mr-3 flex-shrink-0">
+      <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+        {showTransfer && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTransferClick(e);
+            }}
+            title="Transfer ticket"
+          >
+            <ArrowRightLeft className="h-4 w-4" />
+          </Button>
+        )}
         <ChevronRight className="h-5 w-5 text-muted-foreground" />
       </div>
     </Link>

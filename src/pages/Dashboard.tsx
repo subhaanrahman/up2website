@@ -62,31 +62,53 @@ const useGroupChats = () => {
     queryFn: async (): Promise<GroupChat[]> => {
       if (!user) return [];
 
-      const { data, error } = await supabase.rpc("get_user_group_chats", {
-        p_user_id: user.id,
-      });
+      const { data: memberships, error: memErr } = await supabase
+        .from("group_chat_members")
+        .select("group_chat_id")
+        .eq("user_id", user.id);
+
+      if (memErr || !memberships || memberships.length === 0) return [];
+
+      const chatIds = memberships.map((m) => m.group_chat_id);
+
+      const { data: chats, error } = await supabase
+        .from("group_chats")
+        .select("*")
+        .in("id", chatIds)
+        .order("updated_at", { ascending: false });
+
       if (error) throw error;
 
-      const rows = (data || []) as {
-        id: string;
-        name: string;
-        member_count: number;
-        last_message: string | null;
-        last_message_created_at: string | null;
-        member_previews: { user_id: string; display_name: string | null; avatar_url: string | null }[];
-      }[];
+      const enriched = await Promise.all(
+        (chats ?? []).map(async (chat) => {
+          const [{ data: msgs }, { data: memberProfiles }] = await Promise.all([
+            supabase
+              .from("group_chat_messages")
+              .select("sender_name, content, created_at")
+              .eq("group_chat_id", chat.id)
+              .order("created_at", { ascending: false })
+              .limit(1),
+            supabase.rpc("get_group_chat_member_profiles", {
+              p_group_chat_id: chat.id,
+            }),
+          ]);
 
-      return rows.map((row) => ({
-        id: row.id,
-        name: row.name,
-        member_count: row.member_count,
-        last_message: row.last_message || undefined,
-        last_message_time: row.last_message_created_at
-          ? getRelativeTime(new Date(row.last_message_created_at))
-          : undefined,
-        unread: 0,
-        memberPreviews: (row.member_previews || []).slice(0, 4),
-      }));
+          const lastMsg = msgs?.[0];
+          const timeDiff = lastMsg ? getRelativeTime(new Date(lastMsg.created_at)) : "";
+
+          return {
+            id: chat.id,
+            name: chat.name,
+            member_count: chat.member_count,
+            last_message: lastMsg ? `${lastMsg.sender_name}: ${lastMsg.content}` : undefined,
+            last_message_time: timeDiff,
+            unread: 0,
+            memberPreviews: ((memberProfiles as MemberPreview[]) || []).slice(0, 4),
+          };
+        })
+      );
+
+      return enriched;
     },
   });
 };

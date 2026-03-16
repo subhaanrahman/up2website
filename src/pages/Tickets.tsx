@@ -12,6 +12,7 @@ import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
 import ProfileQrModal from "@/components/ProfileQrModal";
+import TransferTicketModal from "@/components/TransferTicketModal";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
@@ -124,6 +125,7 @@ function CreatedEventCard({ event, isPast }: { event: any; isPast: boolean }) {
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
+  const [transferEvent, setTransferEvent] = useState<{ eventId: string; title: string } | null>(null);
   const [activeSection, setActiveSection] = useState<"plans" | "events">("plans");
   const { user } = useAuth();
   const { isOrganiser, activeProfile } = useActiveProfile();
@@ -132,7 +134,7 @@ const Tickets = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // New separated hooks
-  const { data: plannedEvents = [], isLoading: plansLoading } = useUserPlannedEvents(user?.id);
+  const { data: plannedEvents = [], isLoading: plansLoading, refetch: refetchPlans } = useUserPlannedEvents(user?.id);
   const { data: createdEvents = [], isLoading: createdLoading } = useUserCreatedEvents(user?.id);
 
   const now = useMemo(() => new Date(), []);
@@ -229,6 +231,7 @@ const Tickets = () => {
       isPast={isPast}
       ticketStatus={t.ticketStatus}
       onQrClick={() => setQrOpen(true)}
+      onTransferClick={() => setTransferEvent({ eventId: t.eventId, title: t.title })}
     />
   );
 
@@ -402,6 +405,16 @@ const Tickets = () => {
         avatarUrl={avatarUrl || undefined}
         profileUrl={profileUrl}
       />
+
+      {transferEvent && (
+        <TransferTicketModal
+          open={!!transferEvent}
+          onOpenChange={(open) => !open && setTransferEvent(null)}
+          eventId={transferEvent.eventId}
+          eventTitle={transferEvent.title}
+          onTransferred={() => refetchPlans()}
+        />
+      )}
 
       <BottomNav />
     </div>

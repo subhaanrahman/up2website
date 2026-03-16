@@ -223,15 +223,17 @@ const Index = () => {
           )}
         </div>
 
-        {/* Post Composer */}
-        <PostComposer
-          displayName={displayName}
-          username={username}
-          avatarUrl={avatarUrl}
-          organiserProfileId={isOrganiser && activeOrg ? activeOrg.id : undefined}
-          isVerified={isOrganiser || profile?.isVerified || false}
-          onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
-        />
+        {/* Post Composer — only when logged in */}
+        {user && (
+          <PostComposer
+            displayName={displayName}
+            username={username}
+            avatarUrl={avatarUrl}
+            organiserProfileId={isOrganiser && activeOrg ? activeOrg.id : undefined}
+            isVerified={isOrganiser || profile?.isVerified || false}
+            onPostCreated={() => queryClient.invalidateQueries({ queryKey: ["feed-posts"] })}
+          />
+        )}
 
         {/* Events Near You — DB-backed auto-scroll carousel */}
         {nearbyEvents.length > 0 && (
