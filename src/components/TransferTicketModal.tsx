@@ -103,9 +103,11 @@ export default function TransferTicketModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] flex flex-col">
+      <DialogContent className="max-h-[85vh] flex flex-col rounded-3xl sm:rounded-3xl bg-card border border-border/60 shadow-2xl p-6 sm:p-8 gap-4">
         <DialogHeader>
-          <DialogTitle>Transfer ticket</DialogTitle>
+          <DialogTitle className="font-display tracking-[0.08em] uppercase">
+            TRANSFER TICKET
+          </DialogTitle>
           <DialogDescription className="line-clamp-2">
             {eventTitle}
           </DialogDescription>
