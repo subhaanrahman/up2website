@@ -31,7 +31,17 @@ export async function callEdgeFunction<T = unknown>(
 
   let token: string | undefined;
   if (!PUBLIC_FUNCTIONS.has(functionName)) {
-    const { data: { session } } = await supabase.auth.getSession();
+    let { data: { session } } = await supabase.auth.getSession();
+
+    // Proactively refresh if the token expires within 60 seconds
+    if (session?.expires_at) {
+      const expiresMs = session.expires_at * 1000;
+      if (expiresMs - Date.now() < 60_000) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        session = refreshed.session;
+      }
+    }
+
     token = session?.access_token;
   }
 

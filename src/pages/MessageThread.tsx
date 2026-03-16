@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useToast } from "@/hooks/use-toast";
 
 interface ChatMessage {
   id: string;
@@ -55,39 +56,61 @@ const MessageThread = () => {
   const initials = chatName.split(" ").map(w => w[0]).join("").slice(0, 2);
 
   const senderDisplayName = profile?.displayName || profile?.username || "You";
+  const { toast } = useToast();
 
   const handleSend = async () => {
-    if (!message.trim() || !user) return;
+    if (!message.trim() || !user || !id) return;
     const content = message.trim();
     setMessage("");
 
-    await messagingRepository.sendGroupMessage({
-      groupChatId: id!,
-      senderId: user.id,
-      senderName: senderDisplayName,
+    const optimisticMsg: ChatMessage = {
+      id: `optimistic-${Date.now()}`,
+      sender_id: user.id,
+      sender_name: senderDisplayName,
       content,
-    });
+      is_from_current_user: true,
+      created_at: new Date().toISOString(),
+    };
 
-    queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
-    queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+    queryClient.setQueryData<ChatMessage[]>(
+      ["group-chat-messages", id],
+      (prev = []) => [...prev, optimisticMsg],
+    );
 
-    // Notify other group members (fire-and-forget)
-    const members = await messagingRepository.getGroupMembers(id!, user.id);
-
-    if (members && members.length > 0) {
-      const chatLabel = chatName || "Group Chat";
-      members.forEach((m) => {
-        callEdgeFunction("notifications-send", {
-          body: {
-            type: "group_message",
-            recipient_user_id: m.user_id,
-            title: chatLabel,
-            message: `${senderDisplayName}: ${content.length > 80 ? content.slice(0, 80) + "…" : content}`,
-            avatar_url: profile?.avatarUrl || null,
-            link: `/messages/${id}`,
-          },
-        }).catch(() => {}); // fire-and-forget
+    try {
+      await messagingRepository.sendGroupMessage({
+        groupChatId: id,
+        senderId: user.id,
+        senderName: senderDisplayName,
+        content,
       });
+
+      queryClient.invalidateQueries({ queryKey: ["group-chat-messages", id] });
+      queryClient.invalidateQueries({ queryKey: ["group-chats"] });
+
+      const members = await messagingRepository.getGroupMembers(id, user.id);
+      if (members?.length > 0) {
+        const chatLabel = chatName || "Group Chat";
+        members.forEach((m) => {
+          callEdgeFunction("notifications-send", {
+            body: {
+              type: "group_message",
+              recipient_user_id: m.user_id,
+              title: chatLabel,
+              message: `${senderDisplayName}: ${content.length > 80 ? content.slice(0, 80) + "…" : content}`,
+              avatar_url: profile?.avatarUrl || null,
+              link: `/messages/${id}`,
+            },
+          }).catch(() => {});
+        });
+      }
+    } catch (err: unknown) {
+      queryClient.setQueryData<ChatMessage[]>(
+        ["group-chat-messages", id],
+        (prev = []) => prev.filter((m) => m.id !== optimisticMsg.id),
+      );
+      const msg = err instanceof Error ? err.message : "Failed to send message";
+      toast({ title: "Send failed", description: msg, variant: "destructive" });
     }
   };
 

@@ -2,6 +2,35 @@
 
 <!-- New entries -->
 
+### 2026-03-17 — Fix group chat and DM messages not appearing after send
+
+**Files changed:** `src/pages/MessageThread.tsx`, `src/pages/DmThread.tsx`, `supabase/migrations/20260317120000_group_chat_messages_realtime.sql`
+
+**What changed (React/TS):**
+- Added optimistic updates to group chat and DM message send: messages appear in the list immediately before the server round trip completes.
+- Added try/catch with toast on send failure so insert/network errors are surfaced to the user.
+- If send fails, the optimistic message is rolled back from the UI.
+- Added Realtime publication for `group_chat_messages` (migration) so multi-user group chats update live across clients.
+
+**Flutter migration notes:**
+- Use optimistic updates (Riverpod/Bloc) to add messages to the list immediately on send.
+- Ensure `group_chat_messages` is in the Supabase Realtime publication for cross-device sync.
+- Surface send errors with a snackbar or toast.
+
+### 2026-03-16 — Fix expired token + notification count optimistic updates
+
+**Files changed:** `src/infrastructure/api-client.ts`, `src/hooks/useNotificationsQuery.ts`
+
+**What changed (React/TS):**
+- Fixed `callEdgeFunction` to proactively refresh the session when the access token expires within 60 seconds, preventing "Invalid token" errors on all edge function calls.
+- Added optimistic updates to `useMarkNotificationRead` and `useMarkAllRead` — the badge count now updates instantly when notifications are marked as read, without waiting for the server round trip.
+- Unique realtime channel names per user/profile to avoid subscription conflicts.
+- Shared `notificationsKey` helper for consistent query key usage.
+
+**Flutter migration notes:**
+- In `supabase_flutter`, token refresh is handled automatically by the SDK — no manual refresh needed.
+- For optimistic notification updates, use Riverpod/Bloc state to immediately mark notifications as read in local state before the API call completes.
+
 ### 2026-03-16 — Revert repositories from undeployed edge functions to direct Supabase
 
 **Files changed:** `src/features/messaging/repositories/messagingRepository.ts`, `src/features/events/repositories/eventManagementRepository.ts`, `src/features/social/repositories/organiserTeamRepository.ts`, `src/features/social/repositories/postsRepository.ts`
