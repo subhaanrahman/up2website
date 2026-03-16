@@ -69,9 +69,16 @@ export function useNotifications() {
   return query;
 }
 
+/** Notification types that are hidden from the user-facing list. */
+export const HIDDEN_NOTIFICATION_TYPES = new Set(["suggested_account"]);
+
 export function useUnreadCount() {
   const { data: notifications } = useNotifications();
-  return notifications?.filter((n) => !n.read).length ?? 0;
+  return (
+    notifications?.filter(
+      (n) => !n.read && !HIDDEN_NOTIFICATION_TYPES.has(n.type),
+    ).length ?? 0
+  );
 }
 
 export function useMarkNotificationRead() {

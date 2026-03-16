@@ -1,6 +1,5 @@
 import { supabase } from '@/infrastructure/supabase';
 import { createLogger } from '@/infrastructure/logger';
-import { callEdgeFunction } from '@/infrastructure/api-client';
 
 const log = createLogger('event-management.repository');
 
@@ -106,21 +105,19 @@ export const eventManagementRepository = {
 
   async insertMedia(params: { eventId: string; url: string; uploadedBy: string; sortOrder: number }) {
     log.info('insertMedia', { eventId: params.eventId, uploadedBy: params.uploadedBy });
-    await callEdgeFunction('event-media-manage', {
-      body: {
-        action: 'insert',
-        event_id: params.eventId,
-        url: params.url,
-        sort_order: params.sortOrder,
-      },
+    const { error } = await supabase.from('event_media').insert({
+      event_id: params.eventId,
+      url: params.url,
+      uploaded_by: params.uploadedBy,
+      sort_order: params.sortOrder,
     });
+    if (error) throw error;
   },
 
   async deleteMedia(mediaId: string) {
     log.info('deleteMedia', { mediaId });
-    await callEdgeFunction('event-media-manage', {
-      body: { action: 'delete', media_id: mediaId },
-    });
+    const { error } = await supabase.from('event_media').delete().eq('id', mediaId);
+    if (error) throw error;
   },
 
   // ─── Ticket Tiers ───

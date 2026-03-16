@@ -1,6 +1,5 @@
 import { supabase } from '@/infrastructure/supabase';
 import { createLogger } from '@/infrastructure/logger';
-import { callEdgeFunction } from '@/infrastructure/api-client';
 
 const log = createLogger('posts.repository');
 
@@ -47,20 +46,23 @@ export const postsRepository = {
 
   async reportPost(params: { postId: string; reporterUserId: string; reportedUserId: string; reason: string }) {
     log.info('reportPost', { postId: params.postId, reporterUserId: params.reporterUserId });
-    await callEdgeFunction('report-create', {
-      body: {
-        target_type: 'post',
-        target_id: params.postId,
-        reason: params.reason,
-      },
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: params.reporterUserId,
+      reported_user_id: params.reportedUserId,
+      target_type: 'post',
+      target_id: params.postId,
+      reason: params.reason,
     });
+    if (error) throw error;
   },
 
   async blockUser(params: { blockerUserId: string; blockedUserId: string }) {
     log.info('blockUser', { blockerUserId: params.blockerUserId, blockedUserId: params.blockedUserId });
-    await callEdgeFunction('moderation-block', {
-      body: { blocked_user_id: params.blockedUserId },
+    const { error } = await supabase.from('blocked_users').insert({
+      blocker_id: params.blockerUserId,
+      blocked_id: params.blockedUserId,
     });
+    if (error) throw error;
   },
 
   async getCollaboratorsByPostIds(postIds: string[]) {

@@ -1,6 +1,5 @@
 import { supabase } from '@/infrastructure/supabase';
 import { createLogger } from '@/infrastructure/logger';
-import { callEdgeFunction } from '@/infrastructure/api-client';
 
 const log = createLogger('organiser-team.repository');
 
@@ -22,27 +21,28 @@ export const organiserTeamRepository = {
     invitedBy: string;
   }) {
     log.info('inviteMember', { organiserProfileId: params.organiserProfileId, targetUserId: params.targetUserId, role: params.role });
-    await callEdgeFunction('organiser-team-manage', {
-      body: {
-        action: 'invite',
-        organiser_profile_id: params.organiserProfileId,
-        target_user_id: params.targetUserId,
-        role: params.role,
-      },
+    const { error } = await supabase.from('organiser_members').insert({
+      organiser_profile_id: params.organiserProfileId,
+      user_id: params.targetUserId,
+      role: params.role,
+      invited_by: params.invitedBy,
+      status: 'pending',
     });
+    if (error) throw error;
   },
 
   async removeMember(memberId: string) {
     log.info('removeMember', { memberId });
-    await callEdgeFunction('organiser-team-manage', {
-      body: { action: 'remove', member_id: memberId },
-    });
+    const { error } = await supabase.from('organiser_members').delete().eq('id', memberId);
+    if (error) throw error;
   },
 
   async updateRole(memberId: string, newRole: string) {
     log.info('updateRole', { memberId, newRole });
-    await callEdgeFunction('organiser-team-manage', {
-      body: { action: 'update-role', member_id: memberId, role: newRole },
-    });
+    const { error } = await supabase
+      .from('organiser_members')
+      .update({ role: newRole })
+      .eq('id', memberId);
+    if (error) throw error;
   },
 };
