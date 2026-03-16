@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -34,24 +35,12 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
   const { data: messages = [], isLoading } = useQuery({
     queryKey: ["event-board", eventId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("event_messages")
-        .select("id, content, created_at, user_id")
-        .eq("event_id", eventId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
+      const data = await messagingRepository.getEventMessages(eventId);
       if (!data || data.length === 0) return [];
 
       const userIds = [...new Set(data.map((m) => m.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url")
-        .in("user_id", userIds);
-
-      const profileMap = new Map(
-        (profiles || []).map((p) => [p.user_id, p])
-      );
+      const profiles = await profilesRepository.getProfileDisplayInfo(userIds);
+      const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
 
       return data.map((m): BoardMessage => {
         const profile = profileMap.get(m.user_id);
@@ -101,12 +90,11 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
     if (!message.trim() || !user) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("event_messages").insert({
-        event_id: eventId,
-        user_id: user.id,
+      await messagingRepository.sendEventMessage({
+        eventId,
+        userId: user.id,
         content: message.trim(),
       });
-      if (error) throw error;
       setMessage("");
     } catch {
       toast({ title: "Failed to send", variant: "destructive" });

@@ -5,7 +5,7 @@ import { Bell, Calendar, Users, Ticket, Heart, UserPlus, Star, Share2, Repeat2, 
 import { useMarkNotificationRead, type AppNotification } from "@/hooks/useNotificationsQuery";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { notificationsRepository } from "@/features/notifications/repositories/notificationsRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 
@@ -38,8 +38,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
 
   const dismiss = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").delete().eq("id", id);
-      if (error) throw error;
+      await notificationsRepository.deleteNotification(id);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id, activeOrgId] }),
   });

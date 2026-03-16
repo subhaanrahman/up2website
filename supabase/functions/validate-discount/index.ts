@@ -1,11 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { z } from "https://esm.sh/zod@3.23.8";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const schema = z.object({
   event_id: z.string().uuid(),
@@ -17,6 +14,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -26,9 +25,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
     const { event_id, code } = parsed.data;
@@ -43,9 +40,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !discount) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired discount code' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Invalid or expired discount code', { requestId });
     }
 
     // Check ticket limit if applicable
@@ -55,21 +50,16 @@ Deno.serve(async (req) => {
         .select('id', { count: 'exact', head: true })
         .eq('event_id', event_id)
         .eq('status', 'confirmed');
-      // Simple check — in production you'd track per-code usage
     }
 
-    return new Response(JSON.stringify({
+    return successResponse({
       valid: true,
       discount_type: discount.discount_type,
       discount_value: discount.discount_value,
       reveal_hidden_tickets: discount.reveal_hidden_tickets,
-    }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, requestId);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

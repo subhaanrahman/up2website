@@ -1,18 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { verifyPassword } from "../_shared/password.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
-
-function errorResponse(msg: string, status: number, details?: string) {
-  return new Response(
-    JSON.stringify({ error: msg, ...(details ? { details } : {}) }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-  );
-}
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 // Create clients ONCE at module level (reused across warm invocations)
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -24,14 +14,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const { phone, password } = await req.json();
 
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
-      return errorResponse('Invalid phone number', 400);
+      return errorResponse(400, 'Invalid phone number', { requestId });
     }
     if (!password || typeof password !== 'string') {
-      return errorResponse('Password is required', 400);
+      return errorResponse(400, 'Password is required', { requestId });
     }
 
     // Rate limit + profile lookup in PARALLEL
@@ -57,22 +49,19 @@ Deno.serve(async (req) => {
 
     // Check rate limit (fail open on error)
     if (rateLimitResult.data === false) {
-      return new Response(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return errorResponse(429, 'Too many requests. Please try again later.', { requestId });
     }
 
     const profile = profileResult.data;
     if (!profile) {
-      return errorResponse('Invalid phone number or password', 401);
+      return errorResponse(401, 'Invalid phone number or password', { requestId });
     }
 
     // Get auth user to check migration status
     const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
 
     if (getUserError || !userData?.user) {
-      return errorResponse('Invalid phone number or password', 401);
+      return errorResponse(401, 'Invalid phone number or password', { requestId });
     }
 
     const user = userData.user;
@@ -82,12 +71,12 @@ Deno.serve(async (req) => {
       // Legacy user: verify custom hash, then migrate
       const storedHash = user.user_metadata?.password_hash;
       if (!storedHash) {
-        return errorResponse('Invalid phone number or password', 401);
+        return errorResponse(401, 'Invalid phone number or password', { requestId });
       }
 
       const passwordValid = await verifyPassword(password, storedHash);
       if (!passwordValid) {
-        return errorResponse('Invalid phone number or password', 401);
+        return errorResponse(401, 'Invalid phone number or password', { requestId });
       }
 
       // Migrate password to native Supabase auth — MUST complete before signIn
@@ -96,8 +85,8 @@ Deno.serve(async (req) => {
         user_metadata: { ...user.user_metadata, password_migrated: true },
       });
       if (updateErr) {
-        console.error('Password migration failed:', updateErr.message);
-        return errorResponse('Login failed', 500);
+        edgeLog('error', 'Password migration failed', { requestId, error: updateErr.message });
+        return errorResponse(500, 'Login failed', { requestId });
       }
     }
 
@@ -108,21 +97,18 @@ Deno.serve(async (req) => {
     });
 
     if (signInError || !signInData?.session) {
-      console.error('signInWithPassword error:', JSON.stringify(signInError));
-      return errorResponse('Invalid phone number or password', 401);
+      edgeLog('error', 'signInWithPassword error', { requestId, error: JSON.stringify(signInError) });
+      return errorResponse(401, 'Invalid phone number or password', { requestId });
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        access_token: signInData.session.access_token,
-        refresh_token: signInData.session.refresh_token,
-        user_id: user.id,
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return successResponse({
+      success: true,
+      access_token: signInData.session.access_token,
+      refresh_token: signInData.session.refresh_token,
+      user_id: user.id,
+    }, requestId);
   } catch (err) {
-    console.error('login error:', err);
-    return errorResponse('Internal server error', 500, String(err));
+    edgeLog('error', 'login error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, Image, X, UserPlus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import GifPicker from "@/components/GifPicker";
@@ -116,21 +117,16 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
         imageUrl = urlData.publicUrl;
       }
 
-      const { data: newPost, error } = await supabase.from("posts").insert({
-        author_id: user.id,
+      const newPost = await postsRepository.createPost({
+        authorId: user.id,
         content: postText.trim() || null,
-        organiser_profile_id: organiserProfileId || null,
-        image_url: imageUrl,
-        gif_url: selectedGif,
-      }).select("id").single();
+        organiserProfileId: organiserProfileId || null,
+        imageUrl,
+        gifUrl: selectedGif,
+      });
 
-      if (error) throw error;
-
-      // Add collaborators
-      if (newPost && collaborators.length > 0) {
-        await supabase.from("post_collaborators").insert(
-          collaborators.map(c => ({ post_id: newPost.id, user_id: c.user_id }))
-        );
+      if (collaborators.length > 0) {
+        await postsRepository.addCollaborators(newPost.id, collaborators.map(c => c.user_id));
       }
 
       setPostText("");

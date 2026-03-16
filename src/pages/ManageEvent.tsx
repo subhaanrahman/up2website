@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Search, Upload, Crown, X, Download, Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -26,13 +27,7 @@ const ManageEvent = () => {
   const { data: event } = useQuery({
     queryKey: ["manage-event", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("*, organiser_profiles(display_name, owner_id)")
-        .eq("id", id!)
-        .single();
-      if (error) throw error;
-      return data;
+      return eventManagementRepository.getEventWithOrganiserProfile(id!);
     },
     enabled: !!id,
   });
@@ -51,34 +46,20 @@ const ManageEvent = () => {
   const orders = manageData?.orders || [];
   const rsvps = manageData?.rsvps || [];
 
-  // Fetch refunds for all orders belonging to this event
+  // Fetch refunds for this event
   const { data: refundsData = [], isLoading: refundsLoading } = useQuery({
     queryKey: ["event-refunds", id],
     queryFn: async () => {
-      if (!orders.length) return [];
-      const orderIds = orders.map((o: any) => o.id);
-      const { data, error } = await supabase
-        .from("refunds")
-        .select("id, order_id, stripe_refund_id, amount_cents, reason, status, created_at")
-        .in("order_id", orderIds)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      return eventManagementRepository.getRefundsForEvent(id!);
     },
-    enabled: !!id && orders.length > 0,
+    enabled: !!id,
   });
 
   // Fetch event media
   const { data: media, refetch: refetchMedia } = useQuery({
     queryKey: ["event-media", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("event_media")
-        .select("*")
-        .eq("event_id", id!)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data || [];
+      return eventManagementRepository.getEventMedia(id!);
     },
     enabled: !!id,
   });
@@ -147,11 +128,11 @@ const ManageEvent = () => {
           .from("event-media")
           .getPublicUrl(path);
 
-        await supabase.from("event_media").insert({
-          event_id: id,
+        await eventManagementRepository.insertMedia({
+          eventId: id,
           url: urlData.publicUrl,
-          uploaded_by: user.id,
-          sort_order: (media?.length || 0) + i,
+          uploadedBy: user.id,
+          sortOrder: (media?.length || 0) + i,
         });
       }
       toast({ title: "Uploaded!", description: `${files.length} photo(s) added to gallery.` });
@@ -170,7 +151,7 @@ const ManageEvent = () => {
       const urlObj = new URL(url);
       const pathMatch = urlObj.pathname.match(/event-media\/(.+)$/);
 
-      await supabase.from("event_media").delete().eq("id", mediaId);
+      await eventManagementRepository.deleteMedia(mediaId);
       if (pathMatch) {
         await supabase.storage.from("event-media").remove([pathMatch[1]]);
       }

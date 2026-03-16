@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 /**
  * Notifications Service — Cron-triggered processor
@@ -17,11 +19,6 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * - Friend requests
  * These are handled by `notifications-send` edge function called inline.
  */
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
 
 interface NotificationInsert {
   user_id: string;
@@ -42,6 +39,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const requestId = getRequestId(req);
 
   try {
     const serviceClient = createClient(
@@ -422,38 +421,29 @@ Deno.serve(async (req) => {
               .from('notifications')
               .insert(batch);
             if (error) {
-              console.error('Failed to insert notification batch:', error);
+              edgeLog('error', 'Failed to insert notification batch', { requestId, error: String(error) });
             }
           }
         }
 
-        console.log(`Notifications processed: ${notifications.length} generated, ${filteredNotifications.length} inserted (after dedup & settings)`);
+        edgeLog('info', `Notifications processed: ${notifications.length} generated, ${filteredNotifications.length} inserted (after dedup & settings)`, { requestId });
 
-        return new Response(JSON.stringify({
+        return successResponse({
           generated: notifications.length,
           deduplicated: notifications.length - newNotifications.length,
           filtered_by_settings: newNotifications.length - filteredNotifications.length,
           inserted: filteredNotifications.length,
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        }, requestId);
       }
     }
 
-    return new Response(JSON.stringify({
+    return successResponse({
       generated: notifications.length,
       inserted: 0,
       message: 'No new notifications to send',
-    }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, requestId);
   } catch (err) {
-    console.error('Notifications processor error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Notifications processor error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

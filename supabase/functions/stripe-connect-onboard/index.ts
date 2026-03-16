@@ -2,23 +2,20 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -29,9 +26,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     const allowed = await checkRateLimit('stripe-connect-onboard', user.id, getClientIp(req));
@@ -41,9 +36,7 @@ Deno.serve(async (req) => {
     const { organiser_profile_id } = body;
 
     if (!organiser_profile_id) {
-      return new Response(JSON.stringify({ error: 'organiser_profile_id is required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'organiser_profile_id is required', { requestId });
     }
 
     const serviceClient = createClient(
@@ -58,9 +51,7 @@ Deno.serve(async (req) => {
     });
 
     if (!isOwner) {
-      return new Response(JSON.stringify({ error: 'Only the owner can set up payouts' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(403, 'Only the owner can set up payouts', { requestId });
     }
 
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
@@ -79,14 +70,12 @@ Deno.serve(async (req) => {
     if (existing) {
       stripeAccountId = existing.stripe_account_id;
     } else {
-      // Get organiser profile for prefill
       const { data: orgProfile } = await serviceClient
         .from('organiser_profiles')
         .select('display_name, username')
         .eq('id', organiser_profile_id)
         .single();
 
-      // Create a new Express connected account
       const account = await stripe.accounts.create({
         type: 'express',
         country: 'ZA',
@@ -106,7 +95,6 @@ Deno.serve(async (req) => {
 
       stripeAccountId = account.id;
 
-      // Store in DB
       await serviceClient
         .from('organiser_stripe_accounts')
         .insert({
@@ -118,7 +106,6 @@ Deno.serve(async (req) => {
         });
     }
 
-    // Create an Account Link for onboarding
     const origin = req.headers.get('origin') || 'https://social-soiree-site.lovable.app';
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
@@ -127,13 +114,9 @@ Deno.serve(async (req) => {
       type: 'account_onboarding',
     });
 
-    return new Response(JSON.stringify({ url: accountLink.url }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ url: accountLink.url }, requestId);
   } catch (err) {
-    console.error('stripe-connect-onboard error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'stripe-connect-onboard error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

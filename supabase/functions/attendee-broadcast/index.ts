@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const bodySchema = z.object({
   event_id: z.string().uuid(),
@@ -18,12 +15,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -34,9 +31,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     const allowed = await checkRateLimit('attendee-broadcast', user.id, getClientIp(req));
@@ -45,9 +40,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten() }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten() });
     }
 
     const { event_id, message } = parsed.data;
@@ -65,9 +58,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!event) {
-      return new Response(JSON.stringify({ error: 'Event not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Event not found', { requestId });
     }
 
     let isAuthorized = event.host_id === user.id;
@@ -80,9 +71,7 @@ Deno.serve(async (req) => {
     }
 
     if (!isAuthorized) {
-      return new Response(JSON.stringify({ error: 'Not authorized' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(403, 'Not authorized', { requestId });
     }
 
     // Get all attendees (RSVP going + ticket holders)
@@ -94,16 +83,12 @@ Deno.serve(async (req) => {
     const attendeeIds = new Set<string>();
     (rsvpRes.data || []).forEach((r) => attendeeIds.add(r.user_id));
     (ticketRes.data || []).forEach((t) => attendeeIds.add(t.user_id));
-    // Remove the sender
     attendeeIds.delete(user.id);
 
     if (attendeeIds.size === 0) {
-      return new Response(JSON.stringify({ error: 'No attendees to message' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'No attendees to message', { requestId });
     }
 
-    // Create notifications for all attendees
     const notifications = Array.from(attendeeIds).map((uid) => ({
       user_id: uid,
       title: `Message from ${event.title}`,
@@ -112,19 +97,14 @@ Deno.serve(async (req) => {
       link: `/events/${event_id}`,
     }));
 
-    // Insert in batches of 100
     for (let i = 0; i < notifications.length; i += 100) {
       const batch = notifications.slice(i, i + 100);
       await serviceClient.from('notifications').insert(batch);
     }
 
-    return new Response(JSON.stringify({ success: true, recipients: attendeeIds.size }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ success: true, recipients: attendeeIds.size }, requestId);
   } catch (err) {
-    console.error('Attendee broadcast error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Attendee broadcast error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

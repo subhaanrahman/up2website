@@ -3,11 +3,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const paymentSchema = z.object({
   order_id: z.string().uuid('Invalid order ID'),
@@ -18,13 +15,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -35,9 +32,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     // Rate limit
@@ -48,9 +43,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = paymentSchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input', details: parsed.error.flatten().fieldErrors }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
     const { order_id } = parsed.data;
@@ -69,16 +62,12 @@ Deno.serve(async (req) => {
       .single();
 
     if (orderError || !order) {
-      return new Response(JSON.stringify({ error: 'Order not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Order not found', { requestId });
     }
 
     // Verify order is still reserved and not expired
     if (order.status !== 'reserved') {
-      return new Response(JSON.stringify({ error: `Order is ${order.status}, cannot create payment` }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, `Order is ${order.status}, cannot create payment`, { requestId });
     }
 
     if (new Date(order.expires_at) < new Date()) {
@@ -88,9 +77,7 @@ Deno.serve(async (req) => {
         .update({ status: 'expired' })
         .eq('id', order_id);
 
-      return new Response(JSON.stringify({ error: 'Reservation has expired. Please reserve again.' }), {
-        status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(410, 'Reservation has expired. Please reserve again.', { requestId });
     }
 
     // If a payment intent already exists, return it
@@ -100,13 +87,11 @@ Deno.serve(async (req) => {
       });
 
       const existingIntent = await stripe.paymentIntents.retrieve(order.stripe_payment_intent_id);
-      return new Response(JSON.stringify({
+      return successResponse({
         client_secret: existingIntent.client_secret,
         payment_intent_id: existingIntent.id,
         order_id: order.id,
-      }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      }, requestId);
     }
 
     // Initialize Stripe
@@ -145,9 +130,7 @@ Deno.serve(async (req) => {
       if (stripeAccount?.charges_enabled) {
         stripeAccountId = stripeAccount.stripe_account_id;
       } else if (stripeAccount && !stripeAccount.charges_enabled) {
-        return new Response(JSON.stringify({ error: 'Organiser has not completed payout setup' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return errorResponse(400, 'Organiser has not completed payout setup', { requestId });
       }
     }
 
@@ -181,17 +164,13 @@ Deno.serve(async (req) => {
       })
       .eq('id', order_id);
 
-    return new Response(JSON.stringify({
+    return successResponse({
       client_secret: paymentIntent.client_secret,
       payment_intent_id: paymentIntent.id,
       order_id: order.id,
-    }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    }, requestId);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

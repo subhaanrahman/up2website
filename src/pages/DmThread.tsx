@@ -4,7 +4,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Send } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
@@ -35,43 +37,23 @@ const DmThread = () => {
   // Fetch thread metadata
   const { data: thread } = useQuery({
     queryKey: ["dm-thread", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("dm_threads")
-        .select("*")
-        .eq("id", id!)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () => messagingRepository.getDmThread(id!),
     enabled: !!id,
   });
 
   // Fetch organiser profile for display
   const { data: organiser } = useQuery({
     queryKey: ["dm-organiser", thread?.organiser_profile_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("organiser_profiles")
-        .select("display_name, avatar_url, owner_id")
-        .eq("id", thread!.organiser_profile_id)
-        .single();
-      return data;
-    },
+    queryFn: async () =>
+      thread ? profilesRepository.getOrganiserProfileById(thread.organiser_profile_id) : null,
     enabled: !!thread?.organiser_profile_id,
   });
 
   // Fetch the other user's profile (for organiser view)
   const { data: otherUserProfile } = useQuery({
     queryKey: ["dm-user-profile", thread?.user_id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_url")
-        .eq("user_id", thread!.user_id)
-        .single();
-      return data;
-    },
+    queryFn: async () =>
+      thread ? profilesRepository.getProfileByUserId(thread.user_id) : null,
     enabled: !!thread?.user_id && thread?.user_id !== user?.id,
   });
 
@@ -87,15 +69,8 @@ const DmThread = () => {
   // Fetch messages
   const { data: messages } = useQuery({
     queryKey: ["dm-messages", id],
-    queryFn: async (): Promise<DmMessage[]> => {
-      const { data, error } = await supabase
-        .from("dm_messages")
-        .select("*")
-        .eq("thread_id", id!)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as DmMessage[];
-    },
+    queryFn: async (): Promise<DmMessage[]> =>
+      id ? (messagingRepository.getDmMessages(id) as Promise<DmMessage[]>) : [],
     enabled: !!id,
   });
 
@@ -118,9 +93,9 @@ const DmThread = () => {
     const content = message.trim();
     setMessage("");
 
-    await supabase.from("dm_messages").insert({
-      thread_id: thread.id,
-      sender_id: user.id,
+    await messagingRepository.sendDm({
+      threadId: thread.id,
+      senderId: user.id,
       content,
     });
 

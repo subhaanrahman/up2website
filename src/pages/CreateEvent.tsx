@@ -14,7 +14,7 @@ import GuestlistPanel from "@/components/create-event/GuestlistPanel";
 import NotificationsPanel from "@/components/create-event/NotificationsPanel";
 import type { TicketTier } from "@/components/create-event/TicketTierModal";
 import type { DiscountCode } from "@/components/create-event/DiscountCodeModal";
-import { supabase } from "@/integrations/supabase/client";
+import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,20 +164,12 @@ const CreateEvent = () => {
 
       // Save cohosts to event_cohosts table
       if (cohosts.length > 0 && eventId) {
-        const cohostRows = cohosts.map(c => ({
-          event_id: eventId,
-          organiser_profile_id: c.type === "organiser" ? c.id : null,
-          user_id: c.type === "personal" ? c.id : null,
-          role: "cohost",
-        }));
-        await supabase.from("event_cohosts").insert(cohostRows);
+        await eventManagementRepository.insertCohosts(eventId, cohosts.map(c => ({ id: c.id, type: c.type })));
       }
 
       // Save reminder preferences to event_reminders table
       if (reminders.length > 0 && eventId) {
-        await supabase.from("event_reminders").insert(
-          reminders.map(r => ({ event_id: eventId, reminder_type: r, is_enabled: true }))
-        );
+        await eventManagementRepository.insertReminders(eventId, reminders);
       }
 
       toast({

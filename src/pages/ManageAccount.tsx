@@ -19,7 +19,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 
 const ManageAccount = () => {
   const navigate = useNavigate();

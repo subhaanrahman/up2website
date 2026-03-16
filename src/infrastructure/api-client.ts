@@ -1,8 +1,10 @@
-// Generic API client for calling Edge Functions
-
 import { config } from './config';
 import { parseApiError } from './errors';
 import { supabase } from './supabase';
+import { createLogger } from './logger';
+import { captureApiError } from './errorCapture';
+
+const log = createLogger('api-client');
 
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -10,11 +12,10 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
-/**
- * Call a Supabase Edge Function by name.
- * Automatically attaches the auth token and parses errors.
- */
-// Auth-free endpoints that don't need a session token
+function generateRequestId(): string {
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+}
+
 const PUBLIC_FUNCTIONS = new Set([
   'check-phone', 'login', 'register', 'send-otp', 'verify-otp', 'dev-login', 'health',
 ]);
@@ -24,8 +25,10 @@ export async function callEdgeFunction<T = unknown>(
   options: RequestOptions = {},
 ): Promise<T> {
   const { method = 'POST', body, headers = {} } = options;
+  const requestId = generateRequestId();
 
-  // Skip getSession() for public endpoints — saves ~100-200ms per call
+  log.info('Edge function request', { functionName, method, requestId });
+
   let token: string | undefined;
   if (!PUBLIC_FUNCTIONS.has(functionName)) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -34,21 +37,29 @@ export async function callEdgeFunction<T = unknown>(
 
   const url = `${config.functionsUrl}/${functionName}`;
 
+  const reqHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'apikey': config.supabase.anonKey,
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...headers,
+  };
+
+  // Only send X-Request-ID if the edge functions are deployed with updated CORS
+  // that allows this header. Safe to enable after pushing the _shared/response.ts update.
+  // reqHeaders['X-Request-ID'] = requestId;
+
   const res = await fetch(url, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': config.supabase.anonKey,
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      ...headers,
-    },
+    headers: reqHeaders,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw parseApiError(res.status, json);
+    const err = parseApiError(res.status, json);
+    captureApiError(err, { functionName, requestId, status: res.status });
+    throw err;
   }
 
   return json as T;

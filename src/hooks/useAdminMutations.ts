@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infrastructure/supabase';
 
 // ─── Report submission ───
 export type ReportTargetType = 'post' | 'user' | 'organiser_profile' | 'event' | 'message';

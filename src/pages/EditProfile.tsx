@@ -28,7 +28,7 @@ import { CITIES } from "@/data/cities";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile, useUploadAvatar } from "@/hooks/useProfileQuery";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 
 const PAGE_CLASSIFICATIONS = ["DJ", "Promoter", "Artist"];
 
@@ -102,10 +102,12 @@ const EditProfile = () => {
       toast({ title: "Profile updated", description: "Your profile has been saved successfully." });
       navigate("/profile");
     } catch (error: any) {
+      console.error('[EditProfile] Save failed:', error);
       if (error?.code === "23505") {
         toast({ title: "Username taken", description: "Please choose another username.", variant: "destructive" });
       } else {
-        toast({ title: "Error", description: "Failed to update profile.", variant: "destructive" });
+        const msg = error?.message || error?.toString() || "Failed to update profile.";
+        toast({ title: "Error", description: msg, variant: "destructive" });
       }
     }
   };

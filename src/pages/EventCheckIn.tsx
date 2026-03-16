@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Search, ScanLine, Check, UserCheck, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";

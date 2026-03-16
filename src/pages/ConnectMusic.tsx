@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 
 const SPOTIFY_SCOPES = "user-read-currently-playing user-top-read user-read-playback-state";

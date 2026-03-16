@@ -4,7 +4,10 @@
  * Currently rule-based; designed to be swapped for ML-backed scoring later.
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infrastructure/supabase';
+import { createLogger } from '@/infrastructure/logger';
+
+const log = createLogger('recommendation.service');
 
 export interface SuggestedProfile {
   user_id: string;

@@ -1,6 +1,6 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { BellOff, Bell, UserMinus, Ban } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { BellOff, Bell, UserMinus } from "lucide-react";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 import { toast } from "sonner";
 
 interface FriendOptionsSheetProps {
@@ -37,14 +37,12 @@ export default function FriendOptionsSheet({
   const handleMuteConnection = async () => {
     if (!connectionId) return;
     const newMuted = !isMuted;
-    const { error } = await (supabase
-      .from("connections")
-      .update({ muted: newMuted } as any)
-      .eq("id", connectionId) as any);
-
-    if (!error) {
+    try {
+      await connectionsRepository.updateMuted(connectionId, newMuted);
       onMuteToggled?.(newMuted);
       toast(newMuted ? `Muted ${displayName}` : `Unmuted ${displayName}`);
+    } catch {
+      toast.error("Failed to update mute");
     }
     onOpenChange(false);
   };
@@ -52,36 +50,37 @@ export default function FriendOptionsSheet({
   const handleMuteOrganiser = async () => {
     if (!organiserProfileId) return;
     const newMuted = !isOrganiserMuted;
-    const { error } = await (supabase
-      .from("organiser_followers")
-      .update({ muted: newMuted } as any)
-      .eq("organiser_profile_id", organiserProfileId)
-      .eq("user_id", userId) as any);
-
-    if (!error) {
+    try {
+      await connectionsRepository.updateOrganiserMuted(organiserProfileId, userId, newMuted);
       onOrganiserMuteToggled?.(newMuted);
       toast(newMuted ? `Muted ${displayName}` : `Unmuted ${displayName}`);
+    } catch {
+      toast.error("Failed to update mute");
     }
     onOpenChange(false);
   };
 
   const handleUnfriend = async () => {
     if (!connectionId) return;
-    await supabase.from("connections").delete().eq("id", connectionId);
-    onUnfriended?.();
-    toast(`Removed ${displayName} as friend`);
+    try {
+      await connectionsRepository.deleteById(connectionId);
+      onUnfriended?.();
+      toast(`Removed ${displayName} as friend`);
+    } catch {
+      toast.error("Failed to remove friend");
+    }
     onOpenChange(false);
   };
 
   const handleUnfollow = async () => {
     if (!organiserProfileId) return;
-    await supabase
-      .from("organiser_followers")
-      .delete()
-      .eq("organiser_profile_id", organiserProfileId)
-      .eq("user_id", userId);
-    onUnfollowed?.();
-    toast(`Unfollowed ${displayName}`);
+    try {
+      await connectionsRepository.unfollowOrganiser(organiserProfileId, userId);
+      onUnfollowed?.();
+      toast(`Unfollowed ${displayName}`);
+    } catch {
+      toast.error("Failed to unfollow");
+    }
     onOpenChange(false);
   };
 

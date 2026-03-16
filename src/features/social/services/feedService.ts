@@ -14,8 +14,12 @@
  * Designed to be swapped for ML-backed scoring later.
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infrastructure/supabase';
 import type { PostWithAuthor, PostEventData, PostCollaborator } from '@/hooks/usePostsQuery';
+import { connectionsRepository } from '../repositories/connectionsRepository';
+import { profilesRepository } from '../repositories/profilesRepository';
+import { postsRepository } from '../repositories/postsRepository';
+import { eventsRepository } from '@/features/events/repositories/eventsRepository';
 
 // ─── Weights ───
 const WEIGHT_FRIEND_POST = 100;
@@ -52,45 +56,27 @@ export async function buildFeedContext(userId: string | null): Promise<FeedConte
   }
 
   // Parallel: friends, followed organisers
-  const [connResult, followResult] = await Promise.all([
-    supabase
-      .from('connections')
-      .select('requester_id, addressee_id')
-      .eq('status', 'accepted')
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`),
-    supabase
-      .from('organiser_followers')
-      .select('organiser_profile_id')
-      .eq('user_id', userId),
+  const [connections, followedOrgIdsList, ownedOrgIdsList] = await Promise.all([
+    connectionsRepository.getAcceptedConnections(userId),
+    connectionsRepository.getFollowedOrganiserIds(userId),
+    profilesRepository.getOwnedOrganiserIds(userId),
   ]);
 
   const friendIds = new Set<string>();
-  for (const c of connResult.data || []) {
+  for (const c of connections) {
     friendIds.add(c.requester_id === userId ? c.addressee_id : c.requester_id);
   }
 
-  let followedOrgIds = new Set((followResult.data || []).map(f => f.organiser_profile_id));
-
-  // Exclude organiser profiles the user owns — don't boost own organiser's posts on personal feed
-  const { data: ownedOrgs } = await supabase
-    .from('organiser_profiles')
-    .select('id')
-    .eq('owner_id', userId);
-  const ownedOrgIds = new Set((ownedOrgs || []).map(o => o.id));
-  followedOrgIds = new Set([...followedOrgIds].filter(id => !ownedOrgIds.has(id)));
+  const ownedOrgIds = new Set(ownedOrgIdsList);
+  let followedOrgIds = new Set(followedOrgIdsList.filter(id => !ownedOrgIds.has(id)));
 
   // Organisers that friends follow (secondary signal)
   let friendFollowedOrgIds = new Set<string>();
   if (friendIds.size > 0) {
     const friendArr = [...friendIds].slice(0, 50);
-    const { data: friendFollows } = await supabase
-      .from('organiser_followers')
-      .select('organiser_profile_id')
-      .in('user_id', friendArr);
+    const friendFollows = await connectionsRepository.getFollowersByFriends(friendArr);
     friendFollowedOrgIds = new Set(
-      (friendFollows || [])
-        .map(f => f.organiser_profile_id)
-        .filter(id => !followedOrgIds.has(id) && !ownedOrgIds.has(id)) // exclude already followed and own orgs
+      friendFollows.filter(id => !followedOrgIds.has(id) && !ownedOrgIds.has(id)),
     );
   }
 
@@ -145,33 +131,23 @@ async function enrichPosts(
   const postIds = rawPosts.map(p => p.id);
 
   // Parallel metadata fetch
-  const [profilesRes, orgRes, eventsRes, collabsRes] = await Promise.all([
-    supabase.from('profiles').select('user_id, display_name, username, avatar_url, is_verified').in('user_id', authorIds),
-    orgIds.length > 0
-      ? supabase.from('organiser_profiles').select('id, display_name, username, avatar_url').in('id', orgIds)
-      : Promise.resolve({ data: [] }),
-    eventIds.length > 0
-      ? supabase.from('events').select('id, title, event_date, location, cover_image').in('id', eventIds)
-      : Promise.resolve({ data: [] }),
-    postIds.length > 0
-      ? supabase.from('post_collaborators').select('post_id, user_id').in('post_id', postIds)
-      : Promise.resolve({ data: [] }),
+  const [profiles, orgs, events, collabData] = await Promise.all([
+    profilesRepository.getProfilesByIds(authorIds),
+    profilesRepository.getOrganisersByIds(orgIds),
+    eventsRepository.getEventSummariesByIds(eventIds),
+    postsRepository.getCollaboratorsByPostIds(postIds),
   ]);
 
-  const profileMap = new Map((profilesRes.data || []).map(p => [p.user_id, p]));
-  const orgMap = new Map((orgRes.data || []).map(o => [o.id, o]));
-  const eventMap = new Map<string, PostEventData>((eventsRes.data || []).map(e => [e.id, e]));
+  const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+  const orgMap = new Map(orgs.map(o => [o.id, o]));
+  const eventMap = new Map<string, PostEventData>(events.map((e: any) => [e.id, e]));
 
   // Collaborators
   const collabMap = new Map<string, PostCollaborator[]>();
-  const collabData = collabsRes.data || [];
   if (collabData.length > 0) {
     const collabUserIds = [...new Set(collabData.map((c: any) => c.user_id))];
-    const { data: collabProfiles } = await supabase
-      .from('profiles')
-      .select('user_id, display_name, avatar_url')
-      .in('user_id', collabUserIds);
-    const cpMap = new Map((collabProfiles || []).map(p => [p.user_id, p]));
+    const collabProfiles = await profilesRepository.getProfileDisplayInfo(collabUserIds);
+    const cpMap = new Map(collabProfiles.map(p => [p.user_id, p]));
     for (const c of collabData) {
       const prof = cpMap.get((c as any).user_id);
       if (!prof) continue;
@@ -277,11 +253,8 @@ export async function fetchFeedPage(
   const repostMeta = new Map<string, { reposterId: string; reposterName: string; repostCreatedAt: string }>();
   if (rawReposts && rawReposts.length > 0) {
     const reposterIds = [...new Set(rawReposts.map(r => r.user_id))];
-    const { data: reposterProfiles } = await supabase
-      .from('profiles')
-      .select('user_id, display_name, username')
-      .in('user_id', reposterIds);
-    const rpMap = new Map((reposterProfiles || []).map(p => [p.user_id, p]));
+    const reposterProfiles = await profilesRepository.getProfilesByIds(reposterIds);
+    const rpMap = new Map(reposterProfiles.map(p => [p.user_id, p]));
 
     for (const r of rawReposts) {
       const rp = rpMap.get(r.user_id);

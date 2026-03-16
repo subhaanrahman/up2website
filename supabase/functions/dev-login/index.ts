@@ -1,24 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const { user_id } = await req.json();
 
     if (!user_id || typeof user_id !== "string") {
-      return new Response(JSON.stringify({ error: "user_id required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(400, "user_id required", { requestId });
     }
 
     const supabaseAdmin = createClient(
@@ -26,20 +21,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Verify user exists
     const { data: userData, error: getUserError } =
       await supabaseAdmin.auth.admin.getUserById(user_id);
 
     if (getUserError || !userData?.user) {
-      return new Response(JSON.stringify({ error: "User not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse(404, "User not found", { requestId });
     }
 
     const user = userData.user;
 
-    // Generate a real session via magic link bypass
     const { data: linkData, error: linkError } =
       await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
@@ -47,11 +37,8 @@ Deno.serve(async (req) => {
       });
 
     if (linkError || !linkData?.properties?.hashed_token) {
-      console.error("Generate link error:", JSON.stringify(linkError));
-      return new Response(JSON.stringify({ error: "Failed to generate session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      edgeLog('error', 'Generate link error', { requestId, error: JSON.stringify(linkError) });
+      return errorResponse(500, "Failed to generate session", { requestId });
     }
 
     const supabaseAnon = createClient(
@@ -66,32 +53,20 @@ Deno.serve(async (req) => {
       });
 
     if (verifyError || !verifyData?.session) {
-      console.error("Verify OTP error:", JSON.stringify(verifyError));
-      return new Response(JSON.stringify({ error: "Failed to create session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      edgeLog('error', 'Verify OTP error', { requestId, error: JSON.stringify(verifyError) });
+      return errorResponse(500, "Failed to create session", { requestId });
     }
 
-    console.log(`Dev login successful for user ${user_id}`);
+    edgeLog('info', `Dev login successful for user ${user_id}`, { requestId });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        access_token: verifyData.session.access_token,
-        refresh_token: verifyData.session.refresh_token,
-        user_id: user.id,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
+    return successResponse({
+      success: true,
+      access_token: verifyData.session.access_token,
+      refresh_token: verifyData.session.refresh_token,
+      user_id: user.id,
+    }, requestId);
   } catch (err) {
-    console.error("dev-login error:", err);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    edgeLog('error', 'dev-login error', { requestId, error: String(err) });
+    return errorResponse(500, "Internal server error", { requestId });
   }
 });

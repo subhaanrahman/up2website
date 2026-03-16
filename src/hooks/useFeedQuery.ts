@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfileQuery';
 import {

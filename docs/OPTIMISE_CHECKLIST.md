@@ -1,7 +1,7 @@
 # Platform Optimisation Checklist
 
 > Living document — prioritised by impact. ✅ = done, 🔲 = pending, 🔜 = next up  
-> Last updated: 2026-03-13
+> Last updated: 2026-03-16
 
 ---
 
@@ -47,7 +47,7 @@
 | 15 | **Add index on `profiles.username`** — username uniqueness check in registration does a full scan. Add a unique index | 🔲 Pending | Medium | Speeds up registration + profile lookups by username |
 | 16 | **Add index on `profiles.phone`** — phone lookups use OR across multiple formats. Single index on normalized phone | ✅ Done | Medium | Unique index exists |
 | 17 | **Organiser profile queries** — Dashboard loads organiser profiles, then separately loads events, then separately loads follower counts. Could use a single RPC or join query | 🔲 Pending | Low | Reduces waterfall on dashboard page |
-| 18 | **Create `get_user_group_chats` RPC** — Dashboard calls this non-existent function. Must be created | ⚠️ Blocking | High | Build error — messages page broken |
+| 18 | **Create `get_user_group_chats` RPC** — Dashboard calls this non-existent function. Must be created | ✅ Done | High | Created in migration `20260312130000_optimize_group_chats.sql` |
 
 ---
 
@@ -62,4 +62,4 @@
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*

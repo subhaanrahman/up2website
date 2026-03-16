@@ -1,17 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
-
-function errorResponse(msg: string, status: number, details?: string) {
-  return new Response(
-    JSON.stringify({ error: msg, ...(details ? { details } : {}) }),
-    { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-  );
-}
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 /**
  * Verify OTP only — no account creation.
@@ -23,6 +13,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const ip = getClientIp(req);
     const allowed = await checkRateLimit('verify-otp', null, ip);
@@ -31,10 +23,10 @@ Deno.serve(async (req) => {
     const { phone, code } = await req.json();
 
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
-      return errorResponse('Invalid phone number', 400);
+      return errorResponse(400, 'Invalid phone number', { requestId });
     }
     if (!code || typeof code !== 'string' || code.length !== 6) {
-      return errorResponse('Invalid verification code', 400);
+      return errorResponse(400, 'Invalid verification code', { requestId });
     }
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
@@ -42,7 +34,7 @@ Deno.serve(async (req) => {
     const serviceSid = Deno.env.get('TWILIO_VERIFY_SERVICE_SID');
 
     if (!accountSid || !authToken || !serviceSid) {
-      return errorResponse('SMS service not configured', 500);
+      return errorResponse(500, 'SMS service not configured', { requestId });
     }
 
     // Verify OTP with Twilio Verify
@@ -62,18 +54,15 @@ Deno.serve(async (req) => {
     const twilioData = await twilioRes.json();
 
     if (!twilioRes.ok || twilioData.status !== 'approved') {
-      console.error('Twilio verify failed:', JSON.stringify(twilioData));
-      return errorResponse('Invalid or expired verification code', 400);
+      edgeLog('error', 'Twilio verify failed', { requestId, twilioData: JSON.stringify(twilioData) });
+      return errorResponse(400, 'Invalid or expired verification code', { requestId });
     }
 
-    console.log(`OTP verified for ${phone}`);
+    edgeLog('info', `OTP verified for ${phone}`, { requestId });
 
-    return new Response(
-      JSON.stringify({ verified: true }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return successResponse({ verified: true }, requestId);
   } catch (err) {
-    console.error('verify-otp error:', err);
-    return errorResponse('Internal server error', 500, String(err));
+    edgeLog('error', 'verify-otp error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

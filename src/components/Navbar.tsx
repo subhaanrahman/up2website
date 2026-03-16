@@ -11,7 +11,7 @@ import {
 import { Sparkles, Plus, User, LogOut, LayoutDashboard } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {

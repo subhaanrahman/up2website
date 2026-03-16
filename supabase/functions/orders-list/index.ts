@@ -2,11 +2,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const querySchema = z.object({
   event_id: z.string().uuid(),
@@ -17,12 +14,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Not authenticated', { requestId });
     }
 
     const supabase = createClient(
@@ -33,9 +30,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid token' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Invalid token', { requestId });
     }
 
     const allowed = await checkRateLimit('orders-list', user.id, getClientIp(req));
@@ -44,9 +39,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const parsed = querySchema.safeParse(body);
     if (!parsed.success) {
-      return new Response(JSON.stringify({ error: 'Invalid input' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Invalid input', { requestId });
     }
 
     const { event_id } = parsed.data;
@@ -64,9 +57,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!event) {
-      return new Response(JSON.stringify({ error: 'Event not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(404, 'Event not found', { requestId });
     }
 
     let isAuthorized = event.host_id === user.id;
@@ -79,12 +70,9 @@ Deno.serve(async (req) => {
     }
 
     if (!isAuthorized) {
-      return new Response(JSON.stringify({ error: 'Not authorized' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(403, 'Not authorized', { requestId });
     }
 
-    // Fetch all orders for event with profile data
     const { data: orders, error: ordersErr } = await serviceClient
       .from('orders')
       .select('id, user_id, quantity, amount_cents, currency, status, stripe_payment_intent_id, created_at, confirmed_at')
@@ -92,12 +80,9 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false });
 
     if (ordersErr) {
-      return new Response(JSON.stringify({ error: ordersErr.message }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(500, ordersErr.message, { requestId });
     }
 
-    // Fetch profiles for all order user_ids
     const userIds = [...new Set((orders || []).map((o: any) => o.user_id))];
     let profiles: Record<string, any> = {};
     if (userIds.length > 0) {
@@ -108,7 +93,6 @@ Deno.serve(async (req) => {
       profileData?.forEach((p: any) => { profiles[p.user_id] = p; });
     }
 
-    // Fetch RSVPs for the event
     const { data: rsvps } = await serviceClient
       .from('rsvps')
       .select('id, user_id, status, created_at')
@@ -125,7 +109,6 @@ Deno.serve(async (req) => {
       extraProfiles?.forEach((p: any) => { profiles[p.user_id] = p; });
     }
 
-    // Enrich with profile data
     const enrichedOrders = (orders || []).map((o: any) => ({
       ...o,
       profile: profiles[o.user_id] || null,
@@ -136,13 +119,9 @@ Deno.serve(async (req) => {
       profile: profiles[r.user_id] || null,
     }));
 
-    return new Response(JSON.stringify({ orders: enrichedOrders, rsvps: enrichedRsvps }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ orders: enrichedOrders, rsvps: enrichedRsvps }, requestId);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'orders-list error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { eventsRepository } from "@/features/events/repositories/eventsRepository";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
 
@@ -37,13 +37,7 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
     queryKey: ["saved-event", id, user?.id],
     queryFn: async () => {
       if (!user) return null;
-      const { data } = await supabase
-        .from("saved_events")
-        .select("id")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
+      return eventsRepository.isEventSaved(id, user.id);
     },
     enabled: !!user && !!isUuid,
   });
@@ -57,10 +51,10 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
     setSaving(true);
     try {
       if (isSaved) {
-        await supabase.from("saved_events").delete().eq("event_id", id).eq("user_id", user.id);
+        await eventsRepository.unsaveEvent(user.id, id);
         toast({ title: "Removed from saved" });
       } else {
-        await supabase.from("saved_events").insert({ user_id: user.id, event_id: id });
+        await eventsRepository.saveEvent(user.id, id);
         toast({ title: "Saved!" });
       }
       queryClient.invalidateQueries({ queryKey: ["saved-event", id, user.id] });

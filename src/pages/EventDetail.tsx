@@ -23,7 +23,9 @@ import { format, isPast } from "date-fns";
 import { events as mockEvents } from "@/data/events";
 import { rsvpApi } from "@/api";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { eventsRepository } from "@/features/events/repositories/eventsRepository";
+import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -62,18 +64,7 @@ const EventDetail = () => {
     queryKey: ["organiser-profile", dbEvent?.id],
     queryFn: async () => {
       if (!dbEvent) return null;
-      const { data } = await supabase
-        .from("events")
-        .select("organiser_profile_id")
-        .eq("id", dbEvent.id)
-        .single();
-      if (!data?.organiser_profile_id) return null;
-      const { data: org } = await supabase
-        .from("organiser_profiles")
-        .select("*")
-        .eq("id", data.organiser_profile_id)
-        .single();
-      return org;
+      return eventManagementRepository.getEventOrganiserProfile(dbEvent.id);
     },
     enabled: !!dbEvent,
   });
@@ -86,13 +77,7 @@ const EventDetail = () => {
     queryKey: ["user-rsvp", id, user?.id],
     queryFn: async () => {
       if (!id || !user) return null;
-      const { data } = await supabase
-        .from("rsvps")
-        .select("id, status")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
+      return eventsRepository.getUserRsvpStatus(id, user.id);
     },
     enabled: !!id && !!user && !isMock,
   });
@@ -102,19 +87,9 @@ const EventDetail = () => {
     queryKey: ["event-attendees", id],
     queryFn: async () => {
       if (!id) return [];
-      const { data: rsvps } = await supabase
-        .from("rsvps")
-        .select("user_id")
-        .eq("event_id", id)
-        .eq("status", "going")
-        .limit(10);
-      if (!rsvps || rsvps.length === 0) return [];
-      const userIds = rsvps.map(r => r.user_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, avatar_url")
-        .in("user_id", userIds);
-      return profiles || [];
+      const userIds = await eventsRepository.getGoingUserIds(id, 10);
+      if (userIds.length === 0) return [];
+      return profilesRepository.getProfileDisplayInfo(userIds);
     },
     enabled: !!id && !isMock,
   });
@@ -124,32 +99,23 @@ const EventDetail = () => {
     queryKey: ["event-cohosts", id],
     queryFn: async () => {
       if (!id) return [];
-      const { data: rows } = await supabase
-        .from("event_cohosts")
-        .select("id, organiser_profile_id, user_id, role")
-        .eq("event_id", id);
-      if (!rows || rows.length === 0) return [];
+      const rows = await eventManagementRepository.getCohosts(id);
+      if (rows.length === 0) return [];
 
       const results: { id: string; displayName: string; avatarUrl: string | null; link: string }[] = [];
 
       const orgIds = rows.filter(r => r.organiser_profile_id).map(r => r.organiser_profile_id!);
       if (orgIds.length > 0) {
-        const { data: orgs } = await supabase
-          .from("organiser_profiles")
-          .select("id, display_name, avatar_url")
-          .in("id", orgIds);
-        for (const o of orgs || []) {
+        const orgs = await profilesRepository.getOrganisersByIds(orgIds);
+        for (const o of orgs) {
           results.push({ id: o.id, displayName: o.display_name, avatarUrl: o.avatar_url, link: `/user/${o.id}` });
         }
       }
 
       const userIds = rows.filter(r => r.user_id).map(r => r.user_id!);
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, avatar_url")
-          .in("user_id", userIds);
-        for (const p of profiles || []) {
+        const profiles = await profilesRepository.getProfileDisplayInfo(userIds);
+        for (const p of profiles) {
           results.push({ id: p.user_id, displayName: p.display_name || "User", avatarUrl: p.avatar_url, link: `/user/${p.user_id}` });
         }
       }
@@ -167,14 +133,7 @@ const EventDetail = () => {
     queryKey: ["user-ticket", id, user?.id],
     queryFn: async () => {
       if (!id || !user) return false;
-      const { data } = await supabase
-        .from("tickets")
-        .select("id")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .eq("status", "valid")
-        .maybeSingle();
-      return !!data;
+      return eventManagementRepository.hasValidTicket(id, user.id);
     },
     enabled: !!id && !!user && !isMock,
   });
@@ -184,19 +143,8 @@ const EventDetail = () => {
     queryKey: ["event-capacity", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data: ev } = await supabase
-        .from("events")
-        .select("max_guests")
-        .eq("id", id)
-        .single();
-      if (!ev?.max_guests) return { isFull: false, maxGuests: null };
-      const { data: rsvps } = await supabase
-        .from("rsvps")
-        .select("guest_count")
-        .eq("event_id", id)
-        .eq("status", "going");
-      const totalGuests = (rsvps || []).reduce((sum, r) => sum + ((r as any).guest_count || 1), 0);
-      return { isFull: totalGuests >= ev.max_guests, maxGuests: ev.max_guests, currentCount: totalGuests };
+      const info = await eventManagementRepository.getCapacityInfo(id);
+      return { ...info, maxGuests: info.maxGuests ?? null };
     },
     enabled: !!id && !isMock,
   });
@@ -206,13 +154,7 @@ const EventDetail = () => {
     queryKey: ["waitlist-status", id, user?.id],
     queryFn: async () => {
       if (!id || !user) return null;
-      const { data } = await supabase
-        .from("waitlist")
-        .select("id, position")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
+      return eventManagementRepository.getWaitlistEntry(id, user.id);
     },
     enabled: !!id && !!user && !isMock,
   });
@@ -228,13 +170,7 @@ const EventDetail = () => {
     queryKey: ["saved-event", id, user?.id],
     queryFn: async () => {
       if (!id || !user) return null;
-      const { data } = await supabase
-        .from("saved_events")
-        .select("id")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      return data;
+      return eventsRepository.isEventSaved(id, user.id);
     },
     enabled: !!id && !!user && !isMock,
   });
@@ -246,10 +182,10 @@ const EventDetail = () => {
     setSavingEvent(true);
     try {
       if (isInterested) {
-        await supabase.from("saved_events").delete().eq("event_id", id).eq("user_id", user.id);
+        await eventsRepository.unsaveEvent(user.id, id);
         toast({ title: "Removed from saved", description: "Event removed from your saved list" });
       } else {
-        await supabase.from("saved_events").insert({ user_id: user.id, event_id: id });
+        await eventsRepository.saveEvent(user.id, id);
         toast({ title: "Saved!", description: "Event added to your saved list" });
       }
       refetchSaved();
@@ -317,18 +253,9 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
-      // Get current waitlist count for position
-      const { count } = await supabase
-        .from("waitlist")
-        .select("id", { count: "exact", head: true })
-        .eq("event_id", id);
-      await supabase.from("waitlist").insert({
-        event_id: id,
-        user_id: user.id,
-        position: (count || 0) + 1,
-      });
+      const position = await eventManagementRepository.joinWaitlist(id, user.id);
       refetchWaitlist();
-      toast({ title: "Joined Waitlist", description: `You're #${(count || 0) + 1} on the waitlist` });
+      toast({ title: "Joined Waitlist", description: `You're #${position} on the waitlist` });
     } catch {
       toast({ title: "Failed", description: "Could not join waitlist", variant: "destructive" });
     } finally {
@@ -340,7 +267,7 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
-      await supabase.from("waitlist").delete().eq("event_id", id).eq("user_id", user.id);
+      await eventManagementRepository.leaveWaitlist(id, user.id);
       refetchWaitlist();
       toast({ title: "Left Waitlist" });
     } catch {

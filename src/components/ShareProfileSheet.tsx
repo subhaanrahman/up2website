@@ -11,7 +11,7 @@ import { Send, Copy, MessageCircle, Share2, Search } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 import { useQuery } from "@tanstack/react-query";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 

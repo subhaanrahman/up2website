@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -89,54 +90,30 @@ const EditEvent = () => {
       if (!id) return [];
       const entries: CohostEntry[] = [];
 
-      // 1) Event's organiser_profile_id and owner (so owner shows in form like on event page)
-      const { data: eventRow } = await supabase
-        .from("events")
-        .select("organiser_profile_id")
-        .eq("id", id)
-        .single();
-      const organiserProfileId = eventRow?.organiser_profile_id;
-      if (organiserProfileId) {
-        const { data: org } = await supabase
-          .from("organiser_profiles")
-          .select("owner_id")
-          .eq("id", organiserProfileId)
-          .single();
-        if (org?.owner_id) {
-          const { data: ownerProfile } = await supabase
-            .from("profiles")
-            .select("user_id, display_name, username, avatar_url")
-            .eq("user_id", org.owner_id)
-            .single();
-          if (ownerProfile) {
-            entries.push({
-              id: ownerProfile.user_id,
-              type: "personal",
-              displayName: ownerProfile.display_name || ownerProfile.username || "Unknown",
-              username: ownerProfile.username ?? null,
-              avatarUrl: ownerProfile.avatar_url ?? null,
-            });
-          }
+      // 1) Event's organiser profile and owner (so owner shows in form like on event page)
+      const org = await eventManagementRepository.getEventOrganiserProfile(id);
+      if (org?.owner_id) {
+        const ownerProfile = await profilesRepository.getProfileByUserId(org.owner_id);
+        if (ownerProfile) {
+          entries.push({
+            id: ownerProfile.user_id,
+            type: "personal",
+            displayName: ownerProfile.display_name || ownerProfile.username || "Unknown",
+            username: ownerProfile.username ?? null,
+            avatarUrl: ownerProfile.avatar_url ?? null,
+          });
         }
       }
 
       // 2) Rows from event_cohosts (batch fetch like EventDetail)
-      const { data: rows, error } = await supabase
-        .from("event_cohosts")
-        .select("id, organiser_profile_id, user_id, role")
-        .eq("event_id", id);
-      if (error) throw error;
-
-      const orgIds = (rows || []).filter((r) => r.organiser_profile_id).map((r) => r.organiser_profile_id!);
-      const userIds = (rows || []).filter((r) => r.user_id).map((r) => r.user_id!);
+      const rows = await eventManagementRepository.getCohosts(id);
+      const orgIds = rows.filter((r) => r.organiser_profile_id).map((r) => r.organiser_profile_id!);
+      const userIds = rows.filter((r) => r.user_id).map((r) => r.user_id!);
       const existingIds = new Set(entries.map((e) => e.id));
 
       if (orgIds.length > 0) {
-        const { data: orgs } = await supabase
-          .from("organiser_profiles")
-          .select("id, display_name, username, avatar_url")
-          .in("id", orgIds);
-        for (const o of orgs || []) {
+        const orgs = await profilesRepository.getOrganisersByIds(orgIds);
+        for (const o of orgs) {
           if (existingIds.has(o.id)) continue;
           existingIds.add(o.id);
           entries.push({
@@ -149,11 +126,8 @@ const EditEvent = () => {
         }
       }
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, display_name, username, avatar_url")
-          .in("user_id", userIds);
-        for (const p of profiles || []) {
+        const profiles = await profilesRepository.getProfilesByIds(userIds);
+        for (const p of profiles) {
           if (existingIds.has(p.user_id)) continue;
           existingIds.add(p.user_id);
           entries.push({
@@ -182,13 +156,8 @@ const EditEvent = () => {
     queryKey: ["ticket-tiers-edit", id],
     queryFn: async () => {
       if (!id) return [];
-      const { data, error } = await supabase
-        .from("ticket_tiers")
-        .select("id, name, price_cents, available_quantity")
-        .eq("event_id", id)
-        .order("position", { ascending: true });
-      if (error) throw error;
-      return (data || []).map((t) => ({
+      const data = await eventManagementRepository.getTicketTiers(id);
+      return data.map((t) => ({
         id: t.id,
         name: t.name,
         price: t.price_cents / 100,
@@ -210,10 +179,7 @@ const EditEvent = () => {
     queryKey: ["event-organiser-check", id, user?.id],
     queryFn: async () => {
       if (!event || !user) return false;
-      const { data } = await supabase.from("events").select("organiser_profile_id").eq("id", event.id).single();
-      if (!data?.organiser_profile_id) return false;
-      const { data: org } = await supabase.from("organiser_profiles").select("owner_id").eq("id", data.organiser_profile_id).single();
-      return org?.owner_id === user.id;
+      return eventManagementRepository.isOrganiserOwner(event.id, user.id);
     },
     enabled: !!event && !!user,
   });
@@ -258,42 +224,28 @@ const EditEvent = () => {
       const toAdd = cohosts.filter((c) => !originalCohostIds.includes(c.id));
 
       if (toRemove.length > 0) {
-        for (const rid of toRemove) {
-          await supabase.from("event_cohosts").delete()
-            .eq("event_id", id)
-            .or(`organiser_profile_id.eq.${rid},user_id.eq.${rid}`);
-        }
+        await eventManagementRepository.removeCohosts(id, toRemove);
       }
       if (toAdd.length > 0) {
-        await supabase.from("event_cohosts").insert(
-          toAdd.map((c) => ({
-            event_id: id,
-            organiser_profile_id: c.type === "organiser" ? c.id : null,
-            user_id: c.type === "personal" ? c.id : null,
-            role: "cohost",
-          }))
-        );
+        await eventManagementRepository.insertCohosts(id, toAdd.map((c) => ({ id: c.id, type: c.type })));
       }
 
       // Sync ticket tiers: upsert all
       if (ticketTiers.length > 0) {
-        await supabase.from("ticket_tiers").upsert(
-          ticketTiers.map((t, idx) => ({
+        await eventManagementRepository.upsertTicketTiers(
+          id,
+          ticketTiers.map((t) => ({
             id: t.id,
-            event_id: id,
             name: t.name,
-            price_cents: Math.round(t.price * 100),
-            available_quantity: t.availableQuantity,
-            position: idx,
-          })),
-          { onConflict: "id" }
+            priceCents: Math.round(t.price * 100),
+            availableQuantity: t.availableQuantity,
+          }))
         );
-        // Remove tiers that were deleted
         const existingIds = existingTiers?.map((t) => t.id) || [];
         const currentIds = ticketTiers.map((t) => t.id);
         const toDeleteTiers = existingIds.filter((eid) => !currentIds.includes(eid));
         if (toDeleteTiers.length > 0) {
-          await supabase.from("ticket_tiers").delete().in("id", toDeleteTiers);
+          await eventManagementRepository.deleteTicketTiers(toDeleteTiers);
         }
       }
 

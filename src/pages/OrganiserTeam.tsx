@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
-import { supabase } from "@/integrations/supabase/client";
+import { organiserTeamRepository } from "@/features/social/repositories/organiserTeamRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { toast } from "@/hooks/use-toast";
 
 interface TeamMember {
@@ -49,45 +50,30 @@ const OrganiserTeam = () => {
   const fetchMembers = useCallback(async () => {
     if (!activeOrg) return;
     setLoading(true);
+    try {
+      const data = await organiserTeamRepository.getMembers(activeOrg.id);
+      const userIds = data.map((m: any) => m.user_id);
+      const profiles = userIds.length > 0
+        ? await profilesRepository.getProfilesByIds(userIds)
+        : [];
+      const profilesMap = new Map(profiles.map((p) => [p.user_id, p]));
 
-    const { data, error } = await supabase
-      .from("organiser_members")
-      .select("*")
-      .eq("organiser_profile_id", activeOrg.id)
-      .order("created_at", { ascending: true });
-
-    if (error) {
+      setMembers(
+        data.map((m: any) => ({
+          id: m.id,
+          userId: m.user_id,
+          role: m.role,
+          status: m.status,
+          createdAt: m.created_at,
+          acceptedAt: m.accepted_at,
+          displayName: profilesMap.get(m.user_id)?.display_name || null,
+          username: profilesMap.get(m.user_id)?.username || null,
+          avatarUrl: profilesMap.get(m.user_id)?.avatar_url || null,
+        }))
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Fetch profile info for each member
-    const userIds = (data || []).map((m: any) => m.user_id);
-    let profilesMap: Record<string, any> = {};
-    if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .in("user_id", userIds);
-      (profiles || []).forEach((p: any) => {
-        profilesMap[p.user_id] = p;
-      });
-    }
-
-    setMembers(
-      (data || []).map((m: any) => ({
-        id: m.id,
-        userId: m.user_id,
-        role: m.role,
-        status: m.status,
-        createdAt: m.created_at,
-        acceptedAt: m.accepted_at,
-        displayName: profilesMap[m.user_id]?.display_name || null,
-        username: profilesMap[m.user_id]?.username || null,
-        avatarUrl: profilesMap[m.user_id]?.avatar_url || null,
-      }))
-    );
-    setLoading(false);
   }, [activeOrg]);
 
   useEffect(() => {
@@ -102,19 +88,14 @@ const OrganiserTeam = () => {
     }
     const timeout = setTimeout(async () => {
       setSearching(true);
-      const q = `%${searchQuery.trim()}%`;
-      const { data } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .or(`display_name.ilike.${q},username.ilike.${q}`)
-        .limit(10);
+      const data = await profilesRepository.searchProfiles(searchQuery.trim(), { limit: 10 });
 
       // Filter out current user, owner, and existing members
       const existingUserIds = new Set(members.map((m) => m.userId));
       existingUserIds.add(user?.id || "");
-      
+
       setSearchResults(
-        (data || [])
+        data
           .filter((p: any) => !existingUserIds.has(p.user_id))
           .map((p: any) => ({
             userId: p.user_id,
@@ -130,44 +111,39 @@ const OrganiserTeam = () => {
 
   const handleInvite = async (targetUserId: string) => {
     if (!activeOrg || !user) return;
-    const { error } = await supabase.from("organiser_members").insert({
-      organiser_profile_id: activeOrg.id,
-      user_id: targetUserId,
-      role: inviteRole,
-      status: "pending",
-      invited_by: user.id,
-    });
-
-    if (error) {
-      toast({ title: "Failed to invite", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await organiserTeamRepository.inviteMember({
+        organiserProfileId: activeOrg.id,
+        targetUserId,
+        role: inviteRole,
+        invitedBy: user.id,
+      });
+      toast({ title: "Invite sent!" });
+      setSearchQuery("");
+      setSearchResults([]);
+      fetchMembers();
+    } catch (err: any) {
+      toast({ title: "Failed to invite", description: err?.message, variant: "destructive" });
     }
-    toast({ title: "Invite sent!" });
-    setSearchQuery("");
-    setSearchResults([]);
-    fetchMembers();
   };
 
   const handleRemove = async (memberId: string) => {
-    const { error } = await supabase.from("organiser_members").delete().eq("id", memberId);
-    if (error) {
-      toast({ title: "Failed to remove", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await organiserTeamRepository.removeMember(memberId);
+      toast({ title: "Member removed" });
+      fetchMembers();
+    } catch (err: any) {
+      toast({ title: "Failed to remove", description: err?.message, variant: "destructive" });
     }
-    toast({ title: "Member removed" });
-    fetchMembers();
   };
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
-    const { error } = await supabase
-      .from("organiser_members")
-      .update({ role: newRole })
-      .eq("id", memberId);
-    if (error) {
-      toast({ title: "Failed to update role", description: error.message, variant: "destructive" });
-      return;
+    try {
+      await organiserTeamRepository.updateRole(memberId, newRole);
+      fetchMembers();
+    } catch (err: any) {
+      toast({ title: "Failed to update role", description: err?.message, variant: "destructive" });
     }
-    fetchMembers();
   };
 
   if (!isOrganiser || !activeOrg) {

@@ -50,8 +50,10 @@ export class ApiError extends AppError {
 /** Parse an Edge Function JSON error response into an AppError */
 export function parseApiError(status: number, body: unknown): AppError {
   if (typeof body === 'object' && body !== null && 'error' in body) {
-    const b = body as { error: string; code?: string; details?: Record<string, unknown> };
-    return new ApiError(b.error, status, b.details);
+    const b = body as { error: string; code?: string; request_id?: string; details?: Record<string, unknown> };
+    const details = { ...b.details };
+    if (b.request_id) details.request_id = b.request_id;
+    return new ApiError(b.error, status, Object.keys(details).length > 0 ? details : undefined);
   }
   return new ApiError('An unexpected error occurred', status);
 }

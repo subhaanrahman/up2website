@@ -1,10 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 // Module-level client (reused across warm invocations)
 const supabaseAdmin = createClient(
@@ -17,14 +14,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const { phone } = await req.json();
 
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid phone number' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return errorResponse(400, 'Invalid phone number', { requestId });
     }
 
     const digits = phone.replace(/[^0-9]/g, '');
@@ -48,21 +44,12 @@ Deno.serve(async (req) => {
     ]);
 
     if (rateLimitResult.data === false) {
-      return new Response(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      );
+      return errorResponse(429, 'Too many requests. Please try again later.', { requestId });
     }
 
-    return new Response(
-      JSON.stringify({ exists: !!profileResult.data }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    return successResponse({ exists: !!profileResult.data }, requestId);
   } catch (err) {
-    console.error('check-phone error:', err);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    );
+    edgeLog('error', 'check-phone error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

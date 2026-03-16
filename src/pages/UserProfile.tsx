@@ -29,7 +29,11 @@ import {
   Home,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
+import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
+import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -61,11 +65,7 @@ const UserProfile = () => {
       setLoading(true);
 
       // Try personal profile first
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const profileData = await profilesRepository.getProfileByUserId(userId);
 
       if (profileData) {
         // Personal profile: fetch RSVP-based events
@@ -94,11 +94,7 @@ const UserProfile = () => {
       }
 
       // Fallback: check organiser_profiles by id
-      const { data: orgData } = await supabase
-        .from("organiser_profiles")
-        .select("*")
-        .eq("id", userId)
-        .maybeSingle();
+      const orgData = await profilesRepository.getOrganiserProfileById(userId);
 
       if (orgData) {
         setProfile({
@@ -138,25 +134,14 @@ const UserProfile = () => {
 
     const fetchStatus = async () => {
       if (profile?._isOrganiser) {
-        const { data } = await supabase
-          .from("organiser_followers")
-          .select("id, muted" as any)
-          .eq("organiser_profile_id", userId)
-          .eq("user_id", user.id)
-          .maybeSingle();
+        const data = await connectionsRepository.getFollowStatus(userId, user.id);
         setIsFollowingOrganiser(!!data);
         setOrganiserMuted((data as any)?.muted ?? false);
         return;
       }
 
       // Check connections
-      const { data: connData } = await supabase
-        .from("connections")
-        .select("*")
-        .or(
-          `and(requester_id.eq.${user.id},addressee_id.eq.${userId}),and(requester_id.eq.${userId},addressee_id.eq.${user.id})`
-        )
-        .maybeSingle();
+      const connData = await connectionsRepository.getConnectionBetween(user.id, userId);
 
       if (!connData) {
         setConnectionStatus("none");
@@ -207,24 +192,16 @@ const UserProfile = () => {
   const handleFollowOrganiser = async () => {
     if (!user || !userId) return;
     setConnectionLoading(true);
-    const { error } = await supabase.from("organiser_followers").insert({
-      organiser_profile_id: userId,
-      user_id: user.id,
-    });
-    if (!error) {
+    try {
+      await connectionsRepository.followOrganiser(userId, user.id);
       setIsFollowingOrganiser(true);
       setSocialCount((c) => c + 1);
       toast.success("Following!");
 
       // Send notification to organiser owner
       if (profile?.user_id && profile.user_id !== user.id) {
-        const { data: followerProfile } = await supabase
-          .from("profiles")
-          .select("display_name, avatar_url")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        supabase.functions.invoke("notifications-send", {
+        const followerProfile = await profilesRepository.getProfileByUserId(user.id);
+        await callEdgeFunction("notifications-send", {
           body: {
             type: "new_follower",
             recipient_user_id: profile.user_id,
@@ -236,7 +213,7 @@ const UserProfile = () => {
           },
         });
       }
-    } else {
+    } catch {
       toast.error("Failed to follow");
     }
     setConnectionLoading(false);
@@ -245,17 +222,13 @@ const UserProfile = () => {
   const handleAddFriend = async () => {
     if (!user || !userId) return;
     setConnectionLoading(true);
-    const { data, error } = await supabase
-      .from("connections")
-      .insert({ requester_id: user.id, addressee_id: userId })
-      .select()
-      .single();
-    if (error) {
-      toast.error("Failed to send friend request");
-    } else {
+    try {
+      const data = await connectionsRepository.sendRequestAndReturn(user.id, userId);
       setConnectionStatus("pending_sent");
       setConnectionId(data.id);
       toast.success("Friend request sent!");
+    } catch {
+      toast.error("Failed to send friend request");
     }
     setConnectionLoading(false);
   };
@@ -263,30 +236,26 @@ const UserProfile = () => {
   const handleCancelRequest = async () => {
     if (!user || !userId) return;
     setConnectionLoading(true);
-    await supabase
-      .from("connections")
-      .delete()
-      .eq("requester_id", user.id)
-      .eq("addressee_id", userId);
-    setConnectionStatus("none");
-    setConnectionId(null);
+    try {
+      await connectionsRepository.deleteByUsers(user.id, userId);
+      setConnectionStatus("none");
+      setConnectionId(null);
+    } catch {
+      // ignore
+    }
     setConnectionLoading(false);
   };
 
   const handleAcceptRequest = async () => {
     if (!user || !userId) return;
     setConnectionLoading(true);
-    const { error } = await supabase
-      .from("connections")
-      .update({ status: "accepted", accepted_at: new Date().toISOString() })
-      .eq("requester_id", userId)
-      .eq("addressee_id", user.id);
-    if (error) {
-      toast.error("Failed to accept request");
-    } else {
+    try {
+      await connectionsRepository.acceptByUsers(userId, user.id);
       setConnectionStatus("accepted");
       setSocialCount((c) => c + 1);
       toast.success("You are now friends!");
+    } catch {
+      toast.error("Failed to accept request");
     }
     setConnectionLoading(false);
   };
@@ -303,27 +272,12 @@ const UserProfile = () => {
     if (!user || !userId || !isOrg) return;
     setDmLoading(true);
     try {
-      // Check if thread already exists
-      const { data: existing } = await supabase
-        .from("dm_threads")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("organiser_profile_id", userId)
-        .maybeSingle();
-
+      const existing = await messagingRepository.getDmThreadByParticipants(user.id, userId);
       if (existing) {
         navigate(`/messages/dm/${existing.id}`);
         return;
       }
-
-      // Create new thread
-      const { data: newThread, error } = await supabase
-        .from("dm_threads")
-        .insert({ user_id: user.id, organiser_profile_id: userId })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const newThread = await messagingRepository.createDmThread(user.id, userId);
       navigate(`/messages/dm/${newThread.id}`);
     } catch {
       toast.error("Failed to start conversation");

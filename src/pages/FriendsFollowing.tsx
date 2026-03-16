@@ -7,7 +7,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/infrastructure/supabase';
 
 interface FriendItem {
   userId: string;

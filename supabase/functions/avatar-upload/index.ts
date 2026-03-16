@@ -1,11 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { edgeLog } from "../_shared/logger.ts";
+import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -15,12 +12,12 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = getRequestId(req);
+
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Missing authorization', { requestId });
     }
 
     // Auth with user's token
@@ -32,9 +29,7 @@ Deno.serve(async (req) => {
 
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(401, 'Unauthorized', { requestId });
     }
 
     // Rate limit
@@ -46,23 +41,17 @@ Deno.serve(async (req) => {
     const file = formData.get('file');
 
     if (!file || !(file instanceof File)) {
-      return new Response(JSON.stringify({ error: 'No file provided' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'No file provided', { requestId });
     }
 
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
-      return new Response(JSON.stringify({ error: 'File must be a JPEG, PNG, WebP, or GIF image' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'File must be a JPEG, PNG, WebP, or GIF image', { requestId });
     }
 
     // Validate file size
     if (file.size > MAX_SIZE) {
-      return new Response(JSON.stringify({ error: 'Image must be smaller than 5MB' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return errorResponse(400, 'Image must be smaller than 5MB', { requestId });
     }
 
     // Use service role for storage upload (bypasses storage RLS)
@@ -98,10 +87,8 @@ Deno.serve(async (req) => {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      return new Response(JSON.stringify({ error: 'Failed to upload file' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Storage upload error', { requestId, error: String(uploadError) });
+      return errorResponse(500, 'Failed to upload file', { requestId });
     }
 
     // Get public URL — clean, no query-string cache-buster
@@ -116,19 +103,13 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id);
 
     if (profileError) {
-      console.error('Profile update error:', profileError);
-      return new Response(JSON.stringify({ error: 'Failed to update profile' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      edgeLog('error', 'Profile update error', { requestId, error: String(profileError) });
+      return errorResponse(500, 'Failed to update profile', { requestId });
     }
 
-    return new Response(JSON.stringify({ avatar_url: publicUrl }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return successResponse({ avatar_url: publicUrl }, requestId);
   } catch (err) {
-    console.error('Unexpected error:', err);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
+    return errorResponse(500, 'Internal server error', { requestId });
   }
 });

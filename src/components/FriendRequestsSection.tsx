@@ -4,7 +4,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Check, X, UserPlus, ChevronRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
+import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { toast } from "sonner";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -28,43 +29,38 @@ export default function FriendRequestsSection() {
     if (!user) return;
 
     const fetch = async () => {
-      // Get ALL pending connections where current user is addressee
-      // This includes requests whose notification may have expired
-      const { data: connections } = await supabase
-        .from("connections")
-        .select("id, requester_id, created_at")
-        .eq("addressee_id", user.id)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
+      try {
+        // Get ALL pending connections where current user is addressee
+        const connections = await connectionsRepository.getPendingRequests(user.id);
 
-      if (!connections || connections.length === 0) {
+        if (!connections || connections.length === 0) {
+          setRequests([]);
+          setLoading(false);
+          return;
+        }
+
+        const requesterIds = connections.map((c) => c.requester_id);
+        const profiles = await profilesRepository.getProfilesByIds(requesterIds);
+        const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
+
+        setRequests(
+          connections.map((c) => {
+            const p = profileMap.get(c.requester_id);
+            return {
+              connectionId: c.id,
+              requesterId: c.requester_id,
+              displayName: p?.display_name || "User",
+              username: p?.username || "user",
+              avatarUrl: p?.avatar_url || null,
+              createdAt: c.created_at,
+            };
+          })
+        );
+      } catch {
         setRequests([]);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const requesterIds = connections.map((c) => c.requester_id);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, display_name, username, avatar_url")
-        .in("user_id", requesterIds);
-
-      const profileMap = new Map((profiles || []).map((p) => [p.user_id, p]));
-
-      setRequests(
-        connections.map((c) => {
-          const p = profileMap.get(c.requester_id);
-          return {
-            connectionId: c.id,
-            requesterId: c.requester_id,
-            displayName: p?.display_name || "User",
-            username: p?.username || "user",
-            avatarUrl: p?.avatar_url || null,
-            createdAt: c.created_at,
-          };
-        })
-      );
-      setLoading(false);
     };
 
     fetch();
@@ -72,23 +68,23 @@ export default function FriendRequestsSection() {
 
   const handleAccept = async (req: PendingRequest) => {
     setActionLoading(req.connectionId);
-    const { error } = await supabase
-      .from("connections")
-      .update({ status: "accepted", accepted_at: new Date().toISOString() })
-      .eq("id", req.connectionId);
-
-    if (error) {
-      toast.error("Failed to accept request");
-    } else {
+    try {
+      await connectionsRepository.acceptById(req.connectionId);
       toast.success(`You and ${req.displayName} are now friends!`);
       setRequests((prev) => prev.filter((r) => r.connectionId !== req.connectionId));
+    } catch {
+      toast.error("Failed to accept request");
     }
     setActionLoading(null);
   };
 
   const handleReject = async (req: PendingRequest) => {
     setActionLoading(req.connectionId);
-    await supabase.from("connections").delete().eq("id", req.connectionId);
+    try {
+      await connectionsRepository.deleteById(req.connectionId);
+    } catch {
+      // ignore
+    }
     setRequests((prev) => prev.filter((r) => r.connectionId !== req.connectionId));
     toast("Request declined");
     setActionLoading(null);
