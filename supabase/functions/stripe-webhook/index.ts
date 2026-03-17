@@ -199,8 +199,8 @@ Deno.serve(async (req) => {
         edgeLog('info', `Unhandled event type: ${event.type}`, { requestId });
     }
 
-    // Record for idempotency
-    await serviceClient
+    // Record for idempotency — must succeed so Stripe retries on failure
+    const { error: insertErr } = await serviceClient
       .from('payment_events')
       .insert({
         order_id: (event.data.object as any)?.metadata?.order_id || null,
@@ -209,8 +209,14 @@ Deno.serve(async (req) => {
         payload: event.data.object as any,
       });
 
+    if (insertErr) {
+      edgeLog('error', 'payment_events insert failed', { requestId, error: String(insertErr) });
+      return errorResponse(500, 'Failed to record event', { requestId });
+    }
+
   } catch (err) {
     edgeLog('error', 'Error processing webhook', { requestId, error: String(err) });
+    return errorResponse(500, 'Webhook processing failed', { requestId });
   }
 
   return successResponse({ received: true }, requestId);

@@ -25,6 +25,7 @@
 - [x] `orders-list` edge function — list orders for an event (host-only)
 - [x] Webhook: `stripe-webhook` — confirm order on payment success
 - [x] `ticket_tier_id` added to orders for tier-specific tracking
+- [x] Payment onboarding touchpoints (OnboardingRequired, TicketingPanel, OrganiserPayoutTask, PayoutSetupSection) — all use shared `useStripeConnectOnboard` flow
 
 ## Refunds
 - [x] `refunds` table exists (order_id, stripe_refund_id, amount_cents, reason, status, initiated_by)
@@ -92,3 +93,5 @@
 ---
 
 *Last updated: 16 March 2026*
+
+See `docs/PAYMENT_FLOW.md` for webhook details and order lifecycle.
