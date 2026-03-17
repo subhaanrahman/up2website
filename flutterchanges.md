@@ -2,6 +2,64 @@
 
 <!-- New entries -->
 
+### 2026-03-16 — Comprehensive Testing Phases (Unit + E2E)
+
+**Files changed:** `src/test/test-utils.tsx`, `src/hooks/*.test.ts`, `src/features/*/repositories/*.test.ts`, `src/features/*/services/*.test.ts`, `src/components/*.test.tsx`, `tests/e2e/auth.setup.ts`, `tests/e2e/*.spec.ts`, `playwright.config.ts`, `docs/TESTING_GUIDE.md`, `.gitignore`
+
+**What changed (React/TS):**
+- **Phase 1 (Unit):** Full test coverage: hooks (useProfileQuery, useEventsQuery, useForYouEvents, useUserEventsQuery, usePostsQuery, useTicketTiers, useStripeConnectStatus, useDashboardAnalytics); repositories (events, identity, posts); services (identity, feed); components (TicketEventCard, PurchaseModal, PhoneStep, OtpStep, ProtectedRoute, LoadingSpinner, EventCard, FeedPost, BottomNav). Test utils: `renderWithProviders` with QueryClient + Router.
+- **Phase 2 (E2E):** Auth setup (`auth.setup.ts`) performs dev login (Dylan), saves `storageState` to `tests/.auth/user.json`. Playwright projects: setup, chromium (unauthenticated for auth.spec), chromium-authenticated (profile, dashboard, tickets, event-detail, checkout). Expanded specs for auth, profile, dashboard, tickets; new event-detail and checkout specs.
+- **TESTING_GUIDE.md:** E2E prerequisites; dev login user IDs (Dylan, Haan).
+
+**Flutter migration notes:**
+- No direct Flutter impact. For Flutter: replicate unit tests with flutter_test; E2E with integration_test or Patrol.
+
+### 2026-03-16 — Testing & CI: Vitest, Playwright, smoke test
+
+**Files changed:** `package.json`, `vitest.config.ts`, `playwright.config.ts`, `src/test/setup.ts`, `src/utils/fileValidation.test.ts`, `src/utils/validation.test.ts`, `src/hooks/useOrderFlow.test.ts`, `src/components/CategoryPill.test.tsx`, `tests/e2e/auth.spec.ts`, `tests/e2e/profile.spec.ts`, `tests/e2e/tickets.spec.ts`, `tests/e2e/dashboard.spec.ts`, `.github/workflows/ci.yml`, `.cursor/rules/smoke-test.mdc`, `.env.example`
+
+**What changed (React/TS):**
+- Vitest + React Testing Library: unit tests for `fileValidation`, `validation`, `useOrderFlow`, `CategoryPill`.
+- Playwright: E2E specs for auth (/auth), profile (/profile redirect), tickets (/events redirect), dashboard (/ load).
+- CI: lint → unit tests → build; `VITE_STRIPE_PUBLISHABLE_KEY` env for build.
+- Smoke: `npm run smoke` = test + build; `.cursor/rules/smoke-test.mdc` for reproducible verification.
+
+**Flutter migration notes:**
+- No direct Flutter impact. For Flutter: use equivalent testing stack (flutter_test, integration_test, Patrol) and CI workflow.
+
+### 2026-03-16 — Backend stages 2–8: refunds, feed discipline, check-in QR, file validation
+
+**Files changed:** `supabase/functions/refunds-create/`, `supabase/functions/orders-cancel/`, `supabase/functions/checkin-qr/`, `supabase/functions/events-update/`, `supabase/functions/message-send/`, `supabase/functions/_shared/refund.ts`, `supabase/functions/_shared/rate-limit.ts`, `src/features/social/services/feedService.ts`, `src/features/events/repositories/eventsRepository.ts`, `src/features/social/repositories/postsRepository.ts`, `src/features/social/repositories/connectionsRepository.ts`, `src/hooks/useForYouEvents.ts`, `src/hooks/usePostsQuery.ts`, `src/pages/EventCheckIn.tsx`, `src/components/QrScanner.tsx`, `src/utils/fileValidation.ts`, `src/lib/stripe.ts`, `docs/LOVABLE_PROMPTS.md`, `docs/PAYMENT_FLOW.md`, `docs/BACKEND_TODO.md`, `docs/STRIPE_TODO.md`, `docs/CLEANUP_ARCHITECTURE_TODO.md`, `docs/DEV_CONTEXT.md`, `docs/SECURITY_CHECKLIST.md`
+
+**What changed (React/TS):**
+- **Refunds:** `refunds-create` edge function; `orders-cancel` for reserved orders; event delete triggers bulk refunds via `processRefund`.
+- **Feed discipline:** feedService uses only repositories; useForYouEvents uses `fetchForYouEvents`; postsRepository.getPostsForFeed, getRepostsForFeed, getPostsByIds; eventsRepository.getNearbyEvents, getUpcomingEventsByIds, getEventIdsByGoingUserIds.
+- **Blocked users:** connectionsRepository.getBlockedUserIds; filtered in feedService and usePostsQuery.
+- **Rate limiting:** event-message-send in message-send edge function.
+- **Stripe:** publishable key from `VITE_STRIPE_PUBLISHABLE_KEY`.
+- **Check-in QR:** `checkin-qr` edge function validates ticket qr_code, upserts check_ins, updates tickets.checked_in_at; EventCheckIn camera scanner via html5-qrcode; success screen with "Scan next".
+- **File validation:** validateImageFile/validateImageFileOrMessage in avatar, post image, event flyer, event media uploads.
+
+**Flutter migration notes:**
+- Refunds: call `refunds-create` with order_id, reason; `orders-cancel` for reserved orders. Event delete must refund confirmed orders first.
+- Feed: use feedService/repositories; filter blocked users in feed.
+- Check-in: `checkin-qr` accepts qr_code + event_id; returns display_name on success. Use mobile QR scanner (e.g. mobile_scanner) for ticket QR.
+- File uploads: validate type (jpeg, png, webp) and size (5MB) before upload.
+- Stripe: use env var for publishable key.
+
+### 2026-03-17 — Event visibility and profile privacy (Stage 1)
+
+**Files changed:** `src/features/events/repositories/eventsRepository.ts`, `src/features/social/services/feedService.ts`, `src/hooks/useForYouEvents.ts`, `src/hooks/usePostsQuery.ts`, `src/pages/Profile.tsx`, `src/pages/UserProfile.tsx`, `supabase/migrations/20260317130000_fix_is_profile_public.sql`, `docs/LOVABLE_PROMPTS.md`, `docs/BACKEND_TODO.md`, `docs/SECURITY_CHECKLIST.md`
+
+**What changed (React/TS):**
+- Event queries: add `status='published'` and `(publish_at IS NULL OR publish_at <= now())` to all public event listings (eventsRepository list/search/_searchFreeEvents, feedService fetchNearbyEvents, useForYouEvents, Profile, UserProfile). Draft/scheduled events no longer appear in public views.
+- getEventSummariesByIds: optional `publicOnly` param for feed enrichment.
+- Migration: fix `is_profile_public()` to check `profile_tier = 'professional'` (personal = private). Apply via Lovable using docs/LOVABLE_PROMPTS.md.
+
+**Flutter migration notes:**
+- When querying events for public display, filter by status and publish_at. Use `profile_tier` for profile visibility (personal = private, professional = public).
+- Replicate `is_profile_public` RPC logic in Dart if using custom profile visibility.
+
 ### 2026-03-16 — Set up payouts: error handling and debugging
 
 **Files changed:** `supabase/functions/stripe-connect-onboard/index.ts`, `docs/STRIPE_TODO.md`

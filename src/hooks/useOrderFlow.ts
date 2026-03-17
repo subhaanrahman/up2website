@@ -63,6 +63,17 @@ export function useOrderFlow() {
     }
   };
 
+  const cancel = async (orderId: string): Promise<boolean> => {
+    try {
+      await callEdgeFunction('orders-cancel', { body: { order_id: orderId } });
+      if (order?.id === orderId) setOrder(null);
+      setClientSecret(null);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const reset = () => {
     setOrder(null);
     setClientSecret(null);
@@ -72,6 +83,7 @@ export function useOrderFlow() {
   return {
     reserve,
     createPaymentIntent,
+    cancel,
     reset,
     order,
     clientSecret,

@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
@@ -53,6 +54,10 @@ Deno.serve(async (req) => {
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
+    }
+    if (parsed.data.type === 'event-board') {
+      const allowed = await checkRateLimit('event-message-send', user.id, getClientIp(req));
+      if (!allowed) return rateLimitResponse(corsHeaders);
     }
 
     const serviceClient = createClient(

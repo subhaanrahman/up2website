@@ -7,6 +7,7 @@ import { supabase } from '@/infrastructure/supabase';
 import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { validateImageFileOrMessage } from "@/utils/fileValidation";
 import GifPicker from "@/components/GifPicker";
 import CollaboratorPicker from "@/components/CollaboratorPicker";
 
@@ -62,8 +63,9 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image must be under 5MB");
+    const err = validateImageFileOrMessage(file);
+    if (err) {
+      toast.error(err);
       return;
     }
     setSelectedImage(file);

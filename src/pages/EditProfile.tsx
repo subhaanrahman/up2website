@@ -29,6 +29,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useUpdateProfile, useUploadAvatar } from "@/hooks/useProfileQuery";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from '@/infrastructure/supabase';
+import { validateImageFileOrMessage } from "@/utils/fileValidation";
 
 const PAGE_CLASSIFICATIONS = ["DJ", "Promoter", "Artist"];
 
@@ -74,6 +75,12 @@ const EditProfile = () => {
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    const err = validateImageFileOrMessage(file);
+    if (err) {
+      toast({ title: "Invalid file", description: err, variant: "destructive" });
+      return;
+    }
 
     try {
       const url = await uploadAvatarMutation.mutateAsync(file);

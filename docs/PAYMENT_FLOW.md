@@ -41,7 +41,8 @@ reserved → payment_pending → confirmed → refunded
 
 - **reserved** — Created by `orders-reserve`; PaymentIntent created by `payments-intent`
 - **confirmed** — Set by `stripe-webhook` on `payment_intent.succeeded`
-- **refunded** — Set by `stripe-webhook` on `charge.refunded` or by `refunds-create` (future)
+- **refunded** — Set by `stripe-webhook` on `charge.refunded` or by `refunds-create` edge function
+- **cancelled** — User-initiated via `orders-cancel` (reserved orders only)
 
 ---
 
@@ -93,3 +94,25 @@ Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the in-process
 6. `account.updated` webhook keeps `organiser_stripe_accounts` in sync
 
 **Touchpoints:** PayoutSetupSection, OnboardingRequired page, TicketingPanel, OrganiserPayoutTask (floating pill)
+
+---
+
+## Expired Order Cleanup
+
+The `orders-expire-cleanup` edge function marks reserved orders with `expires_at < now()` as `expired`, cancels orphaned Stripe PaymentIntents, and releases capacity.
+
+**Invocation:** Call on a schedule (e.g. every 5–15 minutes):
+- **Option A:** External cron (Vercel, GitHub Actions, etc.) POST to `{SUPABASE_URL}/functions/v1/orders-expire-cleanup` with header `X-Cron-Secret: <CRON_SECRET>` (set in Edge Function secrets).
+- **Option B:** Pass `Authorization: Bearer <service_role_key>` if the scheduler has it.
+
+**Required:** `STRIPE_SECRET_KEY`, optional `CRON_SECRET` for cron auth.
+
+---
+
+## Refunds and Order Cancellation
+
+**refunds-create** — Organiser/host initiates Stripe refund for a confirmed order. Updates order to `refunded`, cancels tickets, inserts `refunds` record. Auth: event host or organiser owner/member.
+
+**orders-cancel** — Cancels a reserved (unpaid) order. Cancels Stripe PaymentIntent if exists, releases capacity. Auth: order owner or event host/organiser.
+
+**Event deletion** — When an organiser deletes an event via `events-update` (action: delete), all confirmed orders are refunded first via `processRefund`, then the event is deleted.

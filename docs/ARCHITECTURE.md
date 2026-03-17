@@ -25,7 +25,7 @@ Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments:
 | `CreateEvent` | `/create` | Multi-step event creation with ticketing, guestlist, notifications panels |
 | `EditEvent` | `/events/:id/edit` | Event editing (host-only) |
 | `ManageEvent` | `/events/:id/manage` | Orders, guestlist CSV, refunds, attendee broadcast |
-| `EventCheckIn` | `/events/:id/checkin` | Attendee list with manual toggle + QR scan mode |
+| `EventCheckIn` | `/events/:id/checkin` | Attendee list, manual toggle, camera-based ticket QR scanner (checkin-qr) |
 | `EventAnalytics` | `/events/:id/analytics` | Event-level analytics |
 | `EventGuests` | `/events/:id/guests` | Public guest list view |
 | `Checkout` | `/checkout` | Stripe Elements payment form |
@@ -174,6 +174,10 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 **Infrastructure**
 - `rate_limits` — API rate limiting
 - `check_ins` — Event check-in records
+
+**Check-in flow:** Manual toggle via `checkin-toggle`; QR scan via `checkin-qr` (organiser scans attendee ticket QR, validates against tickets.qr_code, upserts check_ins, updates tickets.checked_in_at).
+
+**Public event visibility:** All public event queries filter `status = 'published'` and `(publish_at IS NULL OR publish_at <= now())`. Implemented in `eventsRepository`, `feedService`, `useForYouEvents`, `Profile.tsx`, `UserProfile.tsx`; organiser's own events remain unfiltered.
 - `notifications` — In-app notifications with 20-day expiry
 
 ### Realtime-Enabled Tables
@@ -193,7 +197,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | **Events** | `events-create`, `events-update`, `event-media-manage` |
 | **RSVP** | `rsvp` (join/leave via action param) |
 | **Organiser** | `organiser-profile-create`, `organiser-profile-update`, `organiser-team-manage` |
-| **Ticketing** | `orders-reserve`, `orders-list`, `validate-discount`, `ticket-transfer`, `checkin-toggle` |
+| **Ticketing** | `orders-reserve`, `orders-list`, `validate-discount`, `ticket-transfer`, `checkin-toggle`, `checkin-qr` |
 | **Payments** | `payments-intent`, `stripe-connect-onboard`, `stripe-connect-status`, `stripe-connect-dashboard`, `stripe-webhook` |
 | **Social** | `attendee-broadcast`, `referrals-track`, `report-create`, `moderation-block`, `gif-search` |
 | **Messaging** | `message-send`, `group-chat-manage` |

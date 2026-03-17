@@ -1,0 +1,36 @@
+# Smoke Test — Reproducible Verification
+
+**Agent rule:** After completing code changes, run `npm run smoke` to verify unit tests and build pass before finishing.
+
+**Purpose:** Before committing or after significant changes, run the smoke test to ensure the app builds and core logic passes. Use this for agents and team members.
+
+**RULE (for Cursor agents):** After completing code changes that affect frontend build or core logic, run `npm run smoke` before finishing. If smoke fails, fix the issues before reporting completion.
+
+## Command
+
+```bash
+npm run smoke
+```
+
+This runs `npm run test && npm run build` (unit tests + production build).
+
+## What it verifies
+
+- **Unit tests:** Utils (`fileValidation`, `validation`), hooks (`useOrderFlow`), components (`CategoryPill`)
+- **Build:** Vite production build succeeds (catches TS errors, missing deps, broken imports)
+
+## When to run
+
+- After code changes before pushing
+- After pulling/merging from main
+- When onboarding (confirms env and deps work)
+
+## Full E2E (optional)
+
+For full browser E2E (auth, profile, tickets):
+
+```bash
+npm run test:e2e
+```
+
+Requires dev server; use when validating critical user flows. Not part of the default smoke command.

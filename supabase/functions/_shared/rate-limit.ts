@@ -12,8 +12,12 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'send-otp':           { max: 5,  windowSec: 60 },
   'verify-otp':         { max: 5,  windowSec: 60 },
   'check-phone':        { max: 10, windowSec: 60 },
+  'checkin-qr':         { max: 60, windowSec: 60 },
   'register':           { max: 5,  windowSec: 60 },
   'login':              { max: 10, windowSec: 60 },
+  'refunds-create':     { max: 10, windowSec: 60 },
+  'orders-cancel':      { max: 20, windowSec: 60 },
+  'event-message-send': { max: 30, windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };

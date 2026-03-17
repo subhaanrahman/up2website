@@ -14,7 +14,6 @@
  * Designed to be swapped for ML-backed scoring later.
  */
 
-import { supabase } from '@/infrastructure/supabase';
 import type { PostWithAuthor, PostEventData, PostCollaborator } from '@/hooks/usePostsQuery';
 import { connectionsRepository } from '../repositories/connectionsRepository';
 import { profilesRepository } from '../repositories/profilesRepository';
@@ -134,7 +133,7 @@ async function enrichPosts(
   const [profiles, orgs, events, collabData] = await Promise.all([
     profilesRepository.getProfilesByIds(authorIds),
     profilesRepository.getOrganisersByIds(orgIds),
-    eventsRepository.getEventSummariesByIds(eventIds),
+    eventsRepository.getEventSummariesByIds(eventIds, true),
     postsRepository.getCollaboratorsByPostIds(postIds),
   ]);
 
@@ -208,46 +207,20 @@ export async function fetchFeedPage(
   cursor: string | null,
   pageSize = PAGE_SIZE,
 ): Promise<FeedPage> {
-  // 1. Fetch original posts
-  let postsQuery = supabase
-    .from('posts')
-    .select('id, content, created_at, author_id, organiser_profile_id, image_url, gif_url, event_id')
-    .order('created_at', { ascending: false })
-    .limit(pageSize + 10); // over-fetch slightly for merging with reposts
+  // 1. Fetch original posts via repository
+  const rawPosts = await postsRepository.getPostsForFeed(cursor, pageSize + 10);
 
-  if (cursor) {
-    postsQuery = postsQuery.lt('created_at', cursor);
-  }
-
-  const { data: rawPosts, error: postsError } = await postsQuery;
-  if (postsError) throw postsError;
-
-  // 2. Fetch reposts in the same time window
-  let repostsQuery = supabase
-    .from('post_reposts')
-    .select('id, post_id, user_id, created_at')
-    .order('created_at', { ascending: false })
-    .limit(pageSize);
-
-  if (cursor) {
-    repostsQuery = repostsQuery.lt('created_at', cursor);
-  }
-
-  const { data: rawReposts } = await repostsQuery;
+  // 2. Fetch reposts via repository
+  const rawReposts = await postsRepository.getRepostsForFeed(cursor, pageSize);
 
   // 3. Fetch repost source posts that may not be in our main query
-  const repostPostIds = [...new Set((rawReposts || []).map(r => r.post_id))];
-  const existingPostIds = new Set((rawPosts || []).map(p => p.id));
-  const missingRepostIds = repostPostIds.filter(id => !existingPostIds.has(id));
+  const repostPostIds = [...new Set((rawReposts || []).map((r: any) => r.post_id))];
+  const existingPostIds = new Set((rawPosts || []).map((p: any) => p.id));
+  const missingRepostIds = repostPostIds.filter((id: string) => !existingPostIds.has(id));
 
-  let repostedSourcePosts: any[] = [];
-  if (missingRepostIds.length > 0) {
-    const { data } = await supabase
-      .from('posts')
-      .select('id, content, created_at, author_id, organiser_profile_id, image_url, gif_url, event_id')
-      .in('id', missingRepostIds);
-    repostedSourcePosts = data || [];
-  }
+  const repostedSourcePosts = missingRepostIds.length > 0
+    ? await postsRepository.getPostsByIds(missingRepostIds)
+    : [];
 
   // 4. Build repost metadata
   const repostMeta = new Map<string, { reposterId: string; reposterName: string; repostCreatedAt: string }>();
@@ -267,8 +240,17 @@ export async function fetchFeedPage(
   }
 
   // 5. Merge all posts + enrich
-  const allRawPosts = [...(rawPosts || []), ...repostedSourcePosts];
-  // Deduplicate by id
+  let allRawPosts = [...(rawPosts || []), ...repostedSourcePosts];
+  if (ctx.userId) {
+    const blockedIds = await connectionsRepository.getBlockedUserIds(ctx.userId);
+    if (blockedIds.size > 0) {
+      allRawPosts = allRawPosts.filter((p: any) => !blockedIds.has(p.author_id));
+      const repostBlocked = new Set(
+        (rawReposts || []).filter((r: any) => blockedIds.has(r.user_id)).map((r: any) => r.post_id),
+      );
+      allRawPosts = allRawPosts.filter((p: any) => !repostBlocked.has(p.id));
+    }
+  }
   const uniqueMap = new Map<string, any>();
   for (const p of allRawPosts) {
     if (!uniqueMap.has(p.id)) uniqueMap.set(p.id, p);
@@ -334,37 +316,54 @@ export async function fetchPublicFeedPage(
 
 // ─── Nearby events (DB-backed) ───
 export async function fetchNearbyEvents(city: string | null, limit = 4) {
-  const now = new Date().toISOString();
+  return eventsRepository.getNearbyEvents(city, limit);
+}
 
-  let query = supabase
-    .from('events')
-    .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
-    .eq('is_public', true)
-    .gte('event_date', now)
-    .order('event_date', { ascending: true })
-    .limit(limit);
+// ─── For You events (personalized recommendations) ───
+export async function fetchForYouEvents(
+  userId: string | null,
+  profileCity: string | null,
+  limit = 15,
+): Promise<any[]> {
+  const scored = new Map<string, { event: any; score: number }>();
+  const addEvents = (events: any[], baseScore: number) => {
+    for (const e of events) {
+      const existing = scored.get(e.id);
+      if (existing) existing.score += baseScore;
+      else scored.set(e.id, { event: e, score: baseScore });
+    }
+  };
 
-  if (city) {
-    query = query.ilike('location', `%${city}%`);
+  if (profileCity) {
+    const cityEvents = await eventsRepository.search({ city: profileCity, limit: 20 });
+    addEvents(cityEvents, 10);
   }
 
-  const { data, error } = await query;
-  if (error) throw error;
+  if (userId) {
+    const friendIds = await connectionsRepository.getFriendIds(userId);
+    const friendArr = [...friendIds].slice(0, 20);
+    if (friendArr.length > 0) {
+      const eventIds = await eventsRepository.getEventIdsByGoingUserIds(friendArr);
+      if (eventIds.length > 0) {
+        const friendEvents = await eventsRepository.getUpcomingEventsByIds(eventIds.slice(0, 20));
+        addEvents(friendEvents, 15);
+      }
+    }
 
-  // If city filter returned too few, backfill with any upcoming
-  if (city && (data || []).length < 2) {
-    const { data: backfill } = await supabase
-      .from('events')
-      .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
-      .eq('is_public', true)
-      .gte('event_date', now)
-      .order('event_date', { ascending: true })
-      .limit(limit);
-    
-    const existing = new Set((data || []).map(e => e.id));
-    const merged = [...(data || []), ...(backfill || []).filter(e => !existing.has(e.id))];
-    return merged.slice(0, limit);
+    const orgIds = await connectionsRepository.getFollowedOrganiserIds(userId);
+    if (orgIds.length > 0) {
+      const orgEvents = await eventsRepository.getUpcomingEventsByOrganiserIds(orgIds.slice(0, 20));
+      addEvents(orgEvents, 20);
+    }
   }
 
-  return data || [];
+  if (scored.size < limit) {
+    const backfill = await eventsRepository.search({ limit });
+    addEvents(backfill, 1);
+  }
+
+  return [...scored.values()]
+    .sort((a, b) => b.score - a.score || new Date(a.event.eventDate).getTime() - new Date(b.event.eventDate).getTime())
+    .slice(0, limit)
+    .map(s => s.event);
 }

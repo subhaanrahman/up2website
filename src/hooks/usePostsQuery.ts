@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 
 export interface PostCollaborator {
   user_id: string;
@@ -141,7 +142,13 @@ async function fetchPosts(authorId?: string, organiserProfileId?: string): Promi
 }
 
 async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAuthor[]> {
-  const posts = await fetchPosts();
+  let posts = await fetchPosts();
+  if (currentUserId) {
+    const blockedIds = await connectionsRepository.getBlockedUserIds(currentUserId);
+    if (blockedIds.size > 0) {
+      posts = posts.filter((p) => !blockedIds.has(p.author_id));
+    }
+  }
   if (!currentUserId) return posts;
 
   const { data: reposts } = await supabase
@@ -175,10 +182,14 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
   const repostAuthorMap = new Map((repostAuthorProfiles || []).map((p) => [p.user_id, p]));
   const repostedPostMap = new Map(repostedPosts.map((p) => [p.id, p]));
 
+  const blockedIds = currentUserId ? await connectionsRepository.getBlockedUserIds(currentUserId) : new Set<string>();
+
   const repostEntries: PostWithAuthor[] = reposts
+    .filter((r) => !blockedIds.has(r.user_id))
     .map((repost) => {
       const originalPost = repostedPostMap.get(repost.post_id);
       if (!originalPost) return null;
+      if (blockedIds.has(originalPost.author_id)) return null;
       const author = repostAuthorMap.get(originalPost.author_id);
       const reposter = reposterMap.get(repost.user_id);
       return {

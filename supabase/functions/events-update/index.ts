@@ -1,9 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+import Stripe from "https://esm.sh/stripe@18.5.0";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { processRefund } from "../_shared/refund.ts";
 
 const updateSchema = z.object({
   action: z.enum(['update', 'delete']),
@@ -98,6 +100,29 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'delete') {
+      const { data: confirmedOrders } = await serviceClient
+        .from('orders')
+        .select('id')
+        .eq('event_id', event_id)
+        .eq('status', 'confirmed');
+
+      const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+      if (confirmedOrders && confirmedOrders.length > 0 && stripeKey) {
+        const stripe = new Stripe(stripeKey, { apiVersion: '2025-08-27.basil' });
+        for (const o of confirmedOrders) {
+          const result = await processRefund({
+            orderId: o.id,
+            reason: 'Event cancelled',
+            initiatedBy: user.id,
+            stripe,
+            serviceClient,
+          });
+          if (!result.success) {
+            edgeLog('warn', 'Refund failed during event delete', { requestId, order_id: o.id, error: result.error });
+          }
+        }
+      }
+
       const { error: delErr } = await serviceClient.from('events').delete().eq('id', event_id);
       if (delErr) {
         return errorResponse(400, delErr.message, { requestId });

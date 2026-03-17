@@ -156,16 +156,26 @@ Deno.serve(async (req) => {
           .update({ status: 'cancelled' })
           .eq('order_id', refundOrder.id);
 
-        await serviceClient
-          .from('refunds')
-          .insert({
-            order_id: refundOrder.id,
-            stripe_refund_id: charge.id,
-            amount_cents: (charge.amount_refunded || 0),
-            reason: 'charge.refunded webhook',
-            status: 'succeeded',
-            initiated_by: null,
-          });
+        const refundId = (charge.refunds as any)?.data?.[0]?.id ?? null;
+        if (refundId) {
+          const { data: existingRefund } = await serviceClient
+            .from('refunds')
+            .select('id')
+            .eq('order_id', refundOrder.id)
+            .eq('stripe_refund_id', refundId)
+            .maybeSingle();
+
+          if (!existingRefund) {
+            await serviceClient.from('refunds').insert({
+              order_id: refundOrder.id,
+              stripe_refund_id: refundId,
+              amount_cents: charge.amount_refunded || 0,
+              reason: 'charge.refunded webhook',
+              status: 'succeeded',
+              initiated_by: null,
+            });
+          }
+        }
 
         edgeLog('info', `Order ${refundOrder.id} refunded, tickets cancelled`, { requestId });
         break;

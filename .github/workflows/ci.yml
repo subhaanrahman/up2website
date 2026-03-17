@@ -24,5 +24,11 @@ jobs:
       - name: Lint
         run: npx eslint .
 
+      - name: Unit tests
+        run: npm run test
+
       - name: Build
         run: npm run build
+        env:
+          # Use repo secret VITE_STRIPE_PUBLISHABLE_KEY if set; else placeholder so build succeeds
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}

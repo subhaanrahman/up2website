@@ -209,7 +209,7 @@ const Checkout = () => {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <span className="ml-3 text-muted-foreground">Reserving your tickets...</span>
         </div>
-      ) : clientSecret ? (
+      ) : clientSecret && stripePromise ? (
         <Elements
           stripe={stripePromise}
           options={{

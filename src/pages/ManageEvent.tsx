@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
 import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import { callEdgeFunction } from "@/infrastructure/api-client";
+import { validateImageFileOrMessage } from "@/utils/fileValidation";
 
 const ManageEvent = () => {
   const { id } = useParams<{ id: string }>();
@@ -65,6 +66,20 @@ const ManageEvent = () => {
   });
 
   const eventEnded = event ? new Date(event.event_date) < new Date() : false;
+  const queryClient = useQueryClient();
+
+  const refundMutation = useMutation({
+    mutationFn: async (orderId: string) =>
+      callEdgeFunction("refunds-create", { body: { order_id: orderId, reason: "Refund requested" } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["event-manage-data", id] });
+      queryClient.invalidateQueries({ queryKey: ["event-refunds", id] });
+      toast({ title: "Refund initiated", description: "The refund has been processed." });
+    },
+    onError: (err: any) => {
+      toast({ title: "Refund failed", description: err?.message ?? "Could not process refund", variant: "destructive" });
+    },
+  });
 
   // Search filter
   const filterBySearch = (items: any[]) => {
@@ -110,6 +125,12 @@ const ManageEvent = () => {
   const handleMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !files.length || !user || !id) return;
+
+    const firstError = Array.from(files).map((f) => validateImageFileOrMessage(f)).find(Boolean);
+    if (firstError) {
+      toast({ title: "Invalid file", description: firstError, variant: "destructive" });
+      return;
+    }
 
     setUploading(true);
     try {
@@ -292,28 +313,48 @@ const ManageEvent = () => {
                   || "Unknown";
                 const email = order.profile?.email || "";
                 const paymentType = order.stripe_payment_intent_id ? "Card" : "—";
+                const canRefund = order.status === "confirmed";
                 return (
-                  <button
+                  <div
                     key={order.id}
-                    className="w-full text-left py-4 hover:bg-secondary/50 transition-colors"
-                    onClick={() => { if (order.user_id) navigate(`/user/${order.user_id}`); }}
+                    className="py-4 flex flex-col gap-2"
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-foreground">{name}</p>
-                        <p className="text-sm text-muted-foreground truncate">{email}</p>
-                        <p className="text-sm text-muted-foreground">
-                          Order no.:{order.id.slice(0, 13)}
-                        </p>
+                    <button
+                      className="w-full text-left hover:bg-secondary/50 transition-colors rounded-lg -m-2 p-2"
+                      onClick={() => { if (order.user_id) navigate(`/user/${order.user_id}`); }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-foreground">{name}</p>
+                          <p className="text-sm text-muted-foreground truncate">{email}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Order no.:{order.id.slice(0, 13)}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0 ml-3">
+                          <p className="text-sm text-foreground">
+                            {format(new Date(order.created_at), "d/M/yyyy")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{paymentType}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{order.status}</p>
+                        </div>
                       </div>
-                      <div className="text-right flex-shrink-0 ml-3">
-                        <p className="text-sm text-foreground">
-                          {format(new Date(order.created_at), "d/M/yyyy")}
-                        </p>
-                        <p className="text-sm text-muted-foreground">{paymentType}</p>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                    {canRefund && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="self-end"
+                        disabled={refundMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          refundMutation.mutate(order.id);
+                        }}
+                      >
+                        {refundMutation.isPending ? "Processing..." : "Refund"}
+                      </Button>
+                    )}
+                  </div>
                 );
               })}
             </div>
