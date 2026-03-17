@@ -232,6 +232,19 @@ const Tickets = () => {
     );
   }
 
+  const handleCancelTransfer = (eventId: string) => {
+    const transfer = pendingTransfers.find((t) => t.event_id === eventId);
+    if (!transfer) return;
+    cancelTransfer.mutate(transfer.id, {
+      onSuccess: () => {
+        toast({ title: "Transfer cancelled" });
+      },
+      onError: (err: any) => {
+        toast({ title: "Error", description: err?.message ?? "Failed to cancel", variant: "destructive" });
+      },
+    });
+  };
+
   const renderCard = (t: TicketEvent, isPast: boolean) => (
     <TicketEventCard
       key={t.rsvpId}
@@ -241,8 +254,10 @@ const Tickets = () => {
       eventDate={t.eventDate}
       isPast={isPast}
       ticketStatus={t.ticketStatus}
+      hasPendingTransfer={pendingEventIds.has(t.eventId)}
       onQrClick={() => setQrOpen(true)}
       onTransferClick={() => setTransferEvent({ eventId: t.eventId, title: t.title })}
+      onCancelTransfer={() => handleCancelTransfer(t.eventId)}
     />
   );
 
