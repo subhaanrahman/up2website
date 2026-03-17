@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, ArrowRightLeft } from "lucide-react";
+import { ChevronRight, ArrowRightLeft, Clock, X } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Button } from "@/components/ui/button";
@@ -13,18 +13,11 @@ interface TicketEventCardProps {
   eventDate?: string;
   isPast: boolean;
   ticketStatus: TicketStatus;
+  hasPendingTransfer?: boolean;
   onQrClick?: (e: React.MouseEvent) => void;
   onTransferClick?: (e: React.MouseEvent) => void;
+  onCancelTransfer?: (e: React.MouseEvent) => void;
 }
-
-const statusConfig: Record<TicketStatus, { label: string; className: string }> = {
-  purchased: { label: "Purchased", className: "bg-primary/15 text-primary border-primary/30" },
-  going: { label: "RSVP'd", className: "bg-primary/10 text-primary border-primary/20" },
-  pending: { label: "RSVP Pending", className: "bg-accent/10 text-accent-foreground border-accent/20" },
-  interested: { label: "Interested", className: "bg-secondary text-muted-foreground border-border" },
-  saved: { label: "Saved", className: "bg-secondary text-muted-foreground border-border" },
-  cohost: { label: "Co-host", className: "bg-primary/10 text-primary border-primary/20" },
-};
 
 const TicketEventCard = ({
   rsvpId,
@@ -33,10 +26,12 @@ const TicketEventCard = ({
   eventDate,
   isPast,
   ticketStatus,
+  hasPendingTransfer,
   onQrClick,
   onTransferClick,
+  onCancelTransfer,
 }: TicketEventCardProps) => {
-  const showTransfer = onTransferClick != null && !isPast;
+  const showTransfer = onTransferClick != null && !isPast && !hasPendingTransfer;
 
   return (
     <Link
@@ -60,10 +55,31 @@ const TicketEventCard = ({
           <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
             {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
           </span>
+          {hasPendingTransfer && (
+            <span className="text-xs bg-amber-500/15 px-3 py-1.5 rounded-full text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 border border-amber-500/30">
+              <Clock className="h-3 w-3" />
+              Transfer pending
+            </span>
+          )}
         </div>
       </div>
 
       <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+        {hasPendingTransfer && onCancelTransfer && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onCancelTransfer(e);
+            }}
+            title="Cancel transfer"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
         {showTransfer && (
           <Button
             variant="ghost"
