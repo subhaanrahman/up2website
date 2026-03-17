@@ -103,7 +103,7 @@ const EventDetailsForm = ({
 
       const results: SearchResult[] = [];
       for (const o of organisersData || []) {
-        const org = o as { id: string; display_name: string | null; username: string | null; avatar_url: string | null; owner_id?: string };
+        const org = o as unknown as { id: string; display_name: string | null; username: string | null; avatar_url: string | null; owner_id?: string };
         if (cohostIds.has(org.id) || org.owner_id === user?.id) continue;
         results.push({ id: org.id, type: "organiser", display_name: org.display_name, username: org.username, avatar_url: org.avatar_url, isFriend: false });
       }
