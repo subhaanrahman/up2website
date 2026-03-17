@@ -156,7 +156,7 @@ export function useUserCreatedEvents(userId: string | undefined) {
         const { data: cohostRows, error: cohostEventsError } = await supabase
           .from('events')
           .select('id, title, event_date, cover_image, location, category, status')
-          .in('id', cohostEventIds);
+          .in('id', cohostEventIds as string[]);
         if (cohostEventsError) throw cohostEventsError;
         cohostEvents = (cohostRows || []).map(mapRow).filter((e) => !seen.has(e.id));
       }
