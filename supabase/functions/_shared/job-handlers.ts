@@ -6,6 +6,7 @@
  */
 
 import { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { edgeLog } from "./logger.ts";
 import {
   registerHandler,
   type NotificationSendPayload,
@@ -121,6 +122,7 @@ registerHandler<TicketsIssuePayload>(
 
     const { error } = await sc.from('tickets').insert(tickets);
     if (error) throw new Error(`tickets.issue failed: ${error.message}`);
+    edgeLog('info', 'tickets.issue succeeded', { order_id: payload.order_id, quantity: payload.quantity });
   },
 );
 

@@ -25,6 +25,8 @@ interface TicketingPanelProps {
   soldOutMessage: string;
   setSoldOutMessage: (v: string) => void;
   payoutsReady?: boolean;
+  organiserProfileId?: string;
+  onStartOnboarding?: () => void;
 }
 
 const TicketingPanel = ({
@@ -37,6 +39,8 @@ const TicketingPanel = ({
   soldOutMessageEnabled, setSoldOutMessageEnabled,
   soldOutMessage, setSoldOutMessage,
   payoutsReady = false,
+  organiserProfileId,
+  onStartOnboarding,
 }: TicketingPanelProps) => {
   const [tierModalOpen, setTierModalOpen] = useState(false);
   const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
@@ -66,6 +70,15 @@ const TicketingPanel = ({
           <AlertDescription className="text-sm">
             Set up payouts in your organiser profile before creating paid ticket tiers.
           </AlertDescription>
+          {organiserProfileId && onStartOnboarding && (
+            <Button
+              size="sm"
+              className="mt-3 w-full"
+              onClick={onStartOnboarding}
+            >
+              Set up payouts
+            </Button>
+          )}
         </Alert>
       )}
 
