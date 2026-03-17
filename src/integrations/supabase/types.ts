@@ -1891,10 +1891,6 @@ export type Database = {
             Returns: Json
           }
       rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
-      rsvp_transfer: {
-        Args: { p_event_id: string; p_to_user_id: string }
-        Returns: Json
-      }
     }
     Enums: {
       app_role: "super_admin" | "moderator" | "support"
