@@ -1,6 +1,6 @@
 # Stripe Integration TODO — Up2 Marketplace
 
-> Last updated: 2026-03-13
+> Last updated: 2026-03-16
 
 ## Status
 
@@ -60,13 +60,18 @@ All items implemented:
 - [x] `stripe_account_id` stored on order for audit
 
 ### 2.4 Webhook Updates
-- [ ] Handle `account.updated` — update `organiser_stripe_accounts` when Stripe reports capability changes
+- [x] Handle `account.updated` — update `organiser_stripe_accounts` when Stripe reports capability changes
 - [ ] Handle `payout.paid` / `payout.failed` — optional, for organiser payout status tracking
 
 ### 2.5 UI
-- [x] "Set up payouts" button/flow on organiser profile settings
+- [x] "Set up payouts" button/flow on organiser profile settings (PayoutSetupSection)
 - [x] Payout status indicator on organiser dashboard settings
 - [x] Block paid ticket tier creation if organiser hasn't completed onboarding
+- [x] Onboarding gate + OnboardingRequired page (draft save with free tiers)
+- [x] "Set up payouts" button in TicketingPanel when payouts not ready
+- [x] OrganiserPayoutTask floating pill for organisers with incomplete payouts
+- [x] Stripe Connect return URLs fixed: `/profile/edit-organiser` (was `/organiser/edit`)
+- [x] All touchpoints use shared `useStripeConnectOnboard` hook
 
 ---
 
@@ -129,6 +134,23 @@ Up2 uses **destination charges** because:
 - Idempotency via `payment_events.stripe_event_id` unique constraint
 - Order confirmation only happens via webhook, never client-side
 
+### "Set up payouts" troubleshooting
+
+If "Set up payouts" returns an error, the `stripe-connect-onboard` edge function now returns clearer messages:
+
+| Message | Fix |
+|---------|-----|
+| "Stripe is not configured..." | Add `STRIPE_SECRET_KEY` (starts with `sk_test_` or `sk_live_`) in Supabase Dashboard → Project Settings → Edge Functions → Secrets |
+| "Invalid Stripe API key..." | Ensure the key is the **secret** key (sk_), not the publishable key (pk_) |
+| "Email required for payout setup" | User must have an email on their account (Stripe Express requires it). Add via Settings or use email-based auth |
+| "Authorization check failed..." | Ensure the user is the owner of the organiser profile (`organiser_profiles.owner_id`) |
+
+**Deploying edge function changes:** After editing `supabase/functions/stripe-connect-onboard/index.ts`, deploy with:
+```bash
+supabase functions deploy stripe-connect-onboard
+```
+(or deploy all: `supabase functions deploy`). With `npm run dev`, the frontend runs locally but calls the deployed Supabase edge functions.
+
 ### Future Considerations
 - Multi-currency: currently defaults to ZAR, will need per-event currency
 - Ticket transfers: `tickets` table supports `status = 'transferred'`
@@ -137,4 +159,6 @@ Up2 uses **destination charges** because:
 
 ---
 
-*Last updated: 13 March 2026*
+*Last updated: 16 March 2026*
+
+See `docs/PAYMENT_FLOW.md` for webhook URL, handled events, order lifecycle, and idempotency.

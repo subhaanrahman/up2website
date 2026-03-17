@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useCreateEvent } from "@/hooks/useEventsQuery";
 import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
+import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
 import EventDetailsForm, { type CohostEntry } from "@/components/create-event/EventDetailsForm";
 import TicketingPanel from "@/components/create-event/TicketingPanel";
 import GuestlistPanel from "@/components/create-event/GuestlistPanel";
@@ -73,9 +74,12 @@ const CreateEvent = () => {
   const hasOrganiserProfile = isOrganiser;
 
   // Check if the active organiser has Stripe Connect set up for paid tickets
-  const activeOrgId = isOrganiser ? activeProfile?.id : undefined;
-  const { data: connectStatus } = useStripeConnectStatus(activeOrgId);
+  const orgProfileId = activeProfile?.type === "organiser"
+    ? activeProfile.id
+    : organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
+  const { data: connectStatus } = useStripeConnectStatus(orgProfileId);
   const payoutsReady = connectStatus?.charges_enabled ?? false;
+  const { startOnboarding } = useStripeConnectOnboard(orgProfileId);
 
   useEffect(() => {
     if (loading || profileLoading) return;
@@ -143,10 +147,30 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
-    // Use the active organiser profile if available (business accounts only)
-    const orgProfileId = activeProfile?.type === "organiser"
-      ? activeProfile.id
-      : organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
+    // Gate: paid tiers require Stripe Connect onboarding
+    const hasPaidTiers = ticketTiers.some((t) => t.price > 0);
+    if (hasPaidTiers && !payoutsReady) {
+      navigate("/create/onboarding-required", {
+        state: {
+          fromCreate: true,
+          draftData: {
+            title,
+            description,
+            location,
+            date,
+            time,
+            capacity,
+            coverImage,
+            cohosts,
+            reminders,
+            ticketTiers,
+            organiserProfileId: orgProfileId,
+            publishAt,
+          },
+        },
+      });
+      return;
+    }
 
     try {
       const data = await createEventMutation.mutateAsync({
@@ -170,6 +194,19 @@ const CreateEvent = () => {
       // Save reminder preferences to event_reminders table
       if (reminders.length > 0 && eventId) {
         await eventManagementRepository.insertReminders(eventId, reminders);
+      }
+
+      // Save ticket tiers (map UI format: price in R, to DB: price_cents)
+      if (ticketTiers.length > 0 && eventId) {
+        await eventManagementRepository.upsertTicketTiers(
+          eventId,
+          ticketTiers.map((t) => ({
+            id: t.id,
+            name: t.name,
+            priceCents: Math.round(t.price * 100),
+            availableQuantity: t.availableQuantity,
+          }))
+        );
       }
 
       toast({
@@ -237,6 +274,8 @@ const CreateEvent = () => {
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
               payoutsReady={payoutsReady}
+              organiserProfileId={orgProfileId}
+              onStartOnboarding={startOnboarding}
             />
           )}
           {activeTab === "guestlist" && (

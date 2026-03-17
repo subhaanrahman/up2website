@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, ExternalLink, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { callEdgeFunction } from "@/infrastructure/api-client";
-import { toast } from "@/hooks/use-toast";
+import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
+import { useToast } from "@/hooks/use-toast";
 
 interface PayoutSetupSectionProps {
   organiserProfileId: string;
@@ -18,10 +19,11 @@ interface ConnectStatus {
 }
 
 const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionProps) => {
+  const { toast } = useToast();
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [onboarding, setOnboarding] = useState(false);
   const [openingDashboard, setOpeningDashboard] = useState(false);
+  const { startOnboarding, isOnboarding } = useStripeConnectOnboard(organiserProfileId);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -51,19 +53,6 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
       fetchStatus();
     }
   }, [fetchStatus]);
-
-  const handleStartOnboarding = async () => {
-    setOnboarding(true);
-    try {
-      const result = await callEdgeFunction<{ url: string }>('stripe-connect-onboard', {
-        body: { organiser_profile_id: organiserProfileId },
-      });
-      window.location.href = result.url;
-    } catch (err: any) {
-      toast({ title: "Error", description: err?.message || "Failed to start payout setup", variant: "destructive" });
-      setOnboarding(false);
-    }
-  };
 
   const handleOpenDashboard = async () => {
     setOpeningDashboard(true);
@@ -118,8 +107,8 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
             Set up payouts to receive money from ticket sales. You'll need to verify your identity and add a bank account.
           </p>
           {isOwner ? (
-            <Button onClick={handleStartOnboarding} disabled={onboarding} className="w-full">
-              {onboarding ? (
+            <Button onClick={() => startOnboarding()} disabled={isOnboarding} className="w-full">
+              {isOnboarding ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Redirecting...
                 </>
@@ -142,8 +131,8 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
           </p>
           {isOwner && (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleStartOnboarding} disabled={onboarding} className="flex-1">
-                {onboarding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue Setup"}
+              <Button variant="outline" onClick={() => startOnboarding()} disabled={isOnboarding} className="flex-1">
+                {isOnboarding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continue Setup"}
               </Button>
               <Button variant="ghost" size="icon" onClick={() => { setLoading(true); fetchStatus(); }}>
                 <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />

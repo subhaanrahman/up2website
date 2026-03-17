@@ -1,5 +1,6 @@
 import { ReactNode, useRef, useEffect, createContext, useContext } from "react";
 import DesktopSidebar from "@/components/DesktopSidebar";
+import OrganiserPayoutTask from "@/components/OrganiserPayoutTask";
 
 const PhoneFrameContext = createContext<HTMLDivElement | null>(null);
 
@@ -36,6 +37,7 @@ const PhoneFrame = ({ children }: PhoneFrameProps) => {
           className="w-full md:max-w-[680px] min-h-screen bg-background md:border-x md:border-border/50 md:mt-0 md:rounded-none md:shadow-2xl"
         >
           {children}
+          <OrganiserPayoutTask />
         </div>
       </div>
     </div>

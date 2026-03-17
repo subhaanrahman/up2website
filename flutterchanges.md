@@ -2,6 +2,51 @@
 
 <!-- New entries -->
 
+### 2026-03-16 — Set up payouts: error handling and debugging
+
+**Files changed:** `supabase/functions/stripe-connect-onboard/index.ts`, `docs/STRIPE_TODO.md`
+
+**What changed (React/TS):**
+- stripe-connect-onboard: early validation for STRIPE_SECRET_KEY; email check for new Express accounts; JSON body parse handling; RPC error handling; getUserFacingError() returns actionable messages (Stripe not configured, invalid key, email required, etc.) instead of generic "Internal server error"
+- STRIPE_TODO: added "Set up payouts troubleshooting" section (STRIPE_SECRET_KEY, deploy steps, email requirement)
+
+**Flutter migration notes:**
+- No new Flutter migration work — edge function only. Flutter app calling `stripe-connect-onboard` will now receive clearer error messages in the API response.
+- When replicating in Dart: surface the `error` field from the edge function response in the UI; ensure users add email before payout setup if using phone-only auth.
+
+### 2026-03-16 — Payment webhook discipline (CLEANUP §6)
+
+**Files changed:** `supabase/functions/stripe-webhook/index.ts`, `supabase/functions/_shared/job-handlers.ts`, `docs/PAYMENT_FLOW.md`, `docs/CLEANUP_ARCHITECTURE_TODO.md`
+
+**What changed (React/TS):**
+- stripe-webhook: check `payment_events.insert` result; return 500 on failure so Stripe retries; general errors in try block now return 500 for retry
+- job-handlers: added `edgeLog` success log for `tickets.issue` (order_id, quantity)
+- PAYMENT_FLOW.md: added "Queue and Follow-Up Jobs" section (maxAttempts=3, exhaustion behavior, manual recovery); clarified webhook retry (500 on critical failures)
+- CLEANUP_ARCHITECTURE_TODO: §6 marked implemented with summary
+
+**Flutter migration notes:**
+- No new Flutter migration work — backend/edge function and docs only. Flutter app continues to use same checkout flow and Stripe webhook endpoint.
+- If building Flutter checkout: ensure `stripe-webhook` env/config matches; order confirmation remains webhook-driven, not client-driven.
+
+### 2026-03-16 — Payment onboarding touchpoints (Stripe Connect)
+
+**Files changed:** `src/pages/OnboardingRequired.tsx`, `src/components/create-event/TicketingPanel.tsx`, `src/pages/CreateEvent.tsx`, `src/components/OrganiserPayoutTask.tsx` (new), `src/components/PhoneFrame.tsx`, `src/components/PayoutSetupSection.tsx`, `supabase/functions/stripe-connect-onboard/index.ts`, `docs/PAYMENT_FLOW.md` (new), `docs/STRIPE_TODO.md`, `docs/BACKEND_TODO.md`
+
+**What changed (React/TS):**
+- Fixed OnboardingRequired: pass `organiserProfileId` to `useStripeConnectOnboard`, add loading states for "Set up payouts" and "Save as draft".
+- Stripe Connect return URLs: `/organiser/edit` → `/profile/edit-organiser` in `stripe-connect-onboard`.
+- TicketingPanel: added "Set up payouts" button in the payouts-not-ready alert; CreateEvent passes `organiserProfileId` and `onStartOnboarding` from `useStripeConnectOnboard`.
+- New OrganiserPayoutTask: floating collapsible pill for organisers with incomplete payouts; rendered in PhoneFrame.
+- PayoutSetupSection refactored to use `useStripeConnectOnboard` instead of inline `callEdgeFunction`.
+- All touchpoints (PayoutSetupSection, OnboardingRequired, TicketingPanel, OrganiserPayoutTask) use the same `useStripeConnectOnboard` flow.
+- Added `docs/PAYMENT_FLOW.md` with webhook URL, handled events, order lifecycle, idempotency, retry behavior.
+
+**Flutter migration notes:**
+- Use a shared Stripe Connect onboarding flow: call `stripe-connect-onboard` edge function, redirect to returned URL, return to `/profile/edit-organiser?stripe_onboard=complete`.
+- Replicate touchpoints: Edit Organiser Profile (PayoutSetupSection), OnboardingRequired page (`/create/onboarding-required`), TicketingPanel "Set up payouts" button, floating OrganiserPayoutTask when `!charges_enabled`.
+- Route: `/create/onboarding-required` — shown when user tries to create paid event without onboarding; options: "Set up payouts" (redirect) or "Save as draft" (creates event with free tiers only).
+- `useStripeConnectStatus` and `useStripeConnectOnboard` hooks — replicate in Dart with `supabase_flutter` functions.invoke for `stripe-connect-status` and `stripe-connect-onboard`.
+
 ### 2026-03-17 — Fix group chat and DM messages not appearing after send
 
 **Files changed:** `src/pages/MessageThread.tsx`, `src/pages/DmThread.tsx`, `supabase/migrations/20260317120000_group_chat_messages_realtime.sql`

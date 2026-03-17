@@ -12,6 +12,7 @@ import Index from "./pages/Index";
 import Events from "./pages/Events";
 import EventDetail from "./pages/EventDetail";
 import CreateEvent from "./pages/CreateEvent";
+import OnboardingRequired from "./pages/OnboardingRequired";
 import EditEvent from "./pages/EditEvent";
 import EventGuests from "./pages/EventGuests";
 import Tickets from "./pages/Tickets";
@@ -99,6 +100,7 @@ const App = () => (
               <Route path="/profile/organiser-team" element={<ProtectedRoute><OrganiserTeam /></ProtectedRoute>} />
               <Route path="/profile/friends" element={<ProtectedRoute><FriendsFollowing /></ProtectedRoute>} />
               <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
+              <Route path="/create/onboarding-required" element={<ProtectedRoute><OnboardingRequired /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/settings/notifications" element={<ProtectedRoute><NotificationsSettings /></ProtectedRoute>} />

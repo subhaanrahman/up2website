@@ -44,19 +44,21 @@ Single reference for logging, DB boundary, repositories, edge writes, MOM, and c
 
 ---
 
-## 6. Payment / webhook discipline
+## 6. Payment / webhook discipline ✅ Implemented
+
+**Implementation summary:** `docs/PAYMENT_FLOW.md` documents webhook URL, handled events, order lifecycle, ticket issuance path, idempotency, and retry behavior. `stripe-webhook` is the single entry for Stripe; `payment_events` idempotency with `stripe_event_id`; returns 500 on `payment_events.insert` failure so Stripe retries (idempotency ensures no double-processing). Order lifecycle steps use `edgeLog` with `requestId`; `tickets.issue` handler logs success per order. Queue uses `maxAttempts: 3`; exhaustion logs and discards; manual recovery for edge cases noted in PAYMENT_FLOW.
 
 **Goal:** Explicit ownership of order lifecycle, ticket issuance, and payment confirmation; logging and error handling are production-grade.
 
-- [ ] **6.1** **Document**
+- [x] **6.1** **Document**
   - Document in this repo or ARCHITECTURE: webhook URL, which events are handled, order states, ticket issuance path, and payment confirmation path.
-- [ ] **6.2** **Webhook**
+- [x] **6.2** **Webhook**
   - Ensure `stripe-webhook` is the single entry for Stripe; idempotency (e.g. payment_events) is used; failures log with correlation ID and retry policy is clear.
-- [ ] **6.3** **Order lifecycle**
+- [x] **6.3** **Order lifecycle**
   - Reserve → PaymentIntent → confirmPayment → webhook → order confirmed → tickets issued (via queue). Ensure every step is logged and errors are captured.
-- [ ] **6.4** **Ticket issuance**
+- [x] **6.4** **Ticket issuance**
   - Ticket creation lives in queue job (e.g. `tickets.issue`) triggered by webhook; no client path that creates tickets for paid orders. Log success/failure per order.
-- [ ] **6.5** **Retries**
+- [x] **6.5** **Retries**
   - Webhook follow-up work (tickets, RSVP, loyalty) goes through the queue with retries; document max attempts and failure behavior (e.g. alert, manual fix).
 
 **Success:** One documented flow; webhook and order/ticket paths logged and retried; no silent failures.
@@ -109,10 +111,10 @@ Single reference for logging, DB boundary, repositories, edge writes, MOM, and c
 3. **Logging & errors** ✅ — request/service/edge logging, correlation IDs, centralized error capture, Sentry, standardized error envelopes.
 4. **Edge for sensitive writes** ✅ — notifications, group membership, event media, organiser members, moderation behind Edge.
 5. **Actor context** — all organiser/personal writes carry actor_type / actor_profile_id / owner_user_id where relevant.
-6. **Payment / webhook** — documented flow, idempotency, logging, retries for orders and ticket issuance.
+6. **Payment / webhook** ✅ — documented flow, idempotency, logging, retries for orders and ticket issuance.
 7. **Feed via service/repo** — all feed reads through one service/repo layer; clear public vs authenticated behaviour.
 8. **Cloud Tasks** — replace in-process queue with Cloud Tasks; use for retries, delays, webhook follow-ups, cleanup; defer Pub/Sub.
 
 ---
 
-*Last updated: 2026-03-16*
+*Last updated: 2026-03-17*

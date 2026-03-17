@@ -5,6 +5,35 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
+function getUserFacingError(err: unknown, requestId: string): string {
+  const errStr = String(err);
+  const msg = err instanceof Error ? err.message : errStr;
+  // Stripe key missing or wrong format (e.g. pk_ instead of sk_)
+  if (!Deno.env.get('STRIPE_SECRET_KEY')?.startsWith('sk_')) {
+    return 'Stripe is not configured. Add STRIPE_SECRET_KEY (starts with sk_) to Supabase Dashboard → Project Settings → Edge Functions.';
+  }
+  // Stripe API key errors
+  if (errStr.includes('Invalid API Key') || errStr.includes('No API key') || msg.includes('invalid') && msg.toLowerCase().includes('key')) {
+    return 'Invalid Stripe API key. Use a secret key (sk_test_ or sk_live_) in Supabase Edge Function secrets.';
+  }
+  // Email required for Express account
+  if (msg.toLowerCase().includes('email')) {
+    return 'Email required for payout setup. Please add an email to your account in Settings.';
+  }
+  // DB RPC or migration issues
+  if (msg.includes('function') && msg.includes('does not exist')) {
+    return 'Database configuration error. Ensure migrations are applied.';
+  }
+  if (errStr.includes('RPC') || errStr.includes('is_organiser_owner')) {
+    return 'Authorization check failed. Ensure you are the owner of this organiser profile.';
+  }
+  // Surface Stripe error message when safe (e.g. "Account already exists")
+  if (err instanceof Error && err.message && err.message.length < 120 && !err.message.includes('sk_')) {
+    return `Payout setup failed: ${err.message}. Request ID: ${requestId}`;
+  }
+  return `Payout setup failed. Request ID: ${requestId} — share this when contacting support.`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -13,6 +42,11 @@ Deno.serve(async (req) => {
   const requestId = getRequestId(req);
 
   try {
+    if (!Deno.env.get('STRIPE_SECRET_KEY')?.trim()) {
+      edgeLog('error', 'STRIPE_SECRET_KEY not set', { requestId });
+      return errorResponse(500, 'Stripe is not configured. Add STRIPE_SECRET_KEY to Supabase Dashboard → Project Settings → Edge Functions.', { requestId });
+    }
+
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return errorResponse(401, 'Not authenticated', { requestId });
@@ -32,8 +66,13 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('stripe-connect-onboard', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    const body = await req.json();
-    const { organiser_profile_id } = body;
+    let body: { organiser_profile_id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse(400, 'Invalid request body', { requestId });
+    }
+    const { organiser_profile_id } = body || {};
 
     if (!organiser_profile_id) {
       return errorResponse(400, 'organiser_profile_id is required', { requestId });
@@ -44,11 +83,15 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Verify user is owner or member of this organiser profile
-    const { data: isOwner } = await serviceClient.rpc('is_organiser_owner', {
+    const { data: isOwner, error: rpcError } = await serviceClient.rpc('is_organiser_owner', {
       p_organiser_profile_id: organiser_profile_id,
       p_user_id: user.id,
     });
+
+    if (rpcError) {
+      edgeLog('error', 'is_organiser_owner RPC failed', { requestId, error: String(rpcError) });
+      return errorResponse(500, 'Authorization check failed. Ensure you are the owner of this organiser profile. Request ID: ' + requestId, { requestId });
+    }
 
     if (!isOwner) {
       return errorResponse(403, 'Only the owner can set up payouts', { requestId });
@@ -70,6 +113,9 @@ Deno.serve(async (req) => {
     if (existing) {
       stripeAccountId = existing.stripe_account_id;
     } else {
+      if (!user.email?.trim()) {
+        return errorResponse(400, 'Email required for payout setup. Please add an email to your account in Settings.', { requestId });
+      }
       const { data: orgProfile } = await serviceClient
         .from('organiser_profiles')
         .select('display_name, username')
@@ -109,14 +155,15 @@ Deno.serve(async (req) => {
     const origin = req.headers.get('origin') || 'https://social-soiree-site.lovable.app';
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${origin}/organiser/edit`,
-      return_url: `${origin}/organiser/edit?stripe_onboard=complete`,
+      refresh_url: `${origin}/profile/edit-organiser`,
+      return_url: `${origin}/profile/edit-organiser?stripe_onboard=complete`,
       type: 'account_onboarding',
     });
 
     return successResponse({ url: accountLink.url }, requestId);
   } catch (err) {
     edgeLog('error', 'stripe-connect-onboard error', { requestId, error: String(err) });
-    return errorResponse(500, 'Internal server error', { requestId });
+    const msg = getUserFacingError(err, requestId);
+    return errorResponse(500, msg, { requestId });
   }
 });
