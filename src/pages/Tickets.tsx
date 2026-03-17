@@ -13,6 +13,8 @@ import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
 import ProfileQrModal from "@/components/ProfileQrModal";
 import TransferTicketModal from "@/components/TransferTicketModal";
+import { usePendingTransfers, useCancelTransfer } from "@/hooks/usePendingTransfers";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
@@ -130,8 +132,17 @@ const Tickets = () => {
   const { user } = useAuth();
   const { isOrganiser, activeProfile } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
+  const { toast } = useToast();
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Pending transfers
+  const { data: pendingTransfers = [] } = usePendingTransfers(user?.id);
+  const cancelTransfer = useCancelTransfer();
+  const pendingEventIds = useMemo(
+    () => new Set(pendingTransfers.map((t) => t.event_id)),
+    [pendingTransfers]
+  );
 
   // New separated hooks
   const { data: plannedEvents = [], isLoading: plansLoading, refetch: refetchPlans } = useUserPlannedEvents(user?.id);
@@ -221,6 +232,19 @@ const Tickets = () => {
     );
   }
 
+  const handleCancelTransfer = (eventId: string) => {
+    const transfer = pendingTransfers.find((t) => t.event_id === eventId);
+    if (!transfer) return;
+    cancelTransfer.mutate(transfer.id, {
+      onSuccess: () => {
+        toast({ title: "Transfer cancelled" });
+      },
+      onError: (err: any) => {
+        toast({ title: "Error", description: err?.message ?? "Failed to cancel", variant: "destructive" });
+      },
+    });
+  };
+
   const renderCard = (t: TicketEvent, isPast: boolean) => (
     <TicketEventCard
       key={t.rsvpId}
@@ -230,8 +254,10 @@ const Tickets = () => {
       eventDate={t.eventDate}
       isPast={isPast}
       ticketStatus={t.ticketStatus}
+      hasPendingTransfer={pendingEventIds.has(t.eventId)}
       onQrClick={() => setQrOpen(true)}
       onTransferClick={() => setTransferEvent({ eventId: t.eventId, title: t.title })}
+      onCancelTransfer={() => handleCancelTransfer(t.eventId)}
     />
   );
 

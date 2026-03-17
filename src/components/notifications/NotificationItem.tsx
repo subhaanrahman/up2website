@@ -1,13 +1,16 @@
 import { useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Calendar, Users, Ticket, Heart, UserPlus, Star, Share2, Repeat2, Trophy, Trash2 } from "lucide-react";
+import { Bell, Calendar, Users, Ticket, Heart, UserPlus, Star, Share2, Repeat2, Trophy, Trash2, Check, X, Loader2 } from "lucide-react";
 import { useMarkNotificationRead, type AppNotification } from "@/hooks/useNotificationsQuery";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notificationsRepository } from "@/features/notifications/repositories/notificationsRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
+import { useRespondToTransfer } from "@/hooks/usePendingTransfers";
+import { useToast } from "@/hooks/use-toast";
 
 const iconMap: Record<string, typeof Bell> = {
   shared_event: Share2,
@@ -23,10 +26,24 @@ const iconMap: Record<string, typeof Bell> = {
   friend_request: UserPlus,
   suggested_account: Star,
   gamification_levelup: Trophy,
+  ticket_transfer_request: Ticket,
+  ticket_transfer_accepted: Ticket,
+  ticket_transfer_declined: Ticket,
   general: Bell,
 };
 
 const DISMISS_THRESHOLD = 80;
+
+/** Extract transfer_id from a notification link like /tickets?transfer_id=xxx */
+function extractTransferId(link: string | null): string | null {
+  if (!link) return null;
+  try {
+    const url = new URL(link, "https://placeholder.com");
+    return url.searchParams.get("transfer_id");
+  } catch {
+    return null;
+  }
+}
 
 const NotificationItem = ({ notification }: { notification: AppNotification }) => {
   const markRead = useMarkNotificationRead();
@@ -34,7 +51,9 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
+  const { toast } = useToast();
   const activeOrgId = activeProfile?.type === "organiser" ? activeProfile.id : null;
+  const respondToTransfer = useRespondToTransfer();
 
   const dismiss = useMutation({
     mutationFn: async (id: string) => {
@@ -50,6 +69,9 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
   const [dismissed, setDismissed] = useState(false);
   const [height, setHeight] = useState<number | undefined>(undefined);
   const itemRef = useRef<HTMLDivElement>(null);
+
+  const isTransferRequest = notification.type === "ticket_transfer_request";
+  const transferId = isTransferRequest ? extractTransferId(notification.link) : null;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startXRef.current = e.touches[0].clientX;
@@ -78,15 +100,42 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
 
   const handleClick = () => {
     if (Math.abs(translateX) > 5) return;
+    if (isTransferRequest) return; // Don't navigate for transfer requests — use buttons
     if (!notification.read) markRead.mutate(notification.id);
     if (notification.link) {
-      // Post notifications: navigate to home feed since there's no post detail page
       if (notification.link.startsWith("/post/")) {
         navigate("/");
       } else {
         navigate(notification.link);
       }
     }
+  };
+
+  const handleTransferResponse = (accept: boolean) => {
+    if (!transferId) return;
+    if (!notification.read) markRead.mutate(notification.id);
+    respondToTransfer.mutate(
+      { transferId, accept },
+      {
+        onSuccess: () => {
+          toast({
+            title: accept ? "Transfer accepted" : "Transfer declined",
+            description: accept
+              ? "The ticket has been transferred to you."
+              : "You declined the ticket transfer.",
+          });
+          // Remove the notification after responding
+          dismiss.mutate(notification.id);
+        },
+        onError: (err: any) => {
+          toast({
+            title: "Error",
+            description: err?.message ?? "Failed to respond to transfer",
+            variant: "destructive",
+          });
+        },
+      }
+    );
   };
 
   const revealRatio = Math.min(1, Math.abs(translateX) / DISMISS_THRESHOLD);
@@ -121,7 +170,9 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
           transform: `translateX(${translateX}px)`,
           transition: dragging ? "none" : "transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)",
         }}
-        className={`flex gap-3 p-4 rounded-xl cursor-pointer ${
+        className={`flex gap-3 p-4 rounded-xl ${
+          isTransferRequest ? "cursor-default" : "cursor-pointer"
+        } ${
           notification.read ? "bg-card" : "bg-primary/5 border border-primary/20"
         }`}
       >
@@ -151,6 +202,41 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
           <p className="text-xs text-muted-foreground mt-1">
             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
           </p>
+
+          {/* Accept / Decline buttons for transfer requests */}
+          {isTransferRequest && transferId && (
+            <div className="flex items-center gap-2 mt-3">
+              <Button
+                size="sm"
+                className="h-8 px-4 gap-1.5"
+                disabled={respondToTransfer.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTransferResponse(true);
+                }}
+              >
+                {respondToTransfer.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5" />
+                )}
+                Accept
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-4 gap-1.5"
+                disabled={respondToTransfer.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleTransferResponse(false);
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Decline
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

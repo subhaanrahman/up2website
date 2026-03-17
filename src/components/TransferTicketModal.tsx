@@ -83,13 +83,13 @@ export default function TransferTicketModal({
       });
       if (rpcError) throw rpcError;
       toast({
-        title: "Ticket transferred",
-        description: `Your ticket has been transferred to ${selectedFriend.displayName}.`,
+        title: "Transfer request sent",
+        description: `${selectedFriend.displayName} will be notified to accept or decline.`,
       });
       onTransferred();
       onOpenChange(false);
     } catch (err: any) {
-      const message = err?.message ?? "Failed to transfer ticket";
+      const message = err?.message ?? "Failed to send transfer request";
       setError(message);
       toast({
         title: "Transfer failed",
@@ -175,7 +175,7 @@ export default function TransferTicketModal({
           <>
             <div className="py-4">
               <p className="text-sm text-muted-foreground mb-4">
-                Transfer this ticket to:
+                Send a transfer request to:
               </p>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                 <Avatar className="h-12 w-12">
@@ -191,6 +191,9 @@ export default function TransferTicketModal({
                   </p>
                 </div>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                They'll receive a notification and can accept or decline the transfer.
+              </p>
               {error && (
                 <p className="mt-3 text-sm text-destructive">{error}</p>
               )}
@@ -210,10 +213,10 @@ export default function TransferTicketModal({
                 {transferring ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Transferring...
+                    Sending...
                   </>
                 ) : (
-                  "Confirm transfer"
+                  "Send request"
                 )}
               </Button>
             </DialogFooter>

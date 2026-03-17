@@ -1576,6 +1576,44 @@ export type Database = {
           },
         ]
       }
+      ticket_transfers: {
+        Row: {
+          created_at: string
+          event_id: string
+          from_user_id: string
+          id: string
+          responded_at: string | null
+          status: string
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          from_user_id: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          from_user_id?: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_transfers_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           checked_in_at: string | null
@@ -1893,6 +1931,11 @@ export type Database = {
       rsvp_leave: { Args: { p_event_id: string }; Returns: Json }
       rsvp_transfer: {
         Args: { p_event_id: string; p_to_user_id: string }
+        Returns: Json
+      }
+      rsvp_transfer_cancel: { Args: { p_transfer_id: string }; Returns: Json }
+      rsvp_transfer_respond: {
+        Args: { p_accept: boolean; p_transfer_id: string }
         Returns: Json
       }
     }
