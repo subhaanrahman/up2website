@@ -132,8 +132,17 @@ const Tickets = () => {
   const { user } = useAuth();
   const { isOrganiser, activeProfile } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
+  const { toast } = useToast();
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Pending transfers
+  const { data: pendingTransfers = [] } = usePendingTransfers(user?.id);
+  const cancelTransfer = useCancelTransfer();
+  const pendingEventIds = useMemo(
+    () => new Set(pendingTransfers.map((t) => t.event_id)),
+    [pendingTransfers]
+  );
 
   // New separated hooks
   const { data: plannedEvents = [], isLoading: plansLoading, refetch: refetchPlans } = useUserPlannedEvents(user?.id);
