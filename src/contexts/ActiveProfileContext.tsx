@@ -158,7 +158,7 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
 
   // Validate organiser profile selection after profiles are loaded
   useEffect(() => {
-    if (isLoading || !user || organiserProfiles.length === 0) return;
+    if (isLoading || !user) return;
 
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return;

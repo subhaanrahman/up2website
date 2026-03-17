@@ -29,12 +29,16 @@ function mapRow(r: any): UserEvent {
  * Does NOT include events the user created (unless they also RSVP'd).
  */
 export function useUserPlannedEvents(userId: string | undefined) {
+  const { activeProfile } = useActiveProfile();
+  const isOrganiser = activeProfile?.type === 'organiser';
+  const profileId = activeProfile?.id;
+
   return useQuery({
-    queryKey: ['user-planned-events', userId],
+    queryKey: ['user-planned-events', userId, profileId, isOrganiser],
     queryFn: async () => {
       if (!userId) return [];
 
-      const [rsvpResult, orderResult, savedResult, cohostResult] = await Promise.all([
+      const [rsvpResult, orderResult, savedResult, cohostResult, hostedResult] = await Promise.all([
         supabase
           .from('rsvps')
           .select('event_id, status, events (id, title, event_date, cover_image, location, category, status)')
@@ -49,30 +53,26 @@ export function useUserPlannedEvents(userId: string | undefined) {
           .from('saved_events')
           .select('event_id, events:event_id (id, title, event_date, cover_image, location, category, status)')
           .eq('user_id', userId),
-        supabase
-          .from('event_cohosts')
-          .select('event_id')
-          .eq('user_id', userId),
+        supabase.from('event_cohosts').select('event_id').eq('user_id', userId),
+        profileId
+          ? (isOrganiser
+              ? supabase.from('events').select('id').eq('organiser_profile_id', profileId)
+              : supabase.from('events').select('id').eq('host_id', userId))
+          : Promise.resolve({ data: [], error: null } as any),
       ]);
 
       const seen = new Set<string>();
       const results: (UserEvent & { ticketStatus: string })[] = [];
 
       const purchasedIds = new Set((orderResult.data || []).map((o) => o.event_id));
-
-      // Co-host event IDs: fetch event rows for merge
-      const cohostEventIds = [...new Set((cohostResult.data || []).map((r) => r.event_id))];
-      let cohostEvents: any[] = [];
-      if (cohostEventIds.length > 0) {
-        const { data: cohostEventRows } = await supabase
-          .from('events')
-          .select('id, title, event_date, cover_image, location, category, status')
-          .in('id', cohostEventIds);
-        cohostEvents = cohostEventRows || [];
-      }
+      const excludedEventIds = new Set<string>([
+        ...new Set((cohostResult.data || []).map((r: any) => r.event_id)),
+        ...new Set((hostedResult.data || []).map((r: any) => r.id)),
+      ]);
 
       // RSVPs first
       for (const r of rsvpResult.data || []) {
+        if (excludedEventIds.has(r.event_id)) continue;
         if (seen.has(r.event_id)) continue;
         seen.add(r.event_id);
         const ev = r.events as any;
@@ -84,6 +84,7 @@ export function useUserPlannedEvents(userId: string | undefined) {
 
       // Purchased without RSVP
       for (const o of orderResult.data || []) {
+        if (excludedEventIds.has(o.event_id)) continue;
         if (seen.has(o.event_id)) continue;
         seen.add(o.event_id);
         const ev = o.events as any;
@@ -93,18 +94,12 @@ export function useUserPlannedEvents(userId: string | undefined) {
 
       // Saved without RSVP or purchase
       for (const s of savedResult.data || []) {
+        if (excludedEventIds.has(s.event_id)) continue;
         if (seen.has(s.event_id)) continue;
         seen.add(s.event_id);
         const ev = s.events as any;
         if (!ev) continue;
         results.push({ ...mapRow(ev), ticketStatus: 'saved' });
-      }
-
-      // Co-hosted events (not already in RSVP/order/saved)
-      for (const ev of cohostEvents) {
-        if (seen.has(ev.id)) continue;
-        seen.add(ev.id);
-        results.push({ ...mapRow(ev), ticketStatus: 'cohost' });
       }
 
       return results;
@@ -125,7 +120,7 @@ export function useUserCreatedEvents(userId: string | undefined) {
   const profileId = activeProfile?.id;
 
   return useQuery({
-    queryKey: ['user-created-events', profileId, isOrganiser],
+    queryKey: ['user-created-events', userId, profileId, isOrganiser],
     queryFn: async () => {
       if (!profileId) return [];
 
@@ -137,12 +132,39 @@ export function useUserCreatedEvents(userId: string | undefined) {
       if (isOrganiser) {
         query = query.eq('organiser_profile_id', profileId);
       } else {
-        query = query.eq('host_id', profileId).is('organiser_profile_id', null);
+        // host_id references profiles.user_id (i.e. the auth user id).
+        // Include both personal-hosted and organiser-hosted events.
+        query = query.eq('host_id', userId as string);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data || []).map(mapRow);
+      const [createdResult, cohostResult] = await Promise.all([
+        query,
+        userId
+          ? supabase.from('event_cohosts').select('event_id').eq('user_id', userId)
+          : Promise.resolve({ data: [], error: null } as any),
+      ]);
+
+      if (createdResult.error) throw createdResult.error;
+      if (cohostResult.error) throw cohostResult.error;
+
+      const created = (createdResult.data || []).map(mapRow);
+      const seen = new Set(created.map((e) => e.id));
+
+      const cohostEventIds = [...new Set((cohostResult.data || []).map((r: any) => r.event_id))];
+      let cohostEvents: UserEvent[] = [];
+      if (cohostEventIds.length > 0) {
+        const { data: cohostRows, error: cohostEventsError } = await supabase
+          .from('events')
+          .select('id, title, event_date, cover_image, location, category, status')
+          .in('id', cohostEventIds);
+        if (cohostEventsError) throw cohostEventsError;
+        cohostEvents = (cohostRows || []).map(mapRow).filter((e) => !seen.has(e.id));
+      }
+
+      const merged = [...created, ...cohostEvents].sort(
+        (a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime()
+      );
+      return merged;
     },
     enabled: !!userId && !!profileId,
   });
