@@ -147,18 +147,21 @@ export function useUserCreatedEvents(userId: string | undefined) {
       if (createdResult.error) throw createdResult.error;
       if (cohostResult.error) throw cohostResult.error;
 
-      const created = (createdResult.data || []).map(mapRow);
+      const created = (createdResult.data || []).map((r) => ({ ...mapRow(r), isHost: true }));
       const seen = new Set(created.map((e) => e.id));
 
       const cohostEventIds = [...new Set((cohostResult.data || []).map((r: any) => r.event_id))];
-      let cohostEvents: UserEvent[] = [];
+      let cohostEvents: (UserEvent & { isHost: boolean })[] = [];
       if (cohostEventIds.length > 0) {
         const { data: cohostRows, error: cohostEventsError } = await supabase
           .from('events')
           .select('id, title, event_date, cover_image, location, category, status')
           .in('id', cohostEventIds);
         if (cohostEventsError) throw cohostEventsError;
-        cohostEvents = (cohostRows || []).map(mapRow).filter((e) => !seen.has(e.id));
+        cohostEvents = (cohostRows || [])
+          .map(mapRow)
+          .filter((e) => !seen.has(e.id))
+          .map((e) => ({ ...e, isHost: false }));
       }
 
       const merged = [...created, ...cohostEvents].sort(

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } fr
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Calendar, Plus, ChevronRight } from "lucide-react";
+import { Search, Calendar, Plus, ChevronRight, Settings, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useProfile } from "@/hooks/useProfileQuery";
@@ -95,32 +95,51 @@ function TimeDivider({ label, prominent = false }: { label: string; prominent?: 
 }
 
 /* ── Created event card ── */
-function CreatedEventCard({ event, isPast }: { event: any; isPast: boolean }) {
+function CreatedEventCard({ event, isPast, isHost }: { event: any; isPast: boolean; isHost?: boolean }) {
   return (
-    <Link
-      to={`/events/${event.id}`}
+    <div
       className={`flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
     >
-      <div className="w-28 h-28 flex-shrink-0">
-        {event.coverImage ? (
-          <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
-        ) : (
-          <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-        )}
-      </div>
-      <div className="flex-1 px-4 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
-            {format(new Date(event.eventDate), "EEE M/d - ha")}
-          </span>
-          {event.status === "draft" && (
-            <span className="text-xs bg-accent/20 text-accent-foreground px-2 py-1 rounded-full font-medium">Draft</span>
+      <Link to={`/events/${event.id}`} className="flex flex-1 items-center min-w-0">
+        <div className="w-28 h-28 flex-shrink-0">
+          {event.coverImage ? (
+            <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
+          ) : (
+            <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
           )}
         </div>
-      </div>
+        <div className="flex-1 px-4 py-3 min-w-0">
+          <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">{event.title}</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
+              {format(new Date(event.eventDate), "EEE M/d - ha")}
+            </span>
+            {event.status === "draft" && (
+              <span className="text-xs bg-accent/20 text-accent-foreground px-2 py-1 rounded-full font-medium">Draft</span>
+            )}
+          </div>
+        </div>
+      </Link>
+      {isHost && (
+        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Link
+            to={`/events/${event.id}/edit`}
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Edit event"
+          >
+            <Pencil className="h-4 w-4" />
+          </Link>
+          <Link
+            to={`/events/${event.id}/manage`}
+            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Event settings"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
       <ChevronRight className="h-5 w-5 text-muted-foreground mr-3 flex-shrink-0" />
-    </Link>
+    </div>
   );
 }
 
@@ -332,7 +351,7 @@ const Tickets = () => {
           <>
             <TimeDivider label="Upcoming" />
             {upcomingCreated.map((e) => (
-              <CreatedEventCard key={e.id} event={e} isPast={false} />
+              <CreatedEventCard key={e.id} event={e} isPast={false} isHost={(e as any).isHost} />
             ))}
           </>
         )}
@@ -340,7 +359,7 @@ const Tickets = () => {
           <>
             <TimeDivider label="Past" prominent />
             {pastCreated.map((e) => (
-              <CreatedEventCard key={e.id} event={e} isPast={true} />
+              <CreatedEventCard key={e.id} event={e} isPast={true} isHost={(e as any).isHost} />
             ))}
           </>
         )}
