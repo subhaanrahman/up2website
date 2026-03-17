@@ -13,6 +13,8 @@ import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
 import ProfileQrModal from "@/components/ProfileQrModal";
 import TransferTicketModal from "@/components/TransferTicketModal";
+import { usePendingTransfers, useCancelTransfer } from "@/hooks/usePendingTransfers";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
