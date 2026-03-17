@@ -29,9 +29,12 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
 
 export const eventsRepository = {
   async list(options?: { limit?: number }): Promise<EventEntity[]> {
+    const now = new Date().toISOString();
     let query = supabase
       .from('events')
       .select('*')
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${now}`)
       .order('event_date', { ascending: true });
 
     if (options?.limit) {
@@ -51,10 +54,13 @@ export const eventsRepository = {
       return this._searchFreeEvents(options);
     }
 
+    const nowIso = now.toISOString();
     let q = supabase
       .from('events')
       .select('*')
-      .gte('event_date', now.toISOString())
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
+      .gte('event_date', nowIso)
       .order('event_date', { ascending: true });
 
     if (options.query?.trim()) {
@@ -85,11 +91,14 @@ export const eventsRepository = {
   },
 
   async _searchFreeEvents(options: { query?: string; limit?: number }): Promise<EventEntity[]> {
-    // Free = ticket_price_cents is 0 AND no paid ticket tiers
+    const now = new Date().toISOString();
+    // Free = ticket_price_cents is 0 AND no paid ticket tiers; only published, past publish_at
     let q = supabase
       .from('events')
       .select('*, ticket_tiers!left(price_cents)')
-      .gte('event_date', new Date().toISOString())
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${now}`)
+      .gte('event_date', now)
       .eq('ticket_price_cents', 0)
       .order('event_date', { ascending: true });
 
@@ -171,12 +180,101 @@ export const eventsRepository = {
     };
   },
 
-  async getEventSummariesByIds(ids: string[]) {
+  async getUpcomingEventsByIds(ids: string[]) {
     if (ids.length === 0) return [];
+    const now = new Date().toISOString();
     const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .in('id', ids)
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${now}`)
+      .gte('event_date', now);
+    if (error) throw error;
+    return (data || []).map(mapEventRow);
+  },
+
+  async getUpcomingEventsByOrganiserIds(organiserIds: string[], limit = 20) {
+    if (organiserIds.length === 0) return [];
+    const now = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .in('organiser_profile_id', organiserIds)
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${now}`)
+      .gte('event_date', now)
+      .order('event_date', { ascending: true })
+      .limit(limit);
+    if (error) throw error;
+    return (data || []).map(mapEventRow);
+  },
+
+  async getUserRsvpEventIds(userId: string) {
+    const { data, error } = await supabase
+      .from('rsvps')
+      .select('event_id')
+      .eq('user_id', userId)
+      .eq('status', 'going');
+    if (error) throw error;
+    return (data || []).map((r: any) => r.event_id);
+  },
+
+  async getEventIdsByGoingUserIds(userIds: string[]) {
+    if (userIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from('rsvps')
+      .select('event_id')
+      .in('user_id', userIds)
+      .eq('status', 'going');
+    if (error) throw error;
+    return [...new Set((data || []).map((r: any) => r.event_id))];
+  },
+
+  async getNearbyEvents(city: string | null, limit = 4) {
+    const now = new Date().toISOString();
+    let query = supabase
+      .from('events')
+      .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
+      .eq('is_public', true)
+      .eq('status', 'published')
+      .or(`publish_at.is.null,publish_at.lte.${now}`)
+      .gte('event_date', now)
+      .order('event_date', { ascending: true })
+      .limit(limit);
+    if (city) {
+      query = query.ilike('location', `%${city}%`);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    if (city && (data || []).length < 2) {
+      const { data: backfill } = await supabase
+        .from('events')
+        .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
+        .eq('is_public', true)
+        .eq('status', 'published')
+        .or(`publish_at.is.null,publish_at.lte.${now}`)
+        .gte('event_date', now)
+        .order('event_date', { ascending: true })
+        .limit(limit);
+      const existing = new Set((data || []).map((e: any) => e.id));
+      const merged = [...(data || []), ...(backfill || []).filter((e: any) => !existing.has(e.id))];
+      return merged.slice(0, limit);
+    }
+    return data || [];
+  },
+
+  async getEventSummariesByIds(ids: string[], publicOnly = false) {
+    if (ids.length === 0) return [];
+    let query = supabase
       .from('events')
       .select('id, title, event_date, location, cover_image')
       .in('id', ids);
+    if (publicOnly) {
+      const now = new Date().toISOString();
+      query = query.eq('status', 'published').or(`publish_at.is.null,publish_at.lte.${now}`);
+    }
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   },

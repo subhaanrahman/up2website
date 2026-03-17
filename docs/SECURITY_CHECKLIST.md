@@ -2,6 +2,10 @@
 
 > Last updated: 2026-03-16
 
+## File Validation (Client-Side)
+
+`src/utils/fileValidation.ts` — `validateImageFile()` / `validateImageFileOrMessage()` enforces type whitelist (jpeg, png, webp) and max size (5MB default). Wired into: avatar upload (EditProfile), post images (PostComposer), event flyer (EventDetailsForm), event media (ManageEvent).
+
 ## Client-Write Locked Tables
 
 These tables have RLS policies that **prevent direct client writes**. All mutations go through Edge Functions or secure DB RPCs:
@@ -14,7 +18,7 @@ These tables have RLS policies that **prevent direct client writes**. All mutati
 | `user_vouchers` | ❌ | ✅ (own) | ❌ | `award_points` RPC (on level-up) |
 | `orders` | ❌ | ❌ | ❌ | `orders-reserve` / `payments-intent` Edge Functions |
 | `tickets` | ❌ | ❌ | ❌ | `stripe-webhook` Edge Function (via queue) |
-| `refunds` | ❌ | ❌ | ❌ | Future: `refunds-create` Edge Function |
+| `refunds` | ❌ | ❌ | ❌ | `refunds-create` Edge Function |
 | `rsvps` | ❌ | ❌ | ❌ | `rsvp_join` / `rsvp_leave` RPCs (SECURITY DEFINER) |
 | `moderation_actions` | ❌ | ❌ | ❌ | No writes currently — reserved for admin Edge Functions |
 | `user_roles` | ❌ | ❌ | ❌ | Manual DB only |
@@ -102,7 +106,7 @@ All edge functions use DB-backed `check_rate_limit` RPC:
 
 ## Remaining TODOs
 
-- [ ] **Fix `is_profile_public()` function** — currently returns `true` unconditionally, bypassing all privacy controls
+- [x] **Fix `is_profile_public()` function** — Migration applied; checks `profile_tier = 'professional'`.
 - [ ] Enable leaked password protection in auth settings
 - [ ] Add banned/blocked user checks to `rsvp_join` when moderation is implemented
 - [ ] Add blocked user filtering to feed queries (`feedService.ts`, `usePostsQuery.ts`)

@@ -65,6 +65,40 @@ export const postsRepository = {
     if (error) throw error;
   },
 
+  async getPostsForFeed(cursor: string | null, limit: number) {
+    let query = supabase
+      .from('posts')
+      .select('id, content, created_at, author_id, organiser_profile_id, image_url, gif_url, event_id')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (cursor) query = query.lt('created_at', cursor);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getRepostsForFeed(cursor: string | null, limit: number) {
+    let query = supabase
+      .from('post_reposts')
+      .select('id, post_id, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (cursor) query = query.lt('created_at', cursor);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getPostsByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const { data, error } = await supabase
+      .from('posts')
+      .select('id, content, created_at, author_id, organiser_profile_id, image_url, gif_url, event_id')
+      .in('id', ids);
+    if (error) throw error;
+    return data || [];
+  },
+
   async getCollaboratorsByPostIds(postIds: string[]) {
     if (postIds.length === 0) return [];
     const { data, error } = await supabase

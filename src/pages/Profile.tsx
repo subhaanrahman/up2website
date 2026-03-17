@@ -60,10 +60,13 @@ const Profile = () => {
       if (!rsvps || rsvps.length === 0) return [];
 
       const eventIds = rsvps.map((r) => r.event_id);
+      const now = new Date().toISOString();
       const { data: events, error: evErr } = await supabase
         .from("events")
         .select("id, title, event_date, location, cover_image, category")
         .in("id", eventIds)
+        .eq("status", "published")
+        .or(`publish_at.is.null,publish_at.lte.${now}`)
         .order("event_date", { ascending: false });
       if (evErr) throw evErr;
       return (events || []).map((e) => ({
@@ -90,10 +93,13 @@ const Profile = () => {
       if (!cohostRows || cohostRows.length === 0) return [];
 
       const eventIds = cohostRows.map((r) => r.event_id);
+      const now = new Date().toISOString();
       const { data: events, error: evErr } = await supabase
         .from("events")
         .select("id, title, event_date, location, cover_image, category")
         .in("id", eventIds)
+        .eq("status", "published")
+        .or(`publish_at.is.null,publish_at.lte.${now}`)
         .order("event_date", { ascending: false });
       if (evErr) throw evErr;
       return (events || []).map((e) => ({

@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
+import { eventsRepository } from '@/features/events/repositories/eventsRepository';
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Search, ScanLine, Check, UserCheck, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import { callEdgeFunction } from "@/infrastructure/api-client";
+import { QrScanner } from "@/components/QrScanner";
 
 interface Attendee {
   user_id: string;
@@ -20,14 +22,6 @@ interface Attendee {
   checked_in: boolean;
 }
 
-/** Extract a user_id (UUID) from a profile URL or raw UUID string */
-function extractUserId(input: string): string | null {
-  const trimmed = input.trim();
-  const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  const match = trimmed.match(uuidRegex);
-  return match ? match[0] : null;
-}
-
 const EventCheckIn = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -36,22 +30,16 @@ const EventCheckIn = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [scanMode, setScanMode] = useState(false);
-  const [scanInput, setScanInput] = useState("");
+  const [lastCheckedIn, setLastCheckedIn] = useState<string | null>(null);
+  const scanCooldownRef = useRef(false);
 
-  // Fetch event
-  const { data: event } = useQuery({
+  // Fetch event via repository
+  const { data: eventData } = useQuery({
     queryKey: ["checkin-event", id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, title, event_date")
-        .eq("id", id!)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryFn: () => eventsRepository.getById(id!),
     enabled: !!id,
   });
+  const event = eventData ? { id: eventData.id, title: eventData.title, event_date: eventData.eventDate } : undefined;
 
   // Fetch all attendees (rsvps + orders) via orders-list edge function
   const { data: manageData, isLoading } = useQuery({
@@ -140,30 +128,39 @@ const EventCheckIn = () => {
     },
   });
 
-  // QR / manual lookup check-in
-  const scanMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      return callEdgeFunction("checkin-toggle", {
-        body: { event_id: id, user_id: userId, action: "check_in", method: "qr" },
+  // QR ticket scan check-in (validates ticket qr_code against event)
+  const qrScanMutation = useMutation({
+    mutationFn: async (qrCode: string) => {
+      return callEdgeFunction<{ success: boolean; display_name?: string }>("checkin-qr", {
+        body: { qr_code: qrCode, event_id: id },
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["check-ins", id] });
-      setScanInput("");
-      toast({ title: "Checked In!", description: "User has been checked in successfully." });
+      setLastCheckedIn(data.display_name || "Guest");
+      toast({ title: "Checked In!", description: `${data.display_name || "Guest"} has been checked in.` });
+      scanCooldownRef.current = true;
+      setTimeout(() => { scanCooldownRef.current = false; }, 1500);
     },
     onError: (err: any) => {
-      toast({ title: "Check-in Failed", description: err.message || "Could not check in user", variant: "destructive" });
+      const isAlreadyIn = err?.message?.includes("Already") || (err as any)?.statusCode === 409;
+      const msg = isAlreadyIn && (err as any)?.details?.display_name
+        ? `Already checked in: ${(err as any).details.display_name}`
+        : err?.message || "Invalid or expired ticket";
+      toast({
+        title: isAlreadyIn ? "Already Checked In" : "Check-in Failed",
+        description: msg,
+        variant: isAlreadyIn ? "default" : "destructive",
+      });
+      scanCooldownRef.current = true;
+      setTimeout(() => { scanCooldownRef.current = false; }, 1000);
     },
   });
 
-  const handleScanSubmit = () => {
-    const userId = extractUserId(scanInput);
-    if (!userId) {
-      toast({ title: "Invalid Input", description: "Please enter a valid profile URL or user ID", variant: "destructive" });
-      return;
-    }
-    scanMutation.mutate(userId);
+  const handleQrScan = (decodedText: string) => {
+    const qrCode = decodedText.trim();
+    if (!qrCode || scanCooldownRef.current || qrScanMutation.isPending) return;
+    qrScanMutation.mutate(qrCode);
   };
 
   return (
@@ -202,28 +199,28 @@ const EventCheckIn = () => {
         <Button
           variant={scanMode ? "default" : "outline"}
           className="w-full h-10"
-          onClick={() => setScanMode(!scanMode)}
+          onClick={() => { setScanMode(!scanMode); setLastCheckedIn(null); }}
         >
           {scanMode ? <X className="h-4 w-4 mr-2" /> : <ScanLine className="h-4 w-4 mr-2" />}
-          {scanMode ? "Close Lookup" : "QR / User Lookup"}
+          {scanMode ? "Close Scanner" : "Scan Ticket QR"}
         </Button>
 
         {scanMode && (
-          <div className="mt-3 flex gap-2">
-            <Input
-              placeholder="Paste profile URL or user ID..."
-              value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
-              className="bg-secondary border-0 h-10 flex-1"
-              onKeyDown={(e) => e.key === "Enter" && handleScanSubmit()}
+          <div className="mt-3 space-y-3">
+            <QrScanner
+              onScan={handleQrScan}
+              disabled={qrScanMutation.isPending}
+              className="min-h-[280px]"
             />
-            <Button
-              className="h-10 px-4"
-              onClick={handleScanSubmit}
-              disabled={!scanInput.trim() || scanMutation.isPending}
-            >
-              {scanMutation.isPending ? "..." : "Check In"}
-            </Button>
+            {lastCheckedIn && (
+              <div className="flex flex-col items-center gap-2 p-4 bg-green-500/10 rounded-lg border border-green-500/20">
+                <Check className="h-8 w-8 text-green-600" />
+                <p className="font-medium text-green-700 dark:text-green-400">Checked in: {lastCheckedIn}</p>
+                <Button size="sm" onClick={() => setLastCheckedIn(null)}>
+                  Scan next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -89,6 +89,15 @@ All edge functions live in `supabase/functions/*/index.ts` and use shared helper
 { "error": "Human message", "code": "MACHINE_CODE", "request_id": "abc123", "details": {} }
 ```
 
+### Actor context (organiser vs personal)
+
+When a user can act as either a personal profile or an organiser profile (via ActiveProfileContext):
+
+- **Posts:** `organiser_profile_id` set when posting as organiser; `null` when personal.
+- **Notifications:** `organiser_profile_id` set when notification is organiser-scoped; `null` for personal.
+- **Edge functions:** Pass `organiser_profile_id` in body when the action is performed as an organiser (e.g. `notifications-send`, post creation).
+- **Tables with actor columns:** `posts`, `notifications`, `dm_threads`, `event_cohosts`, `events`.
+
 ---
 
 ## Request Correlation Flow

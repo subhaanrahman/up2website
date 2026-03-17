@@ -5,16 +5,16 @@
 ## Critical Fixes
 
 - [x] **Create `get_user_group_chats` RPC** — Created in migration `20260312130000_optimize_group_chats.sql`.
-- [ ] **Fix `is_profile_public()` function** — Currently hardcoded to `return true`. Should check `profiles.profile_tier` and `privacy_settings.go_public`.
-- [ ] **Add expired order cleanup cron** — Job type `cleanup.expired_orders` defined in queue but no trigger. Reserved orders with `expires_at < now()` remain indefinitely.
-- [ ] **Add `publish_at` filter to event queries** — Events with future `publish_at` appear in public listings.
-- [ ] **Add `status` filter to event queries** — Draft/cancelled events not filtered.
+- [x] **Fix `is_profile_public()` function** — Migration `20260317130000_fix_is_profile_public.sql`; apply via Lovable (see docs/LOVABLE_PROMPTS.md).
+- [x] **Expired order cleanup** — Edge function `orders-expire-cleanup` deployed; cron setup via Lovable (see docs/LOVABLE_PROMPTS.md).
+- [x] **Add `publish_at` filter to event queries** — All public event queries filter `publish_at IS NULL OR publish_at <= now()`.
+- [x] **Add `status` filter to event queries** — All public event queries filter `status = 'published'`.
 
 ## Check-In System
 - [x] Create `check_ins` table (event_id, user_id, checked_in_at, checked_in_by, method: 'manual' | 'qr')
 - [x] Edge function: `checkin-toggle` — mark/unmark a guest as checked in
-- [ ] Edge function: `checkin-qr` — validate QR code and check in guest
-- [x] Check-in page UI: searchable attendee list with manual toggle + QR scan mode (placeholder)
+- [x] Edge function: `checkin-qr` — validate ticket QR code, check in guest, update tickets.checked_in_at
+- [x] Check-in page UI: searchable attendee list, manual toggle, camera-based ticket QR scanner
 - [x] RLS: only event host / organiser owner / members can check in guests
 - [ ] QR code generation for ticket holders (link to checkin-qr)
 
@@ -28,11 +28,11 @@
 - [x] Payment onboarding touchpoints (OnboardingRequired, TicketingPanel, OrganiserPayoutTask, PayoutSetupSection) — all use shared `useStripeConnectOnboard` flow
 
 ## Refunds
-- [x] `refunds` table exists (order_id, stripe_refund_id, amount_cents, reason, status, initiated_by)
-- [ ] Edge function: `refunds-create` — initiate Stripe refund, update order, cancel tickets
-- [ ] Edge function: `orders-cancel` — cancel reserved (unpaid) order
-- [ ] Edge function: `orders-expire-cleanup` — scheduled cron for expired reservations
-- [ ] Event cancellation flow — bulk refund all confirmed orders
+- [x] `refunds` table exists
+- [x] Edge function: `refunds-create` — initiate Stripe refund, update order, cancel tickets
+- [x] Edge function: `orders-cancel` — cancel reserved (unpaid) order
+- [x] Edge function: `orders-expire-cleanup` — marks expired reservations, cancels PaymentIntents
+- [x] Event cancellation flow — bulk refund on event delete
 
 ## Media Gallery
 - [x] Create `event_media` table (event_id, url, sort_order, uploaded_by, created_at)

@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { X, Users, Image as ImageIcon } from "lucide-react";
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { validateImageFileOrMessage } from "@/utils/fileValidation";
 import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { DatePicker, TimePicker } from "./DateTimePicker";
@@ -57,6 +59,7 @@ const EventDetailsForm = ({
   errors = {},
 }: EventDetailsFormProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -67,6 +70,11 @@ const EventDetailsForm = ({
   const handleFlyerSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+    const err = validateImageFileOrMessage(file);
+    if (err) {
+      toast({ title: "Invalid file", description: err, variant: "destructive" });
+      return;
+    }
     setUploadingFlyer(true);
     try {
       const ext = file.name.split(".").pop() || "jpg";

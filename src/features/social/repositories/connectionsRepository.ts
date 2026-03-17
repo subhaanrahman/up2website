@@ -162,6 +162,19 @@ export const connectionsRepository = {
     return (data || []).map(f => f.organiser_profile_id);
   },
 
+  async getBlockedUserIds(userId: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('blocked_users')
+      .select('blocker_id, blocked_id')
+      .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
+    if (error) throw error;
+    const ids = new Set<string>();
+    for (const row of data || []) {
+      ids.add(row.blocker_id === userId ? row.blocked_id : row.blocker_id);
+    }
+    return ids;
+  },
+
   async getFollowersByFriends(friendIds: string[]): Promise<string[]> {
     if (friendIds.length === 0) return [];
     const { data, error } = await supabase

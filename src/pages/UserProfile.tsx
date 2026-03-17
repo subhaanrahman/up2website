@@ -78,11 +78,14 @@ const UserProfile = () => {
         let eventsData: any[] = [];
         if (rsvps && rsvps.length > 0) {
           const eventIds = rsvps.map((r) => r.event_id);
+          const now = new Date().toISOString();
           const { data } = await supabase
             .from("events")
             .select("*")
             .in("id", eventIds)
             .eq("is_public", true)
+            .eq("status", "published")
+            .or(`publish_at.is.null,publish_at.lte.${now}`)
             .order("event_date", { ascending: false });
           eventsData = data || [];
         }
@@ -109,11 +112,14 @@ const UserProfile = () => {
           _isOrganiser: true,
         });
 
+        const now = new Date().toISOString();
         const { data: eventsData } = await supabase
           .from("events")
           .select("*")
           .eq("organiser_profile_id", userId)
           .eq("is_public", true)
+          .eq("status", "published")
+          .or(`publish_at.is.null,publish_at.lte.${now}`)
           .order("event_date", { ascending: false });
 
         setEvents(eventsData || []);

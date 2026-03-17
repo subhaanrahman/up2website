@@ -81,9 +81,9 @@ All items implemented:
 - [x] `refunds` table exists (order_id, stripe_refund_id, amount_cents, reason, status, initiated_by)
 
 ### 3.2 Edge Functions
-- [ ] `refunds-create` — initiates a Stripe refund, records in `refunds` table, updates order status, cancels tickets
-- [ ] `orders-cancel` — cancels a reserved (unpaid) order, cancels associated Stripe PaymentIntent if exists
-- [ ] `orders-expire-cleanup` — scheduled/cron function that:
+- [x] `refunds-create` — initiates Stripe refund, records in `refunds`, updates order, cancels tickets
+- [x] `orders-cancel` — cancels reserved order, cancels PaymentIntent, releases capacity
+- [x] `orders-expire-cleanup` — scheduled/cron function that:
   - Finds orders with `status = 'reserved'` and `expires_at < now()`
   - Sets them to `expired`
   - Cancels any orphaned Stripe PaymentIntents
@@ -104,12 +104,9 @@ reserved → payment_pending → confirmed → refunded
 ```
 
 ### 3.5 Event Cancellation Flow
-- [ ] When an organiser cancels an event:
-  - Find all `confirmed` orders for that event
-  - Initiate Stripe refunds for each
-  - Update order statuses to `refunded`
-  - Cancel all tickets
-  - Notify all ticket holders
+- [x] When an organiser deletes an event (`events-update` action: delete):
+  - Refund all `confirmed` orders via `processRefund`
+  - Delete event
 
 ### 3.6 Audit & Observability
 - [x] `payment_events` table exists for webhook logging

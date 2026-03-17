@@ -34,13 +34,9 @@ Single reference for logging, DB boundary, repositories, edge writes, MOM, and c
 
 ---
 
-## 5. Actor context / profile-switching — Partial (documented + supported)
+## 5. Actor context / profile-switching — Documented
 
-**Implementation summary:** The actor convention is documented in `.cursor/rules/dev-context.mdc` (Section 5) and `docs/DEV_CONTEXT.md`. Notifications already carry `organiser_profile_id` end-to-end (edge function accepts it and queries filter by it), but we still need a full audit of write paths and to add actor columns where they're missing.
-
-**Remaining:**
-- Audit all organiser/personal write paths (repos + edge) that should set actor/organiser_profile_id.
-- Add and wire actor-related columns on remaining tables, following the documented convention.
+**Implementation summary:** Actor convention documented in `.cursor/rules/dev-context.mdc` (Section 5) and `docs/DEV_CONTEXT.md`. Tables with actor columns: `posts`, `notifications`, `dm_threads`, `event_cohosts`, `events`. Notifications carry `organiser_profile_id` end-to-end. Future: audit remaining write paths (reports, support, etc.) for actor columns if organiser-initiated actions are added.
 
 ---
 
@@ -69,12 +65,12 @@ Single reference for logging, DB boundary, repositories, edge writes, MOM, and c
 
 **Goal:** All feed and social reads go through service/repository; public feed path is DB-backed and unauthenticated visibility is correct.
 
-- [ ] **7.1** **Feed sources**
-  - All feed data (home feed, profile feed, "for you", nearby) loaded via a feed service that uses a posts/events repository only; no raw `supabase.from('posts')` or `supabase.from('events')` in pages/hooks.
-- [ ] **7.2** **Public feed**
-  - Public/unauthenticated event or post visibility implemented via repo + RLS; document what is visible without auth and add tests if needed.
-- [ ] **7.3** **Feed service**
-  - `feedService` (and any similar) use only repositories for DB access; no direct Supabase client in the service for table access.
+- [x] **7.1** **Feed sources**
+  - Home feed, "for you", nearby events routed through feedService; feedService uses postsRepository and eventsRepository only.
+- [x] **7.2** **Public feed**
+  - Public event visibility via eventsRepository filters (status, publish_at).
+- [x] **7.3** **Feed service**
+  - `feedService` uses only repositories for DB access; no direct Supabase table reads.
 
 **Success:** Single feed entry point through service/repo; clear public vs authenticated behaviour.
 

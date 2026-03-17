@@ -1,4 +1,4 @@
-project_id = "dcjymbpjmbfoikqjrmuo"
+project_id = "ydyocznljcsimqbkfaip"
 
 [functions.dev-profile]
 verify_jwt = false
@@ -7,4 +7,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.stripe-webhook]
+verify_jwt = false
+
+[functions.orders-expire-cleanup]
 verify_jwt = false
