@@ -4,12 +4,13 @@
 
 <!-- New entries -->
 
-### 2026-03-18 — CI: Fix ForgotPasswordStep test assertion
+### 2026-03-18 — CI: Fix package-lock sync and ForgotPasswordStep test
 
-**Files changed:** `src/components/auth/ForgotPasswordStep.test.tsx`
+**Files changed:** `package-lock.json`, `src/components/auth/ForgotPasswordStep.test.tsx`
 
 **What changed (React/TS):**
-- ForgotPasswordStep displays "That code wasn't valid..." for invalid/expired OTP (not the raw error message). Test assertion updated from `/invalid or expired/i` to `/that code wasn't valid/i` to match the actual UI text. Fixes CI builds failing on push to main.
+- Regenerated `package-lock.json` with `npm install` to fix `npm ci` EUSAGE: package.json and package-lock.json were out of sync (esbuild@0.27.4 and platform packages missing). CI uses `npm ci` which requires an exact lock-file match.
+- ForgotPasswordStep test: assertion updated from `/invalid or expired/i` to `/that code wasn't valid/i` to match the displayed user-facing error message.
 
 **Flutter migration notes:**
 - No new Flutter work. If migrating forgot-password flow, ensure test assertions match the displayed user-facing error message.
