@@ -132,13 +132,13 @@ const RevenueChart = ({ organiserProfileId, timeframe, analytics }: RevenueChart
 
   if (isLoading) {
     return (
-      <div className="bg-card border border-border rounded-xl p-4 h-48 animate-pulse" />
+      <div className="bg-card border border-border rounded-tile-sm p-4 h-48 animate-pulse" />
     );
   }
 
   if (!chartData?.length && (metric === "revenue" || metric === "tickets")) {
     return (
-      <div className="bg-card border border-border rounded-xl p-4 text-center">
+      <div className="bg-card border border-border rounded-tile-sm p-4 text-center">
         <p className="text-sm text-muted-foreground py-8">No revenue data yet</p>
       </div>
     );
@@ -175,7 +175,7 @@ const RevenueChart = ({ organiserProfileId, timeframe, analytics }: RevenueChart
       : displayData;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
+    <div className="bg-card border border-border rounded-tile-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground font-display tracking-[0.08em] uppercase">
           PERFORMANCE

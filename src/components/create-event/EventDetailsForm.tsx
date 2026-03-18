@@ -149,7 +149,7 @@ const EventDetailsForm = ({
     <div className="space-y-3">
 
       {/* Title */}
-      <div className={`bg-card rounded-2xl border px-4 pt-4 pb-4 ${errors.title ? "border-destructive" : "border-border/50"}`}>
+      <div className={`bg-card rounded-tile border px-4 pt-4 pb-4 ${errors.title ? "border-destructive" : "border-border/50"}`}>
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Event Title *</p>
         <input
           value={title}
@@ -161,7 +161,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Event flyer upload */}
-      <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 rounded-2xl border border-border/60 px-4 pt-4 pb-4">
+      <div className="bg-gradient-to-br from-primary/5 via-background to-secondary/5 rounded-tile border border-border/60 px-4 pt-4 pb-4">
         <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground flex items-center gap-1.5">
             <ImageIcon className="h-3 w-3" /> Event Flyer
@@ -169,7 +169,7 @@ const EventDetailsForm = ({
           <span className="text-[10px] text-muted-foreground/80">Shows on cards & detail</span>
         </div>
         <div className="space-y-3">
-          <div className="w-full aspect-[4/5] rounded-2xl bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center">
+          <div className="w-full aspect-[4/5] rounded-tile bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center">
             {coverImage ? (
               <img src={coverImage} alt="Event flyer" className="w-full h-full object-cover" />
             ) : (
@@ -217,7 +217,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Date + Time */}
-      <div className={`bg-card rounded-2xl border overflow-hidden ${errors.date ? "border-destructive" : "border-border/50"}`}>
+      <div className={`bg-card rounded-tile border overflow-hidden ${errors.date ? "border-destructive" : "border-border/50"}`}>
         <DatePicker date={date} setDate={setDate} label="Date *" disablePast />
         {errors.date && <p className="text-xs text-destructive px-4 pb-2">{errors.date}</p>}
         <div className="h-px bg-border/50 mx-4" />
@@ -225,7 +225,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Location */}
-      <div className={`bg-card rounded-2xl border px-4 pt-4 pb-4 ${errors.location ? "border-destructive" : "border-border/50"}`}>
+      <div className={`bg-card rounded-tile border px-4 pt-4 pb-4 ${errors.location ? "border-destructive" : "border-border/50"}`}>
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Location *</p>
         <input
           value={location}
@@ -237,7 +237,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Description */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+      <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Description</p>
         <textarea
           value={description}
@@ -249,7 +249,7 @@ const EventDetailsForm = ({
       </div>
 
       {/* Co-hosts */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4" ref={dropdownRef}>
+      <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4" ref={dropdownRef}>
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
           <Users className="h-3 w-3" /> Collaborators / Co-hosts
         </p>
@@ -262,7 +262,7 @@ const EventDetailsForm = ({
             className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
           />
           {showDropdown && (
-            <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-xl max-h-48 overflow-y-auto">
+            <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-card border border-border rounded-tile shadow-xl max-h-48 overflow-y-auto">
               {searchResults.map((result) => (
                 <button
                   key={`${result.type}-${result.id}`}
@@ -294,7 +294,7 @@ const EventDetailsForm = ({
             {cohosts.map((c) => (
               <div
                 key={c.id}
-                className="w-full flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/10 px-3 py-2"
+                className="w-full flex items-center justify-between gap-3 rounded-tile-sm border border-border/60 bg-muted/10 px-3 py-2"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">

@@ -57,28 +57,28 @@ const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
               <div key={event.id} className="min-w-0 shrink-0 grow-0 basis-full">
                 <Link
                   to={`/events/${event.id}`}
-                  className="flex rounded-2xl overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
+                  className="flex rounded-tile overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
                 >
-                  <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
+                  <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden bg-muted">
                     <img
                       src={event.cover_image || getEventFlyer(event.id)}
                       alt={event.title}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
+                  <div className="flex-1 pl-4 pr-3 py-3 flex flex-col justify-center min-w-0">
                     <h3 className="font-bold text-foreground text-sm truncate capitalize">{event.title}</h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5">
                       <Calendar className="h-3 w-3 text-primary" />
                       <span>{format(new Date(event.event_date), "EEE M/d - ha")}</span>
                     </div>
                     {event.location && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
                         <span className="truncate">{event.location}</span>
                       </div>
                     )}
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                       <DollarSign className="h-3 w-3 text-primary" />
                       <span>{event.ticket_price_cents === 0 ? "Free" : `R${(event.ticket_price_cents / 100).toFixed(2)}`}</span>
                     </div>

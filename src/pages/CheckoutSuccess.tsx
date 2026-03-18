@@ -98,7 +98,7 @@ const CheckoutSuccess = () => {
 
             {/* Event Info */}
             {event && (
-              <div className="bg-card rounded-xl p-4">
+              <div className="bg-card rounded-tile-sm p-4">
                 <h3 className="font-semibold text-foreground text-lg capitalize">{event.title}</h3>
                 {event.event_date && (
                   <p className="text-sm text-muted-foreground mt-1">
@@ -112,7 +112,7 @@ const CheckoutSuccess = () => {
             )}
 
             {/* Order Details */}
-            <div className="bg-card rounded-xl p-4">
+            <div className="bg-card rounded-tile-sm p-4">
               <h3 className="font-semibold text-foreground mb-3">Order Details</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -145,7 +145,7 @@ const CheckoutSuccess = () => {
               <div className="space-y-4">
                 <h3 className="font-semibold text-foreground">Your Tickets</h3>
                 {tickets.map((ticket: any, idx: number) => (
-                  <div key={ticket.id} className="bg-card rounded-xl p-4 flex flex-col items-center">
+                  <div key={ticket.id} className="bg-card rounded-tile-sm p-4 flex flex-col items-center">
                     <p className="text-sm text-muted-foreground mb-3">
                       {ticket.ticket_tiers?.name || `Ticket ${idx + 1}`}
                     </p>

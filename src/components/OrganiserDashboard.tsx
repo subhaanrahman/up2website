@@ -292,7 +292,7 @@ const OrganiserDashboard = () => {
             {isLoading ?
             <div className="space-y-3">
                 {[1, 2, 3].map((i) =>
-              <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-2xl animate-pulse">
+              <div key={i} className="flex items-center gap-4 p-3 bg-card rounded-tile animate-pulse">
                     <div className="w-24 h-24 bg-secondary rounded-lg" />
                     <div className="flex-1 space-y-2">
                       <div className="h-5 w-3/4 bg-secondary rounded" />

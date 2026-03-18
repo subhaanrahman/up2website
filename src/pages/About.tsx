@@ -32,7 +32,7 @@ const About = () => {
       <main className="px-4 pt-6">
         {/* App Info */}
         <div className="text-center mb-8">
-          <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <div className="h-20 w-20 rounded-tile bg-primary/10 flex items-center justify-center mx-auto mb-4">
             <span className="text-4xl">🎉</span>
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-2">EventApp</h2>
@@ -42,7 +42,7 @@ const About = () => {
         </div>
 
         {/* Description */}
-        <div className="bg-card rounded-xl p-4 mb-6">
+        <div className="bg-card rounded-tile-sm p-4 mb-6">
           <p className="text-muted-foreground text-sm leading-relaxed">
             EventApp connects you with the best events, parties, and experiences in your area. 
             Whether you're looking for nightlife, concerts, networking events, or private gatherings, 

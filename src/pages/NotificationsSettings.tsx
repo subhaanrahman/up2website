@@ -37,7 +37,7 @@ const NotificationsSettings = () => {
         <div className="space-y-4">
           {loading ? (
             Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-card rounded-xl">
+              <div key={i} className="flex items-center justify-between p-4 bg-card rounded-tile-sm">
                 <div className="flex-1 mr-4">
                   <Skeleton className="h-5 w-32 mb-2" />
                   <Skeleton className="h-4 w-48" />
@@ -49,7 +49,7 @@ const NotificationsSettings = () => {
             settingsConfig.map((setting) => (
               <div
                 key={setting.id}
-                className="flex items-center justify-between p-4 bg-card rounded-xl"
+                className="flex items-center justify-between p-4 bg-card rounded-tile-sm"
               >
                 <div className="flex-1 mr-4">
                   <Label htmlFor={setting.id} className="text-foreground font-medium cursor-pointer">

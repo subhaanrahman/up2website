@@ -56,7 +56,7 @@ const DesktopSidebar = () => {
                 key={item.label}
                 to={item.path}
                 className={cn(
-                  "flex items-center gap-4 px-3 py-3 rounded-xl transition-colors group",
+                  "flex items-center gap-4 px-3 py-3 rounded-tile-sm transition-colors group",
                   isActive
                     ? "text-foreground font-semibold"
                     : hasUnread
@@ -74,7 +74,7 @@ const DesktopSidebar = () => {
         {/* Create Button */}
         <Link
           to="/create"
-          className="flex items-center justify-center xl:justify-start gap-4 px-3 py-3 mt-4 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="flex items-center justify-center xl:justify-start gap-4 px-3 py-3 mt-4 rounded-tile-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-6 w-6 flex-shrink-0" />
           <span className="hidden xl:block text-sm font-bold uppercase tracking-wider">Create</span>
@@ -87,7 +87,7 @@ const DesktopSidebar = () => {
           <>
             <Link
               to="/profile"
-              className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-secondary transition-colors"
+              className="flex items-center gap-3 px-2 py-2 rounded-tile-sm hover:bg-secondary transition-colors"
             >
               <Avatar className="h-9 w-9 flex-shrink-0">
                 <AvatarImage src={avatarUrl || undefined} />
@@ -102,7 +102,7 @@ const DesktopSidebar = () => {
             </Link>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-4 px-3 py-3 rounded-xl text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors"
+              className="flex items-center gap-4 px-3 py-3 rounded-tile-sm text-muted-foreground hover:text-destructive hover:bg-secondary transition-colors"
             >
               <LogOut className="h-5 w-5 flex-shrink-0" />
               <span className="hidden xl:block text-sm">Sign Out</span>

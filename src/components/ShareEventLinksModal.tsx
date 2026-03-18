@@ -36,7 +36,7 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
         </DialogHeader>
 
         <div className="flex justify-center py-4">
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-tile-sm border bg-card p-4">
             <QRCodeSVG value={eventUrl} size={180} />
           </div>
         </div>

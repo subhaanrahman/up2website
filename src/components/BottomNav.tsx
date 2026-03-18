@@ -141,7 +141,7 @@ const BottomNav = () => {
           {user && (
             <button
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl mb-2 w-full text-left transition-colors",
+                "flex items-center gap-3 p-3 rounded-tile-sm mb-2 w-full text-left transition-colors",
                 activeProfile?.type === "personal" ? "bg-secondary/50" : "hover:bg-secondary/30"
               )}
               onClick={() => handleSwitchProfile(user.id, "personal")}
@@ -169,7 +169,7 @@ const BottomNav = () => {
             <button
               key={org.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-xl mb-2 w-full text-left transition-colors",
+                "flex items-center gap-3 p-3 rounded-tile-sm mb-2 w-full text-left transition-colors",
                 activeProfile?.id === org.id ? "bg-secondary/50" : "hover:bg-secondary/30"
               )}
               onClick={() => handleSwitchProfile(org.id, "organiser")}

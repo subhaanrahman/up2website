@@ -36,9 +36,9 @@ const TicketEventCard = ({
   return (
     <Link
       to={`/events/${eventId}`}
-      className={`flex items-center bg-card rounded-2xl overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
+      className={`flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
     >
-      <div className="w-28 h-28 flex-shrink-0">
+      <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
         <img
           src={getEventFlyer(eventId)}
           alt={title}
@@ -47,16 +47,16 @@ const TicketEventCard = ({
         />
       </div>
 
-      <div className="flex-1 px-4 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-3 capitalize leading-tight">
+      <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
+        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">
           {title}
         </h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
             {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
           </span>
           {hasPendingTransfer && (
-            <span className="text-xs bg-amber-500/15 px-3 py-1.5 rounded-full text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 border border-amber-500/30">
+            <span className="text-xs bg-amber-500/15 px-2.5 py-1.5 rounded-full text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 border border-amber-500/30">
               <Clock className="h-3 w-3" />
               Transfer pending
             </span>
@@ -64,7 +64,7 @@ const TicketEventCard = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+      <div className="flex items-center gap-0.5 pl-2 pr-3 flex-shrink-0">
         {hasPendingTransfer && onCancelTransfer && (
           <Button
             variant="ghost"

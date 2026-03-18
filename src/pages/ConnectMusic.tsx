@@ -155,8 +155,8 @@ const ConnectMusic = () => {
         {loading ? (
           <div className="space-y-3">
             {[1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-border">
-                <Skeleton className="h-12 w-12 rounded-xl" />
+              <div key={i} className="flex items-center gap-4 p-4 rounded-tile-sm border border-border">
+                <Skeleton className="h-12 w-12 rounded-tile-sm" />
                 <div className="flex-1">
                   <Skeleton className="h-4 w-24 mb-2" />
                   <Skeleton className="h-3 w-40" />
@@ -171,9 +171,9 @@ const ConnectMusic = () => {
             return (
               <div
                 key={service.id}
-                className="flex items-center gap-4 p-4 rounded-xl border border-border bg-card"
+                className="flex items-center gap-4 p-4 rounded-tile-sm border border-border bg-card"
               >
-                <div className={`h-12 w-12 rounded-xl ${service.bgClass} flex items-center justify-center flex-shrink-0`}>
+                <div className={`h-12 w-12 rounded-tile-sm ${service.bgClass} flex items-center justify-center flex-shrink-0`}>
                   {service.icon}
                 </div>
                 <div className="flex-1 min-w-0">

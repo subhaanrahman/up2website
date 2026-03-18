@@ -45,7 +45,7 @@ const Notifications = () => {
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 bg-card rounded-xl animate-pulse" />
+              <div key={i} className="h-20 bg-card rounded-tile-sm animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (

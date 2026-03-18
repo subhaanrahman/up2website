@@ -150,7 +150,7 @@ const EditOrganiserProfile = () => {
         <div className="space-y-3">
 
           {/* Name + Username */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Display Name</p>
               <input
@@ -178,7 +178,7 @@ const EditOrganiserProfile = () => {
           </div>
 
           {/* Category */}
-          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+          <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Category</p>
             <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
               <SelectTrigger className="border-0 p-0 h-auto bg-transparent text-[15px] font-medium shadow-none focus:ring-0 focus:outline-none">
@@ -193,7 +193,7 @@ const EditOrganiserProfile = () => {
           </div>
 
           {/* Bio */}
-          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+          <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Bio</p>
             <textarea
               value={formData.bio}
@@ -205,7 +205,7 @@ const EditOrganiserProfile = () => {
           </div>
 
           {/* Instagram + City */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Instagram</p>
               <div className="flex items-center gap-1">
@@ -254,7 +254,7 @@ const EditOrganiserProfile = () => {
 
           {/* Opening Hours — Venue only */}
           {formData.category === "Venue" && (
-            <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+            <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
               <div className="px-4 pt-4 pb-2">
                 <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Opening Hours</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Leave blank for closed</p>
@@ -287,7 +287,7 @@ const EditOrganiserProfile = () => {
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="w-full mt-6 h-12 rounded-2xl font-bold tracking-widest text-sm"
+          className="w-full mt-6 h-12 rounded-tile font-bold tracking-widest text-sm"
         >
           {saving ? "SAVING…" : "SAVE CHANGES"}
         </Button>

@@ -145,7 +145,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
   return (
     <div
       ref={itemRef}
-      className="relative overflow-hidden rounded-xl"
+      className="relative overflow-hidden rounded-tile-sm"
       style={
         height !== undefined
           ? { height, transition: "height 0.25s ease, margin 0.25s ease", overflow: "hidden" }
@@ -154,7 +154,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
     >
       {/* Swipe-reveal delete background */}
       <div
-        className="absolute inset-0 bg-destructive flex items-center justify-end pr-5 rounded-xl"
+        className="absolute inset-0 bg-destructive flex items-center justify-end pr-5 rounded-tile-sm"
         style={{ opacity: revealRatio }}
       >
         <Trash2 className="h-5 w-5 text-white" />
@@ -170,7 +170,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
           transform: `translateX(${translateX}px)`,
           transition: dragging ? "none" : "transform 0.22s cubic-bezier(0.25, 1, 0.5, 1)",
         }}
-        className={`flex gap-3 p-4 rounded-xl ${
+        className={`flex gap-3 p-4 rounded-tile-sm ${
           isTransferRequest ? "cursor-default" : "cursor-pointer"
         } ${
           notification.read ? "bg-card" : "bg-primary/5 border border-primary/20"

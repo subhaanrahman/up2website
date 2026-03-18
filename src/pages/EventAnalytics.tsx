@@ -72,7 +72,7 @@ const EventAnalytics = () => {
 
         <div className="grid grid-cols-3 gap-3">
           {stats.map((stat) => (
-            <div key={stat.label} className="rounded-xl bg-card border border-border p-4 text-center">
+            <div key={stat.label} className="rounded-tile-sm bg-card border border-border p-4 text-center">
               <p className="text-2xl font-bold text-foreground">{stat.value}</p>
               <p className="text-xs text-muted-foreground mt-1">{stat.label}</p>
             </div>

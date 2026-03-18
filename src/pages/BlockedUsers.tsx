@@ -95,7 +95,7 @@ const BlockedUsers = () => {
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 bg-card rounded-xl">
+              <div key={i} className="flex items-center gap-3 p-4 bg-card rounded-tile-sm">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1">
                   <Skeleton className="h-4 w-28 mb-1.5" />
@@ -124,7 +124,7 @@ const BlockedUsers = () => {
               return (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 p-4 bg-card rounded-xl"
+                  className="flex items-center gap-3 p-4 bg-card rounded-tile-sm"
                 >
                   <Avatar className="h-10 w-10 flex-shrink-0">
                     <AvatarImage src={avatar || ""} />

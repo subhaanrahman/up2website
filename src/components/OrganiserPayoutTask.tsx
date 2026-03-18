@@ -7,23 +7,28 @@ import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
 import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
 
 /**
- * Floating task pill shown to organisers when payouts are not yet set up.
+ * Floating task pill shown when the user is viewing an organiser profile that hasn't set up payouts.
+ * Only shown when actively in organiser profile view (not when viewing personal profile).
  * Uses the same onboarding flow as PayoutSetupSection (stripe-connect-onboard redirect).
  */
 const OrganiserPayoutTask = () => {
   const { user } = useAuth();
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
-  const organiserProfileId = isOrganiser ? activeProfile?.id : organiserProfiles?.[0]?.id;
+  const activeOrgProfile = isOrganiser && activeProfile?.type === "organiser"
+    ? organiserProfiles.find((p) => p.id === activeProfile.id)
+    : null;
+  const organiserProfileId = activeOrgProfile?.id;
+  const isOwner = activeOrgProfile?.ownerId === user?.id;
   const { data: connectStatus } = useStripeConnectStatus(organiserProfileId);
   const { startOnboarding, isOnboarding } = useStripeConnectOnboard(organiserProfileId);
   const [expanded, setExpanded] = useState(false);
 
-  if (!user || !organiserProfileId) return null;
+  if (!user || !isOrganiser || !organiserProfileId || !isOwner) return null;
   if (connectStatus?.charges_enabled) return null;
 
   return (
     <div className="fixed bottom-20 right-4 z-40 md:bottom-6 md:right-6">
-      <div className="bg-card border border-border rounded-2xl shadow-lg overflow-hidden max-w-[280px]">
+      <div className="bg-card border border-border rounded-tile shadow-lg overflow-hidden max-w-[280px]">
         <button
           onClick={() => setExpanded((e) => !e)}
           className="w-full flex items-center justify-between gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors"

@@ -118,7 +118,7 @@ const Settings = () => {
           <button
             onClick={() => isProfessional ? handleDowngrade() : setUpgradeOpen(true)}
             disabled={upgrading}
-            className="w-full flex items-center gap-4 p-4 rounded-xl mb-2 bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors disabled:opacity-50"
+            className="w-full flex items-center gap-4 p-4 rounded-tile-sm mb-2 bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors disabled:opacity-50"
           >
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -142,7 +142,7 @@ const Settings = () => {
             <Link
               key={item.label}
               to={item.path}
-              className="flex items-center gap-4 p-4 rounded-xl hover:bg-secondary transition-colors"
+              className="flex items-center gap-4 p-4 rounded-tile-sm hover:bg-secondary transition-colors"
             >
               <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
                 <item.icon className="h-5 w-5 text-foreground" />

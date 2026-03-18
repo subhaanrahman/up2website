@@ -67,7 +67,7 @@ const TicketDetailModal = ({
           )}
 
           {/* QR Code */}
-          <div className="bg-card p-6 rounded-2xl mb-4">
+          <div className="bg-card p-6 rounded-tile mb-4">
             <QRCodeSVG
               value={ticket.qrCode}
               size={200}
