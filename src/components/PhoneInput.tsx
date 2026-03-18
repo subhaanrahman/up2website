@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { PhoneInput as ReactPhoneInput } from "react-international-phone";
 import "react-international-phone/style.css";
 import { cn } from "@/lib/utils";
@@ -9,10 +10,29 @@ interface PhoneInputProps {
   className?: string;
 }
 
+const useDetectedCountry = () => {
+  const [country, setCountry] = useState("au");
+
+  useEffect(() => {
+    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.country_code) {
+          setCountry(data.country_code.toLowerCase());
+        }
+      })
+      .catch(() => {/* fallback stays "au" */});
+  }, []);
+
+  return country;
+};
+
 const PhoneInput = ({ value, onChange, disabled, className }: PhoneInputProps) => {
+  const detectedCountry = useDetectedCountry();
+
   return (
     <ReactPhoneInput
-      defaultCountry="au"
+      defaultCountry={detectedCountry}
       value={value}
       onChange={onChange}
       disabled={disabled}
