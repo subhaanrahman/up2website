@@ -91,8 +91,9 @@ Deno.serve(async (req) => {
     }
 
     // Sign in via native Supabase auth
+    const signInPhone = (user.phone || phone).replace(/[^0-9]/g, '');
     const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      phone: user.phone || phoneDigits,
+      phone: signInPhone,
       password,
     });
 
