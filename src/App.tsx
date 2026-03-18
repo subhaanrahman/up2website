@@ -17,6 +17,7 @@ import EditEvent from "./pages/EditEvent";
 import EventGuests from "./pages/EventGuests";
 import Tickets from "./pages/Tickets";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
@@ -76,6 +77,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/reset-password" element={<ResetPassword />} />
               <Route path="/search" element={<Events />} />
               <Route path="/search/:id" element={<EventDetail />} />
               <Route path="/user/:userId" element={<UserProfile />} />

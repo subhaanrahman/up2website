@@ -5,19 +5,13 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff, Check, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { PASSWORD_RULES } from "@/utils/passwordValidation";
 
 interface RegisterStepProps {
   phone: string;
   onSuccess: () => void;
   onBack: () => void;
 }
-
-const PASSWORD_RULES = [
-  { label: "8+ characters", test: (p: string) => p.length >= 8 },
-  { label: "At least 1 letter", test: (p: string) => /[a-zA-Z]/.test(p) },
-  { label: "At least 1 number", test: (p: string) => /\d/.test(p) },
-  { label: "At least 1 special character", test: (p: string) => /[^a-zA-Z0-9]/.test(p) },
-];
 
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 

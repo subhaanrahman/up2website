@@ -1,6 +1,169 @@
-# Flutter Migration Changelog
+# Migration Changelog
+
+> **Note:** React Native conversion planned (not Flutter). Historical entries below. Do NOT add new Flutter-specific migration notes to this file.
 
 <!-- New entries -->
+
+### 2026-03-16 — Profile mapping and loading fixes (phone-only auth)
+
+**Files changed:** `src/contexts/ActiveProfileContext.tsx`, `src/pages/Profile.tsx`, `src/components/DesktopSidebar.tsx`, `src/hooks/useProfileQuery.ts`, `src/hooks/useFeedQuery.ts`
+
+**What changed (React/TS):**
+- ActiveProfileContext now uses `useProfile` to load personal profile from `profiles` table; displayName/avatarUrl prefer profile data over user.user_metadata/email. Sync effect updates personal activeProfile when profile loads.
+- Profile.tsx: username fallback order fixed — `profile?.username` primary, then `profile?.displayName`, avoid phone/email until profile loaded or failed; when loading show "…" instead of phone-derived handle.
+- DesktopSidebar: added `user.user_metadata?.display_name` to displayName fallback.
+- useProfileQuery: added `staleTime` 2min, `gcTime` 10min, `retry: 2`, `retryDelay` to avoid endless spinning.
+- useFeedQuery: added `retry` and `retryDelay` to feed context and paginated feed.
+
+**Flutter migration notes:**
+- When showing personal profile display/avatar, fetch from profiles table first; fall back to auth user metadata only when profile not loaded. Use profile.username for @ handle. Add retry/staleTime to profile and feed queries to avoid infinite loading spinners.
+
+### 2026-03-18 — Login: bcrypt cost 6 for GoTrue compatibility (fix LOGIN_SESSION_FAILED)
+
+**Files changed:** `supabase/migrations/20260318170000_bcrypt_cost6_compat.sql`, `docs/AUTH_SETUP_CHECKLIST.md`
+
+**What changed (React/TS):**
+- New migration reverts update_auth_user_password to bcrypt cost 6 (gen_salt('bf') default). Cost 10 from pgcrypto may produce hashes GoTrue's signInWithPassword rejects; auth_users_seed uses cost 6 and works. Login sync will now write cost-6 hashes.
+
+**Flutter migration notes:**
+- If using pgcrypto for password updates, use bcrypt cost 6 for Supabase Auth compatibility.
+
+### 2026-03-18 — Login: Synthetic email signIn fallback + diagnostic logging
+
+**Files changed:** `supabase/functions/login/index.ts`, `supabase/migrations/20260318160000_verify_auth_password_return_phone.sql`
+
+**What changed (React/TS):**
+- verify_auth_password now returns both `phone` and `email` (synthetic digits@phone.local). Login retries signInWithPassword with all phone formats, then falls back to signInWithPassword(email: syntheticEmail) — GoTrue may lookup by email for password auth.
+- Added debug logging for each signInWithPassword attempt (phone/email, error message) to aid troubleshooting.
+
+**Files changed:** `supabase/functions/login/index.ts`, `supabase/migrations/20260318160000_verify_auth_password_return_phone.sql`, `docs/AUTH_SETUP_CHECKLIST.md`
+
+**What changed (React/TS):**
+- Extended `verify_auth_password` to return `phone` (exact format from auth.users) instead of email. Login now prepends auth phone + variants (digits, E164) to retry formats before signInWithPassword. Fixes LOGIN_SESSION_FAILED when profile.phone format mismatches auth.users.phone.
+- New migration 20260318160000 applies the RPC change.
+
+**Flutter migration notes:**
+- Have verify_auth_password return phone; use it when retrying signInWithPassword.
+
+### 2026-03-18 — Login: RPC fallback for password sync (seeded users)
+
+**Files changed:** `supabase/functions/login/index.ts`
+
+**What changed (React/TS):**
+- When Admin API `updateUserById` fails (seeded users hit "Database error"), fall back to `update_auth_user_password` RPC before returning LOGIN_SYNC_FAILED. Same pattern as forgot-password-reset. Both seeded and normal-user verify paths updated.
+
+**Flutter migration notes:**
+- Use same phone-only fallback: verify password RPC → updateUserById → signInWithPassword retry. No email or generateLink. No new Flutter packages.
+
+### 2026-03-16 — Login: Diagnostic error codes for 401 failures
+
+**Files changed:** `supabase/functions/login/index.ts`, `src/components/auth/PasswordStep.tsx`
+
+**What changed (React/TS):**
+- Login 401 responses now include `code` and `details.hint`: `LOGIN_VERIFY_RPC_FAILED` (RPC missing/failed), `LOGIN_VERIFY_INVALID` (password hash mismatch), `LOGIN_SESSION_FAILED` (verify passed but generateLink/verifyOtp failed). Early returns for each failure point instead of single generic 401.
+- PasswordStep surfaces the hint in the error message and toast for faster debugging.
+
+**Flutter migration notes:**
+- When migrating login, include `code` and `details.hint` in 401 responses. Display hint in password-step error UI for diagnostics. No new Flutter packages.
+
+### 2026-03-16 — Auth Flow Comprehensive Fix (Forgot password, dev login, setup docs)
+
+**Files changed:** `src/components/auth/ForgotPasswordStep.tsx`, `supabase/functions/send-otp/index.ts`, `supabase/functions/forgot-password-check/index.ts`, `supabase/functions/dev-login/index.ts`, `docs/SEEDING_GUIDE.md`, `docs/AUTH_SETUP_CHECKLIST.md` (new), `docs/AUTH_FLOW_REVIEW.md` (new), `.env.example`, `src/infrastructure/config.ts`
+
+**What changed (React/TS):**
+- **Forgot password:** Added "Resend code" link with 60s cooldown; improved error messages for invalid/expired OTP and network (Failed to fetch); E.164 phone normalization in send-otp and forgot-password-check for Twilio.
+- **Dev login:** Diagnostic errors now distinguish "User not in auth.users", "SEED_USER_PASSWORD not set", "Profile missing phone"; fallback path logged.
+- **Docs:** SEEDING_GUIDE Prerequisites table (auth_users_seed vs password_reset_tokens), How to apply migrations; AUTH_SETUP_CHECKLIST (migrations, functions, secrets); AUTH_FLOW_REVIEW (flows, dependencies, failure modes).
+- **Env:** .env.example note for VITE_SUPABASE_URL; dev-only console warning when functionsUrl contains localhost.
+
+**Flutter migration notes:**
+- Replicate Resend-code flow, cooldown timer, and improved error messages in forgot-password screen.
+- No new Flutter work for edge functions or docs.
+
+### 2026-03-16 — Forgot Password: Two-Step Flow (verify first, then password page)
+
+**Files changed:** `supabase/functions/forgot-password-check/index.ts`, `supabase/functions/forgot-password-reset/index.ts`, `src/components/auth/ForgotPasswordStep.tsx`, `src/contexts/AuthContext.tsx`, `src/components/auth/ForgotPasswordStep.test.tsx`, `docs/LOVABLE_PROMPTS.md`
+
+**What changed (React/TS):**
+- Restored two-step flow: (1) Send code → OTP → Continue (calls `forgot-password-check`), (2) On success → separate screen with new password form only (calls `forgot-password-reset` with token).
+- `forgot-password-check`: Verifies OTP via Twilio, inserts short-lived token into `password_reset_tokens`, returns `resetToken`.
+- `forgot-password-reset`: Accepts `resetToken` and `newPassword`; looks up token, checks expiry, updates password via `admin.updateUserById`, deletes token. Surfaces actual Supabase error message when update fails.
+- `ForgotPasswordStep`: Two internal screens — verify (OTP + Continue) and new-password (password form only). "Back" from password screen returns to verify.
+- `AuthContext.forgotPasswordReset`: Signature reverted to `(resetToken, newPassword)`.
+- Re-added `password_reset_tokens` migration to `docs/LOVABLE_PROMPTS.md`.
+
+**Flutter migration notes:**
+- Two screens: (1) Send code → OTP input → Continue. Call `forgot-password-check`. If success, store `resetToken`. (2) New password form only. Call `forgot-password-reset(resetToken, newPassword)`. "Back" clears token and returns to step 1.
+
+### 2026-03-16 — Simplify Forgot Password (remove token, combined form)
+
+**Files changed:** `supabase/functions/forgot-password-reset/index.ts`, `supabase/functions/forgot-password-check/index.ts`, `src/components/auth/ForgotPasswordStep.tsx`, `src/contexts/AuthContext.tsx`, `src/components/auth/ForgotPasswordStep.test.tsx`, `docs/LOVABLE_PROMPTS.md`
+
+**What changed (React/TS):**
+- Removed token-based flow. Single combined form: OTP + new password on one screen, one API call `forgot-password-reset(phone, code, newPassword)`.
+- `forgot-password-reset`: Accepts `phone`, `code`, `newPassword`; verifies OTP via Twilio, updates password via `admin.updateUserById`. No `password_reset_tokens` table.
+- `forgot-password-check`: No token generation; returns `hasVerifiedEmail`, `maskedEmail`, `email` for possible future email flow.
+- `ForgotPasswordStep`: Send code → OTP input + password input + Reset password button. No sub-steps, no forgotPasswordCheck in this flow.
+- `AuthContext.forgotPasswordReset`: Signature changed from `(resetToken, newPassword)` to `(phone, code, newPassword)`.
+- Tests updated for combined form flow.
+- `docs/LOVABLE_PROMPTS.md`: Removed `password_reset_tokens` migration references.
+
+**Flutter migration notes:**
+- Single forgot-password screen: Send code → OTP + password inputs → Reset button. Call `forgot-password-reset` edge function with `phone`, `code`, `newPassword`. No token handling.
+
+### 2026-03-16 — Forgot Password Flow: Unit and E2E tests
+
+**Files changed:** `src/components/auth/ForgotPasswordStep.test.tsx`, `src/components/auth/PasswordStep.test.tsx`, `src/pages/ResetPassword.test.tsx`, `tests/e2e/auth.spec.ts`, `docs/TESTING_GUIDE.md`
+
+**What changed (React/TS):**
+- **ForgotPasswordStep.test.tsx:** Unit tests for send OTP, verify OTP, email vs phone reset paths, validation, errors.
+- **PasswordStep.test.tsx:** Unit tests for password input, login, onForgotPassword, onBack, disabled state.
+- **ResetPassword.test.tsx:** Unit tests for loading state, redirect when no hash, form display when recovery ready, submit, validation.
+- **auth.spec.ts:** E2E test for reset-password route (redirects to auth when no recovery hash).
+- **TESTING_GUIDE.md:** Documented auth flow unit test coverage.
+
+**Flutter migration notes:**
+- No new Flutter work. Replicate test coverage with flutter_test and integration_test.
+
+### 2026-03-16 — Forgot Password Flow (Email vs Phone OTP)
+
+**Files changed:** `supabase/functions/email-verify-confirm/index.ts`, `supabase/functions/forgot-password-check/index.ts`, `supabase/functions/forgot-password-reset/index.ts`, `supabase/functions/_shared/rate-limit.ts`, `supabase/config.toml`, `src/infrastructure/api-client.ts`, `src/contexts/AuthContext.tsx`, `src/components/auth/ForgotPasswordStep.tsx`, `src/pages/ResetPassword.tsx`, `src/pages/Auth.tsx`, `src/App.tsx`
+
+**What changed (React/TS):**
+- **Prerequisite:** When a user verifies email via `email-verify-confirm`, we sync `auth.users.email` and `email_confirm: true` so Supabase `resetPasswordForEmail` works.
+- **Forgot flow:** Password step "Forgot password?" routes to new `ForgotPasswordStep` (step `"forgot"`). Sub-steps: send OTP, verify OTP, then either (a) call `resetPasswordForEmail` and show "Check your email" if the user has verified email, or (b) show "Enter new password" and call `forgot-password-reset` if not.
+- **Edge functions:** `forgot-password-check` (verify OTP, return `hasVerifiedEmail`, `maskedEmail`, `email`); `forgot-password-reset` (verify OTP, `admin.updateUserById` with new password).
+- **Reset page:** New route `/auth/reset-password` for email-link flow. Handles `PASSWORD_RECOVERY` event, shows "Enter new password", calls `supabase.auth.updateUser({ password })`, redirects to login.
+- **AuthContext:** `resetPasswordForEmail`, `forgotPasswordCheck`, `forgotPasswordReset`.
+- **Config:** `verify_jwt = false` for both new functions; added to `PUBLIC_FUNCTIONS` in api-client.
+
+**Flutter migration notes:**
+- Add `/auth/reset-password` route in `go_router`; handle deep links for password recovery hash params.
+- Use `supabase_flutter` for `auth.resetPasswordForEmail` and `auth.updateUser` (PASSWORD_RECOVERY).
+- Forgot flow: screen with OTP input → call `forgot-password-check` → if `hasVerifiedEmail`, call `resetPasswordForEmail` and show "Check email"; else show password form and call `forgot-password-reset`.
+- Configure Supabase Dashboard → Authentication → URL configuration: Site URL and Redirect URLs to include `https://yourapp.com/auth/reset-password`.
+
+### 2026-03-17 — Debug phone login: improve error surfacing
+
+**Files changed:** `src/infrastructure/errors.ts`, `src/components/auth/PhoneStep.tsx`
+
+**What changed (React/TS):**
+- `parseApiError`: When response body lacks `error` field, now includes `{ status, bodyExcerpt }` in ApiError.details for debugging.
+- `PhoneStep`: In dev mode, displays status + bodyExcerpt from error.details when check-phone (or other edge function) returns unexpected format.
+
+**Flutter migration notes:**
+- No new Flutter work. If Flutter has similar generic API error handling, replicate the pattern: include status + body excerpt in error details for easier debugging.
+
+### 2026-03-17 — Auth seed for data_export.sql
+
+**Files changed:** `docs/auth_users_seed.sql`, `docs/SEEDING_GUIDE.md`
+
+**What changed (React/TS):**
+- `auth_users_seed.sql`: Inserts into `auth.users` and `auth.identities` for all 28 user_ids in data_export, using phone from profiles or placeholder (+27000000001…) for users without phones. Internal email `{digits}@phone.local`; password `seedplaceholder1`.
+- `SEEDING_GUIDE.md`: Order of execution — run auth_users_seed.sql first, then data_export.sql. Explains FK fix for profiles_user_id_fkey. Login via dev-login or phone+password.
+
+**Flutter migration notes:**
+- No new Flutter work. If Flutter seeds from data_export, run auth_users_seed.sql first; dev-login or phone sign-in for test users.
 
 ### 2026-03-16 — Comprehensive Testing Phases (Unit + E2E)
 

@@ -294,4 +294,3 @@ These are known architectural decisions or issues that require deliberate planni
 - [ ] All new repo write methods have `createLogger` logging
 - [ ] Sensitive writes go through edge functions, not direct client
 - [ ] `npx tsc --noEmit` passes
-- [ ] `flutterchanges.md` updated with new entry (see flutter-changelog rule)

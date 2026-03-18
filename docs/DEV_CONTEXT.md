@@ -181,7 +181,6 @@ Before committing any code change:
 - [ ] New repo write methods have `createLogger` logging
 - [ ] Sensitive writes routed through edge functions
 - [ ] `npx tsc --noEmit` passes
-- [ ] `flutterchanges.md` updated with changelog entry
 
 ---
 

@@ -18,6 +18,7 @@ function generateRequestId(): string {
 
 const PUBLIC_FUNCTIONS = new Set([
   'check-phone', 'login', 'register', 'send-otp', 'verify-otp', 'dev-login', 'health',
+  'forgot-password-check', 'forgot-password-reset',
 ]);
 
 export async function callEdgeFunction<T = unknown>(

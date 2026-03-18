@@ -15,6 +15,10 @@ export function useProfile(userId: string | undefined) {
     queryKey: profileKeys.detail(userId!),
     queryFn: () => identityService.getProfileOrNull(userId!),
     enabled: !!userId,
+    staleTime: 2 * 60 * 1000, // 2 min — profile doesn't change often
+    gcTime: 10 * 60 * 1000, // 10 min cache
+    retry: 2, // 3 total attempts; avoid endless spinning on RLS/network failures
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
 

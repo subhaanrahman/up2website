@@ -5,15 +5,18 @@ import { ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import PhoneInput from "@/components/PhoneInput";
+import { config } from "@/infrastructure/config";
 import { z } from "zod";
 
 const phoneSchema = z.string().min(8, "Please enter a valid phone number");
 
 interface PhoneStepProps {
   onPhoneChecked: (phone: string, exists: boolean) => void;
+  /** When true, only send OTP for new users (skip for returning users going to password) */
+  sendOtpForNewUsersOnly?: boolean;
 }
 
-const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
+const PhoneStep = ({ onPhoneChecked, sendOtpForNewUsersOnly }: PhoneStepProps) => {
   const { checkPhone, sendOtp } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -51,7 +54,15 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
     const { exists, error: checkErr } = await checkPhone(phone);
 
     if (checkErr) {
-      setError(checkErr.message);
+      let msg = checkErr.message;
+      if (config.isDev && 'details' in checkErr && typeof (checkErr as { details?: unknown }).details === 'object') {
+        const d = (checkErr as { details?: Record<string, unknown> }).details;
+        if (d?.status !== undefined || d?.bodyExcerpt) {
+          const debug = [`status ${d?.status ?? '?'}`, d?.bodyExcerpt].filter(Boolean).join(' | ');
+          msg += ` (${debug})`;
+        }
+      }
+      setError(msg);
       setLoading(false);
       return;
     }
@@ -60,12 +71,15 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
     setLoading(false);
     onPhoneChecked(phone, exists);
 
-    // Always send OTP (default auth for both new and returning users)
-    sendOtp(phone).then(({ error: otpErr }) => {
-      if (otpErr) {
-        toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
-      }
-    });
+    // Send OTP only when user will see OTP step (new users). Returning users go to password, no OTP needed.
+    const shouldSendOtp = !sendOtpForNewUsersOnly || !exists;
+    if (shouldSendOtp) {
+      sendOtp(phone).then(({ error: otpErr }) => {
+        if (otpErr) {
+          toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
+        }
+      });
+    }
   };
 
   return (

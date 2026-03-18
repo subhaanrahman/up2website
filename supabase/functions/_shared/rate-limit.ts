@@ -18,6 +18,8 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'refunds-create':     { max: 10, windowSec: 60 },
   'orders-cancel':      { max: 20, windowSec: 60 },
   'event-message-send': { max: 30, windowSec: 60 },
+  'forgot-password-check': { max: 5, windowSec: 60 },
+  'forgot-password-reset': { max: 5, windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { AppError } from "@/infrastructure/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,8 +37,10 @@ const PasswordStep = ({ phone, onSuccess, onBack, onTryOtpAgain, onForgotPasswor
     const { error: loginErr } = await login(phone, password);
 
     if (loginErr) {
-      setError(loginErr.message);
-      toast({ title: "Error", description: loginErr.message, variant: "destructive" });
+      const hint = (loginErr as AppError).details?.hint as string | undefined;
+      const desc = hint ? `${loginErr.message} — ${hint}` : loginErr.message;
+      setError(desc);
+      toast({ title: "Error", description: desc, variant: "destructive" });
     } else {
       onSuccess();
     }
