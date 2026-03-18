@@ -7,9 +7,10 @@ import PhoneStep from "@/components/auth/PhoneStep";
 import OtpStep from "@/components/auth/OtpStep";
 import PasswordStep from "@/components/auth/PasswordStep";
 import RegisterStep from "@/components/auth/RegisterStep";
+import ForgotPasswordStep from "@/components/auth/ForgotPasswordStep";
 import { Button } from "@/components/ui/button";
 
-type AuthStep = "phone" | "otp" | "password" | "register";
+type AuthStep = "phone" | "otp" | "password" | "register" | "forgot";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -30,8 +31,7 @@ const Auth = () => {
   const handlePhoneChecked = (phoneNumber: string, exists: boolean) => {
     setPhone(phoneNumber);
     setIsNewUser(!exists);
-    // OTP is default for both new and returning users; password is fallback only
-    setStep("otp");
+    setStep(exists ? "password" : "otp");
   };
 
   const handleOtpVerified = () => {
@@ -62,7 +62,7 @@ const Auth = () => {
 
           {step === "phone" && (
             <>
-              <PhoneStep onPhoneChecked={handlePhoneChecked} />
+              <PhoneStep onPhoneChecked={handlePhoneChecked} sendOtpForNewUsersOnly />
               <button
                 type="button"
                 onClick={() => navigate("/")}
@@ -78,6 +78,7 @@ const Auth = () => {
               phone={phone}
               isReturningUser={!isNewUser}
               onVerified={handleOtpVerified}
+              onVerifiedNeedPassword={() => setStep("password")}
               onBack={() => setStep("phone")}
               onUsePassword={() => setStep("password")}
             />
@@ -89,10 +90,18 @@ const Auth = () => {
               onSuccess={handleLoginSuccess}
               onBack={() => setStep("phone")}
               onTryOtpAgain={() => setStep("otp")}
-              onForgotPassword={() => {
-                // Future: forgot password flow via OTP
-                toast({ title: "Coming soon", description: "Password reset via SMS is coming soon." });
+              onForgotPassword={() => setStep("forgot")}
+            />
+          )}
+
+          {step === "forgot" && (
+            <ForgotPasswordStep
+              phone={phone}
+              onSuccess={() => {
+                toast({ title: "Password reset", description: "Sign in with your new password." });
+                setStep("phone");
               }}
+              onBack={() => setStep("password")}
             />
           )}
 
@@ -119,7 +128,12 @@ const Auth = () => {
               variant="outline"
               onClick={async () => {
                 const { error } = await devLogin("1eafb563-071a-45c6-a82e-79b460b3a851");
-                if (error) toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
+                if (error) {
+                  const msg = /failed to fetch|network error/i.test(error.message)
+                    ? `${error.message}. Deploy the dev-login function: supabase functions deploy dev-login`
+                    : error.message;
+                  toast({ title: "Dev login failed", description: msg, variant: "destructive" });
+                }
               }}
               className="w-full"
             >
@@ -130,7 +144,12 @@ const Auth = () => {
               variant="outline"
               onClick={async () => {
                 const { error } = await devLogin("e8f02149-2ccf-4324-950a-d2a574c46569");
-                if (error) toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
+                if (error) {
+                  const msg = /failed to fetch|network error/i.test(error.message)
+                    ? `${error.message}. Deploy the dev-login function: supabase functions deploy dev-login`
+                    : error.message;
+                  toast({ title: "Dev login failed", description: msg, variant: "destructive" });
+                }
               }}
               className="w-full"
             >
@@ -149,7 +168,10 @@ const Auth = () => {
                     avatarUrl: null,
                   }));
                 } else {
-                  toast({ title: "Dev login failed", description: error.message, variant: "destructive" });
+                  const msg = /failed to fetch|network error/i.test(error.message)
+                    ? `${error.message}. Deploy the dev-login function: supabase functions deploy dev-login`
+                    : error.message;
+                  toast({ title: "Dev login failed", description: msg, variant: "destructive" });
                 }
               }}
               className="w-full"

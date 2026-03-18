@@ -20,6 +20,8 @@ export function useFeedContext() {
     queryFn: () => buildFeedContext(user?.id ?? null),
     staleTime: 5 * 60 * 1000, // 5 min — social graph doesn't change often
     gcTime: 10 * 60 * 1000,
+    retry: 2, // Avoid endless spinning on RLS/network failures
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 }
 
@@ -43,6 +45,8 @@ export function usePaginatedFeed() {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
     enabled: true, // works for both auth and anon
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 
   // Realtime invalidation

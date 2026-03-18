@@ -123,6 +123,14 @@ Use `docs/LOVABLE_PROMPTS.md` when you need Lovable to:
 - Vitest can report coverage: add `--coverage` to the test script or run `npx vitest run --coverage`.
 - Coverage is not enforced in CI; use it locally to find untested paths.
 
+### Auth flows (unit-tested)
+
+- **PhoneStep** — phone input, continue, check-phone
+- **OtpStep** — OTP input, verify, onBack
+- **PasswordStep** — password input, login, onForgotPassword, onBack
+- **ForgotPasswordStep** — send OTP, verify, email vs phone reset paths
+- **ResetPassword** — recovery hash, loading, form submit, validation
+
 ---
 
 ## E2E Prerequisites

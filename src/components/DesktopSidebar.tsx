@@ -29,7 +29,7 @@ const DesktopSidebar = () => {
     { icon: Settings, label: "Settings", path: "/settings" },
   ];
 
-  const displayName = profile?.displayName || user?.email?.split("@")[0] || "User";
+  const displayName = profile?.displayName || user?.user_metadata?.display_name || user?.email?.split("@")[0] || "User";
   const avatarUrl = profile?.avatarUrl || "";
 
   const handleSignOut = async () => {

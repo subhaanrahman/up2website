@@ -44,7 +44,7 @@ const Profile = () => {
   const [qrOpen, setQrOpen] = useState(false);
 
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
-  const { data: profile } = useProfile(user?.id);
+  const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
 
   // ── Personal profile: RSVP-based events (going / attended) ──
   const { data: rsvpEvents } = useQuery({
@@ -208,7 +208,10 @@ const Profile = () => {
 
   const displayName = isOrganiser && activeOrg ? activeOrg.displayName : profile?.displayName || "";
   const avatarUrl = isOrganiser && activeOrg ? activeOrg.avatarUrl || "" : profile?.avatarUrl || "";
-  const username = isOrganiser && activeOrg ? activeOrg.username : displayName || user.phone || user.email?.split("@")[0] || "User";
+  // Prefer profile.username for @ handle; avoid phone/email fallback until profile has loaded or explicitly failed
+  const username = isOrganiser && activeOrg
+    ? activeOrg.username
+    : profile?.username || profile?.displayName || displayName || (!profileLoading ? (user.phone || user.email?.split("@")[0] || "User") : "…");
   const bio = isOrganiser && activeOrg ? activeOrg.bio || "" : profile?.bio || "";
   const city = isOrganiser && activeOrg ? activeOrg.city || "" : profile?.city || "";
   const classification = isOrganiser && activeOrg ? activeOrg.category : profile?.pageClassification || null;
@@ -258,7 +261,7 @@ const Profile = () => {
           </div>
 
           <p className="text-muted-foreground mb-3 tracking-[0.1em] mt-0.5 text-base">
-            @{isOrganiser && activeOrg ? activeOrg.username : profile?.username || username.toLowerCase().replace(/\s+/g, "")}
+            @{isOrganiser && activeOrg ? activeOrg.username : (profile?.username ?? username.toLowerCase().replace(/\s+/g, ""))}
           </p>
 
           <div className="flex items-center justify-center gap-6 mb-3">

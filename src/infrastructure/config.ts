@@ -14,3 +14,14 @@ export const config = {
     return `${this.supabase.url}/functions/v1`;
   },
 } as const;
+
+// One-time dev warning if using localhost with hosted Supabase
+if (typeof window !== 'undefined' && config.isDev) {
+  const url = config.supabase.url || '';
+  if ((url.includes('localhost') || url.includes('127.0.0.1')) && !(window as { __authLocalhostWarned?: boolean }).__authLocalhostWarned) {
+    console.warn(
+      '[Auth] VITE_SUPABASE_URL points to localhost. If auth fails, check .env — use your project URL (https://xxx.supabase.co) when using hosted Supabase.',
+    );
+    (window as { __authLocalhostWarned?: boolean }).__authLocalhostWarned = true;
+  }
+}

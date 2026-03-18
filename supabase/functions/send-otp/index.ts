@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { toE164 } from "../_shared/phone.ts";
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -21,6 +22,8 @@ Deno.serve(async (req) => {
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
       return errorResponse(400, 'Invalid phone number', { requestId });
     }
+
+    const phoneE164 = toE164(phone);
 
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
@@ -42,7 +45,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        To: phone,
+        To: phoneE164,
         Channel: 'sms',
       }),
     });

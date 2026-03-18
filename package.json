@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "serve -s dist -l $PORT",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "test": "vitest run",
@@ -13,7 +14,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "smoke": "npm run test && npm run build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "supabase:deploy-forgot-password": "supabase functions deploy forgot-password-check && supabase functions deploy forgot-password-reset",
+    "supabase:deploy-dev-login": "supabase functions deploy dev-login"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -67,6 +70,7 @@
     "react-resizable-panels": "^2.1.9",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
+    "serve": "^14.2.6",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",

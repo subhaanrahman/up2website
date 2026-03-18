@@ -83,14 +83,16 @@ Deno.serve(async (req) => {
       return errorResponse(400, msg, { requestId });
     }
 
-    // Verification successful — update profile
+    // Verification successful — update auth.users and profile (sync email so Supabase reset works)
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Clear the target email from metadata
+    // Sync real email to auth.users so resetPasswordForEmail works; clear target from metadata
     await serviceClient.auth.admin.updateUserById(user.id, {
+      email: targetEmail,
+      email_confirm: true,
       user_metadata: {
         ...meta,
         email_otp_target: null,

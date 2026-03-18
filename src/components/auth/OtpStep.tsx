@@ -13,11 +13,12 @@ interface OtpStepProps {
   phone: string;
   isReturningUser?: boolean;
   onVerified: () => void;
+  onVerifiedNeedPassword?: () => void;
   onBack: () => void;
   onUsePassword?: () => void;
 }
 
-const OtpStep = ({ phone, isReturningUser, onVerified, onBack, onUsePassword }: OtpStepProps) => {
+const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, onBack, onUsePassword }: OtpStepProps) => {
   const { verifyOtp } = useAuth();
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
@@ -42,7 +43,9 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onBack, onUsePassword }: 
       setError(verifyErr.message);
       toast({ title: "Error", description: verifyErr.message, variant: "destructive" });
     } else if (loggedIn) {
-      // Returning user: session set, redirect will happen
+      // Session set, redirect will happen
+    } else if (isReturningUser && onVerifiedNeedPassword) {
+      onVerifiedNeedPassword(); // Returning user: go to password step
     } else {
       onVerified(); // New user: go to register
     }

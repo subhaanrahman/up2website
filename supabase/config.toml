@@ -1,5 +1,23 @@
 project_id = "ydyocznljcsimqbkfaip"
 
+# Auth entrypoints — callable without session (phone check, OTP, login, register)
+[functions.check-phone]
+verify_jwt = false
+[functions.send-otp]
+verify_jwt = false
+[functions.verify-otp]
+verify_jwt = false
+[functions.login]
+verify_jwt = false
+[functions.register]
+verify_jwt = false
+[functions.dev-login]
+verify_jwt = false
+[functions.forgot-password-check]
+verify_jwt = false
+[functions.forgot-password-reset]
+verify_jwt = false
+
 [functions.dev-profile]
 verify_jwt = false
 

@@ -9,6 +9,7 @@ BEGIN;
 
 -- =============================================
 -- 1. PROFILES (28 rows)
+-- Auth trigger creates empty profiles on auth.users insert; upsert overwrites them.
 -- =============================================
 INSERT INTO profiles (id, user_id, display_name, first_name, last_name, username, email, email_verified, phone, avatar_url, bio, city, page_classification, instagram_handle, is_verified, profile_tier, created_at, updated_at) VALUES
 ('8a99de08-f8f5-44de-a220-1bed62cb6b7a', '1eafb563-071a-45c6-a82e-79b460b3a851', 'Dylan Godwin', 'Dylan', 'Godwin', 'dylangodwin', NULL, false, '61405826420', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/1eafb563-071a-45c6-a82e-79b460b3a851/avatar.jpeg?t=1772538993200', 'Emotion without the E...', 'Sydney', 'Promoter', 'dylgodwin', true, 'professional', '2026-03-03 11:54:41.865078+00', '2026-03-16 13:52:25.541123+00'),
@@ -38,7 +39,25 @@ INSERT INTO profiles (id, user_id, display_name, first_name, last_name, username
 ('d0c7abc4-60f4-497d-a1af-23c7e23fed18', '59137a61-98ce-4b1a-af30-997b8c58ce00', 'Jake Jepson', 'Jake', 'Jepson', 'jakejepson_', NULL, false, '+61451119895', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/59137a61-98ce-4b1a-af30-997b8c58ce00/initials.svg', NULL, NULL, NULL, NULL, false, 'personal', '2026-03-09 02:47:51.062941+00', '2026-03-09 02:47:52.36608+00'),
 ('900cb7e3-39f0-4fc8-81a1-eacadf2d5038', '891c971d-a8ed-4ae2-bf6a-8151e05419b2', 'Insaaf Rahman', 'Insaaf', 'Rahman', 'insi', NULL, false, '+61468467867', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/891c971d-a8ed-4ae2-bf6a-8151e05419b2/initials.svg', NULL, NULL, NULL, NULL, false, 'personal', '2026-03-10 00:26:39.20628+00', '2026-03-10 00:26:40.66584+00'),
 ('67ae4243-5628-4be1-98aa-ffbd40c890b6', '69cb2c94-625b-47cd-ac42-28d6fdaa67f4', 'A J', 'A', 'J', 'ajax', NULL, false, '+16507969122', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/69cb2c94-625b-47cd-ac42-28d6fdaa67f4/initials.svg', NULL, NULL, NULL, NULL, false, 'personal', '2026-03-12 00:32:44.586609+00', '2026-03-12 00:32:45.455315+00'),
-('86712b8f-1fa0-4976-82e3-b730fd096185', '88cfad8c-088d-4da3-b51c-455c6bd7d0d9', 'Matt Developer', 'Matt', 'Developer', 'matt', NULL, false, '+66949611245', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/88cfad8c-088d-4da3-b51c-455c6bd7d0d9/initials.svg', NULL, NULL, NULL, NULL, false, 'personal', '2026-03-16 08:22:05.631472+00', '2026-03-16 09:41:49.426233+00');
+('86712b8f-1fa0-4976-82e3-b730fd096185', '88cfad8c-088d-4da3-b51c-455c6bd7d0d9', 'Matt Developer', 'Matt', 'Developer', 'matt', NULL, false, '+66949611245', 'https://dcjymbpjmbfoikqjrmuo.supabase.co/storage/v1/object/public/avatars/88cfad8c-088d-4da3-b51c-455c6bd7d0d9/initials.svg', NULL, NULL, NULL, NULL, false, 'personal', '2026-03-16 08:22:05.631472+00', '2026-03-16 09:41:49.426233+00')
+ON CONFLICT (user_id) DO UPDATE SET
+  id = EXCLUDED.id,
+  display_name = EXCLUDED.display_name,
+  first_name = EXCLUDED.first_name,
+  last_name = EXCLUDED.last_name,
+  username = EXCLUDED.username,
+  email = EXCLUDED.email,
+  email_verified = EXCLUDED.email_verified,
+  phone = EXCLUDED.phone,
+  avatar_url = EXCLUDED.avatar_url,
+  bio = EXCLUDED.bio,
+  city = EXCLUDED.city,
+  page_classification = EXCLUDED.page_classification,
+  instagram_handle = EXCLUDED.instagram_handle,
+  is_verified = EXCLUDED.is_verified,
+  profile_tier = EXCLUDED.profile_tier,
+  created_at = EXCLUDED.created_at,
+  updated_at = EXCLUDED.updated_at;
 
 -- =============================================
 -- 2. ORGANISER_PROFILES (9 rows)

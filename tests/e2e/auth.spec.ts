@@ -20,4 +20,10 @@ test.describe('Auth page (unauthenticated)', () => {
     await expect(page.getByRole('button', { name: 'Dylan' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Haan' })).toBeVisible();
   });
+
+  test('reset-password without hash redirects to auth', async ({ page }) => {
+    await page.goto('/auth/reset-password');
+    await expect(page.getByText(/loading|verifying/i).first()).toBeVisible({ timeout: 2000 });
+    await expect(page).toHaveURL(/\/auth/, { timeout: 5000 });
+  });
 });

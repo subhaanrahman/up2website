@@ -47,6 +47,17 @@ export class ApiError extends AppError {
   }
 }
 
+/** Safely produce a short excerpt of response body for debugging */
+function bodyExcerpt(body: unknown, maxLen = 200): string {
+  if (body === null || body === undefined) return '(empty or non-JSON)';
+  try {
+    const s = typeof body === 'string' ? body : JSON.stringify(body);
+    return s.length <= maxLen ? s : s.slice(0, maxLen) + '…';
+  } catch {
+    return '(unable to serialize)';
+  }
+}
+
 /** Parse an Edge Function JSON error response into an AppError */
 export function parseApiError(status: number, body: unknown): AppError {
   if (typeof body === 'object' && body !== null && 'error' in body) {
@@ -55,5 +66,8 @@ export function parseApiError(status: number, body: unknown): AppError {
     if (b.request_id) details.request_id = b.request_id;
     return new ApiError(b.error, status, Object.keys(details).length > 0 ? details : undefined);
   }
-  return new ApiError('An unexpected error occurred', status);
+  return new ApiError('An unexpected error occurred', status, {
+    status,
+    bodyExcerpt: bodyExcerpt(body),
+  });
 }

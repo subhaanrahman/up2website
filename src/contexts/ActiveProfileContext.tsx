@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfileQuery";
 import { supabase } from '@/infrastructure/supabase';
 
 export interface OrganiserProfile {
@@ -56,8 +57,22 @@ function mapOrgRow(r: any): OrganiserProfile {
   };
 }
 
+function personalProfileFromUserAndProfile(
+  userId: string,
+  user: { user_metadata?: { display_name?: string }; email?: string },
+  profile: { displayName?: string | null; avatarUrl?: string | null } | null | undefined
+): ActiveProfile {
+  return {
+    id: userId,
+    type: "personal",
+    displayName: profile?.displayName || user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
+    avatarUrl: profile?.avatarUrl ?? null,
+  };
+}
+
 export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
   const [organiserProfiles, setOrganiserProfiles] = useState<OrganiserProfile[]>([]);
   const [activeProfile, setActiveProfile] = useState<ActiveProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,20 +156,27 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Default to personal
-      const personal: ActiveProfile = {
-        id: user.id,
-        type: "personal",
-        displayName: user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
-        avatarUrl: null,
-      };
+      // Default to personal (profile may not be loaded yet; effect will sync when it loads)
+      const personal = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
       setActiveProfile(personal);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
       setIsLoading(false);
     });
 
     return () => { cancelled = true; };
-  }, [user, fetchOrganiserProfiles]);
+  }, [user, fetchOrganiserProfiles, profile]);
+
+  // Sync personal activeProfile when profile data loads from profiles table
+  useEffect(() => {
+    if (!user) return;
+    const personal = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
+    setActiveProfile((prev) => {
+      if (!prev || prev.type !== "personal") return prev;
+      if (prev.displayName === personal.displayName && prev.avatarUrl === personal.avatarUrl) return prev;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
+      return personal;
+    });
+  }, [user, profile]);
 
   // Validate organiser profile selection after profiles are loaded
   useEffect(() => {
@@ -178,44 +200,34 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
         setActiveProfile(synced);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
       } else {
-        const personal: ActiveProfile = {
-          id: user.id,
-          type: "personal",
-          displayName: user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
-          avatarUrl: null,
-        };
+        const personal = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
         setActiveProfile(personal);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
       }
     } catch {
       // ignore
     }
-  }, [organiserProfiles, isLoading, user]);
+  }, [organiserProfiles, isLoading, user, profile]);
 
   const switchProfile = useCallback(
     (id: string, type: "personal" | "organiser") => {
-      let profile: ActiveProfile;
+      let next: ActiveProfile;
       if (type === "personal" && user) {
-        profile = {
-          id: user.id,
-          type: "personal",
-          displayName: user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
-          avatarUrl: null,
-        };
+        next = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
       } else {
         const org = organiserProfiles.find((o) => o.id === id);
         if (!org) return;
-        profile = {
+        next = {
           id: org.id,
           type: "organiser",
           displayName: org.displayName,
           avatarUrl: org.avatarUrl,
         };
       }
-      setActiveProfile(profile);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+      setActiveProfile(next);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     },
-    [user, organiserProfiles]
+    [user, organiserProfiles, profile]
   );
 
   const refetchOrganiserProfiles = useCallback(async () => {

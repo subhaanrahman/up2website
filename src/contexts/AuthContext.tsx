@@ -2,6 +2,14 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from '@/infrastructure/supabase';
 import { callEdgeFunction } from "@/infrastructure/api-client";
+import { toE164 } from "@/utils/phone";
+
+interface ForgotPasswordCheckResult {
+  hasVerifiedEmail: boolean;
+  maskedEmail?: string;
+  email?: string;
+  resetToken?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -14,6 +22,9 @@ interface AuthContextType {
   login: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   devLogin: (userId: string) => Promise<{ error: Error | null }>;
+  resetPasswordForEmail: (email: string, redirectTo?: string) => Promise<{ error: Error | null }>;
+  forgotPasswordCheck: (phone: string, code: string) => Promise<{ result: ForgotPasswordCheckResult | null; error: Error | null }>;
+  forgotPasswordReset: (resetToken: string, newPassword: string) => Promise<{ error: Error | null }>;
 }
 
 export interface RegisterInput {
@@ -60,9 +71,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkPhone = async (phone: string) => {
     try {
+      const normalized = toE164(phone);
       const result = await callEdgeFunction<{ exists: boolean }>('check-phone', {
         method: 'POST',
-        body: { phone },
+        body: { phone: normalized },
       });
       return { exists: result.exists, error: null };
     } catch (err) {
@@ -72,9 +84,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const sendOtp = async (phone: string) => {
     try {
+      const normalized = toE164(phone);
       await callEdgeFunction('send-otp', {
         method: 'POST',
-        body: { phone },
+        body: { phone: normalized },
       });
       return { error: null };
     } catch (err) {
@@ -84,13 +97,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const verifyOtp = async (phone: string, code: string) => {
     try {
+      const normalized = toE164(phone);
       const result = await callEdgeFunction<{
         verified: boolean;
         access_token?: string;
         refresh_token?: string;
       }>('verify-otp', {
         method: 'POST',
-        body: { phone, code },
+        body: { phone: normalized, code },
       });
       if (result.access_token && result.refresh_token) {
         const { error: sessionError } = await supabase.auth.setSession({
@@ -108,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (data: RegisterInput) => {
     try {
+      const normalized = toE164(data.phone);
       const result = await callEdgeFunction<{
         success: boolean;
         access_token: string;
@@ -115,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user_id: string;
       }>('register', {
         method: 'POST',
-        body: data,
+        body: { ...data, phone: normalized },
       });
 
       const { error: sessionError } = await supabase.auth.setSession({
@@ -135,6 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (phone: string, password: string) => {
     try {
+      const normalized = toE164(phone);
       const result = await callEdgeFunction<{
         success: boolean;
         access_token: string;
@@ -142,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user_id: string;
       }>('login', {
         method: 'POST',
-        body: { phone, password },
+        body: { phone: normalized, password },
       });
 
       const { error: sessionError } = await supabase.auth.setSession({
@@ -193,11 +209,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const resetPasswordForEmail = async (email: string, redirectTo?: string) => {
+    try {
+      const to = redirectTo ?? `${window.location.origin}/auth/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: to });
+      return { error };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
+  const forgotPasswordCheck = async (phone: string, code: string) => {
+    try {
+      const normalized = toE164(phone);
+      const result = await callEdgeFunction<{
+        hasVerifiedEmail: boolean;
+        maskedEmail?: string;
+        email?: string;
+        resetToken?: string;
+      }>('forgot-password-check', {
+        method: 'POST',
+        body: { phone: normalized, code },
+      });
+      return {
+        result: {
+          hasVerifiedEmail: result.hasVerifiedEmail,
+          maskedEmail: result.maskedEmail,
+          email: result.email,
+          resetToken: result.resetToken,
+        },
+        error: null,
+      };
+    } catch (err) {
+      return { result: null, error: err as Error };
+    }
+  };
+
+  const forgotPasswordReset = async (resetToken: string, newPassword: string) => {
+    try {
+      await callEdgeFunction('forgot-password-reset', {
+        method: 'POST',
+        body: { resetToken, newPassword },
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err as Error };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user, session, loading,
       checkPhone, sendOtp, verifyOtp, register, login,
       signOut, devLogin,
+      resetPasswordForEmail, forgotPasswordCheck, forgotPasswordReset,
     }}>
       {children}
     </AuthContext.Provider>

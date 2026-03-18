@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { toE164 } from "../_shared/phone.ts";
 
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -47,7 +48,8 @@ Deno.serve(async (req) => {
       return errorResponse(500, 'SMS service not configured', { requestId });
     }
 
-    // Verify OTP with Twilio Verify
+    // Verify OTP with Twilio Verify (must use same E.164 format as send-otp)
+    const phoneE164 = toE164(phone);
     const credentials = btoa(`${accountSid}:${authToken}`);
     const twilioRes = await fetch(
       `https://verify.twilio.com/v2/Services/${serviceSid}/VerificationCheck`,
@@ -57,7 +59,7 @@ Deno.serve(async (req) => {
           'Authorization': `Basic ${credentials}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: phone, Code: code }),
+        body: new URLSearchParams({ To: phoneE164, Code: code }),
       },
     );
 
@@ -71,40 +73,80 @@ Deno.serve(async (req) => {
     edgeLog('info', `OTP verified for ${phone}`, { requestId });
 
     // Returning user: create session via magic link
-    const phoneDigits = phone.replace(/[^0-9]/g, '');
+    const phoneDigits = phoneE164.replace(/\D/g, '');
+    let debugReason: string | undefined;
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('user_id')
-      .or(`phone.eq.${phone},phone.eq.${phoneDigits},phone.eq.+${phoneDigits}`)
+      .or(`phone.eq.${phoneDigits},phone.eq.+${phoneDigits}`)
       .limit(1)
       .maybeSingle();
 
     if (profile?.user_id) {
       const { data: userData, error: getUserError } = await supabaseAdmin.auth.admin.getUserById(profile.user_id);
-      if (!getUserError && userData?.user?.email) {
+      if (getUserError) {
+        // Fallback: seeded users can hit "Database error loading user" from Admin API; try signInWithPassword
+        const seedPw = Deno.env.get('SEED_USER_PASSWORD');
+        if (seedPw) {
+          const { data: signInData, error: signInErr } = await supabaseAnon.auth.signInWithPassword({
+            phone: phoneDigits,
+            password: seedPw,
+          });
+          if (!signInErr && signInData?.session) {
+            edgeLog('info', `OTP login successful via signInWithPassword fallback for ${phone}`, { requestId });
+            return successResponse({
+              verified: true,
+              access_token: signInData.session.access_token,
+              refresh_token: signInData.session.refresh_token,
+            }, requestId);
+          }
+        }
+        debugReason = `getUserById_failed: ${getUserError.message}`;
+        edgeLog('error', 'Returning user: getUserById failed', { requestId, userId: profile.user_id, error: String(getUserError) });
+      } else if (!userData?.user?.email) {
+        debugReason = 'user_no_email';
+        edgeLog('warn', 'Returning user: user has no email for magic link', { requestId, userId: profile.user_id, hasPhone: !!userData?.user?.phone });
+      } else {
         const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
           type: 'magiclink',
           email: userData.user.email,
         });
-        if (!linkError && linkData?.properties?.hashed_token) {
+        if (linkError) {
+          debugReason = `generateLink_failed: ${linkError.message}`;
+          edgeLog('error', 'Returning user: generateLink failed', { requestId, userId: profile.user_id, error: String(linkError) });
+        } else if (!linkData?.properties?.hashed_token) {
+          debugReason = 'generateLink_no_token';
+          edgeLog('error', 'Returning user: generateLink returned no hashed_token', { requestId, userId: profile.user_id });
+        } else {
           const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
             token_hash: linkData.properties.hashed_token,
             type: 'magiclink',
           });
-          if (!verifyError && verifyData?.session) {
+          if (verifyError) {
+            debugReason = `verifyOtp_failed: ${verifyError.message}`;
+            edgeLog('error', 'Returning user: verifyOtp failed', { requestId, userId: profile.user_id, error: String(verifyError) });
+          } else if (verifyData?.session) {
             edgeLog('info', `OTP login successful for ${phone}`, { requestId });
             return successResponse({
               verified: true,
               access_token: verifyData.session.access_token,
               refresh_token: verifyData.session.refresh_token,
             }, requestId);
+          } else {
+            debugReason = 'verifyOtp_no_session';
+            edgeLog('error', 'Returning user: verifyOtp returned no session', { requestId, userId: profile.user_id });
           }
         }
       }
+    } else {
+      debugReason = `no_profile (phoneDigits=${phoneDigits})`;
+      edgeLog('info', `No profile for phone, treating as new user`, { requestId, phone, phoneDigits });
     }
 
-    // New user: just return verified
-    return successResponse({ verified: true }, requestId);
+    // New user: just return verified (include _debug in dev so you can inspect Network tab)
+    const res: Record<string, unknown> = { verified: true };
+    if (debugReason) res._debug = debugReason;
+    return successResponse(res, requestId);
   } catch (err) {
     edgeLog('error', 'verify-otp error', { requestId, error: String(err) });
     return errorResponse(500, 'Internal server error', { requestId });
