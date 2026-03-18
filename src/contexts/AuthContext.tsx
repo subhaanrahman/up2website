@@ -9,7 +9,7 @@ interface AuthContextType {
   loading: boolean;
   checkPhone: (phone: string) => Promise<{ exists: boolean; error: Error | null }>;
   sendOtp: (phone: string) => Promise<{ error: Error | null }>;
-  verifyOtp: (phone: string, code: string) => Promise<{ error: Error | null }>;
+  verifyOtp: (phone: string, code: string) => Promise<{ error: Error | null; loggedIn?: boolean }>;
   register: (data: RegisterInput) => Promise<{ error: Error | null }>;
   login: (phone: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -84,11 +84,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const verifyOtp = async (phone: string, code: string) => {
     try {
-      await callEdgeFunction<{ verified: boolean }>('verify-otp', {
+      const result = await callEdgeFunction<{
+        verified: boolean;
+        access_token?: string;
+        refresh_token?: string;
+      }>('verify-otp', {
         method: 'POST',
         body: { phone, code },
       });
-      return { error: null };
+      if (result.access_token && result.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+        });
+        if (sessionError) return { error: sessionError };
+        return { error: null, loggedIn: true };
+      }
+      return { error: null, loggedIn: false };
     } catch (err) {
       return { error: err as Error };
     }

@@ -60,14 +60,12 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
     setLoading(false);
     onPhoneChecked(phone, exists);
 
-    if (!exists) {
-      // Fire-and-forget: send OTP in background after navigating
-      sendOtp(phone).then(({ error: otpErr }) => {
-        if (otpErr) {
-          toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
-        }
-      });
-    }
+    // Always send OTP (default auth for both new and returning users)
+    sendOtp(phone).then(({ error: otpErr }) => {
+      if (otpErr) {
+        toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
+      }
+    });
   };
 
   return (

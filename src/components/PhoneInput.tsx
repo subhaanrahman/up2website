@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PhoneInput as ReactPhoneInput } from "react-international-phone";
+import type { PhoneInputRefType } from "react-international-phone";
 import "react-international-phone/style.css";
 import { cn } from "@/lib/utils";
 
@@ -11,7 +12,7 @@ interface PhoneInputProps {
 }
 
 const useDetectedCountry = () => {
-  const [country, setCountry] = useState("au");
+  const [country, setCountry] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
@@ -19,9 +20,11 @@ const useDetectedCountry = () => {
       .then((data) => {
         if (data?.country_code) {
           setCountry(data.country_code.toLowerCase());
+        } else {
+          setCountry("us");
         }
       })
-      .catch(() => {/* fallback stays "au" */});
+      .catch(() => setCountry("us"));
   }, []);
 
   return country;
@@ -29,10 +32,20 @@ const useDetectedCountry = () => {
 
 const PhoneInput = ({ value, onChange, disabled, className }: PhoneInputProps) => {
   const detectedCountry = useDetectedCountry();
+  const phoneInputRef = useRef<PhoneInputRefType>(null);
+
+  // Update country when IP-based detection completes (matches user's location)
+  useEffect(() => {
+    if (detectedCountry && phoneInputRef.current?.setCountry) {
+      phoneInputRef.current.setCountry(detectedCountry);
+    }
+  }, [detectedCountry]);
 
   return (
     <ReactPhoneInput
-      defaultCountry={detectedCountry}
+      ref={phoneInputRef}
+      defaultCountry={detectedCountry ?? "us"}
+      forceDialCode
       value={value}
       onChange={onChange}
       disabled={disabled}

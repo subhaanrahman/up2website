@@ -10,10 +10,11 @@ interface PasswordStepProps {
   phone: string;
   onSuccess: () => void;
   onBack: () => void;
+  onTryOtpAgain?: () => void;
   onForgotPassword: () => void;
 }
 
-const PasswordStep = ({ phone, onSuccess, onBack, onForgotPassword }: PasswordStepProps) => {
+const PasswordStep = ({ phone, onSuccess, onBack, onTryOtpAgain, onForgotPassword }: PasswordStepProps) => {
   const { login } = useAuth();
   const { toast } = useToast();
   const [password, setPassword] = useState("");
@@ -86,13 +87,20 @@ const PasswordStep = ({ phone, onSuccess, onBack, onForgotPassword }: PasswordSt
           )}
         </Button>
 
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" onClick={onBack} className="flex-1">
-            Different number
-          </Button>
-          <Button type="button" variant="ghost" onClick={onForgotPassword} className="flex-1">
-            Forgot password?
-          </Button>
+        <div className="flex flex-col gap-2">
+          {onTryOtpAgain && (
+            <Button type="button" variant="ghost" onClick={onTryOtpAgain} className="w-full text-muted-foreground">
+              Try code again
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button type="button" variant="ghost" onClick={onBack} className="flex-1">
+              Different number
+            </Button>
+            <Button type="button" variant="ghost" onClick={onForgotPassword} className="flex-1">
+              Forgot password?
+            </Button>
+          </div>
         </div>
       </form>
     </>

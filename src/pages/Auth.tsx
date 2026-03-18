@@ -30,13 +30,8 @@ const Auth = () => {
   const handlePhoneChecked = (phoneNumber: string, exists: boolean) => {
     setPhone(phoneNumber);
     setIsNewUser(!exists);
-    if (exists) {
-      // Returning user → password login
-      setStep("password");
-    } else {
-      // New user → send OTP for verification
-      setStep("otp");
-    }
+    // OTP is default for both new and returning users; password is fallback only
+    setStep("otp");
   };
 
   const handleOtpVerified = () => {
@@ -81,8 +76,10 @@ const Auth = () => {
           {step === "otp" && (
             <OtpStep
               phone={phone}
+              isReturningUser={!isNewUser}
               onVerified={handleOtpVerified}
               onBack={() => setStep("phone")}
+              onUsePassword={() => setStep("password")}
             />
           )}
 
@@ -91,6 +88,7 @@ const Auth = () => {
               phone={phone}
               onSuccess={handleLoginSuccess}
               onBack={() => setStep("phone")}
+              onTryOtpAgain={() => setStep("otp")}
               onForgotPassword={() => {
                 // Future: forgot password flow via OTP
                 toast({ title: "Coming soon", description: "Password reset via SMS is coming soon." });

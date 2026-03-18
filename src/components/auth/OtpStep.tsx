@@ -11,11 +11,13 @@ const otpSchema = z.string().length(6, "OTP must be 6 digits");
 
 interface OtpStepProps {
   phone: string;
+  isReturningUser?: boolean;
   onVerified: () => void;
   onBack: () => void;
+  onUsePassword?: () => void;
 }
 
-const OtpStep = ({ phone, onVerified, onBack }: OtpStepProps) => {
+const OtpStep = ({ phone, isReturningUser, onVerified, onBack, onUsePassword }: OtpStepProps) => {
   const { verifyOtp } = useAuth();
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
@@ -34,13 +36,15 @@ const OtpStep = ({ phone, onVerified, onBack }: OtpStepProps) => {
 
     setLoading(true);
 
-    const { error: verifyErr } = await verifyOtp(phone, otp);
+    const { error: verifyErr, loggedIn } = await verifyOtp(phone, otp);
 
     if (verifyErr) {
       setError(verifyErr.message);
       toast({ title: "Error", description: verifyErr.message, variant: "destructive" });
+    } else if (loggedIn) {
+      // Returning user: session set, redirect will happen
     } else {
-      onVerified();
+      onVerified(); // New user: go to register
     }
 
     setLoading(false);
@@ -88,6 +92,12 @@ const OtpStep = ({ phone, onVerified, onBack }: OtpStepProps) => {
         <Button type="button" variant="ghost" onClick={onBack} className="w-full">
           Use a different number
         </Button>
+
+        {isReturningUser && onUsePassword && (
+          <Button type="button" variant="ghost" onClick={onUsePassword} className="w-full text-muted-foreground">
+            Use password instead
+          </Button>
+        )}
       </form>
     </>
   );
