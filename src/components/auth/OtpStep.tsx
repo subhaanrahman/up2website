@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
+const RESEND_COOLDOWN_MS = 60_000;
 
 interface OtpStepProps {
   phone: string;
@@ -19,11 +20,19 @@ interface OtpStepProps {
 }
 
 const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, onBack, onUsePassword }: OtpStepProps) => {
-  const { verifyOtp } = useAuth();
+  const { verifyOtp, sendOtp } = useAuth();
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendCooldownUntil, setResendCooldownUntil] = useState<number>(0);
+  const cooldownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,6 +60,30 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, o
     }
 
     setLoading(false);
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldownUntil > Date.now()) return;
+    setError("");
+    const { error: sendErr } = await sendOtp(phone);
+    if (sendErr) {
+      setError(sendErr.message);
+      toast({ title: "Error sending code", description: sendErr.message, variant: "destructive" });
+      return;
+    }
+    setResendCooldownUntil(Date.now() + RESEND_COOLDOWN_MS);
+    if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+    cooldownIntervalRef.current = setInterval(() => {
+      setResendCooldownUntil((prev) => {
+        if (prev <= Date.now()) {
+          if (cooldownIntervalRef.current) clearInterval(cooldownIntervalRef.current);
+          cooldownIntervalRef.current = null;
+          return 0;
+        }
+        return prev;
+      });
+    }, 1000);
+    toast({ title: "Code sent", description: "Check your phone for the new verification code." });
   };
 
   return (
@@ -95,6 +128,20 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, o
         <Button type="button" variant="ghost" onClick={onBack} className="w-full">
           Use a different number
         </Button>
+
+        <p className="text-center text-sm text-muted-foreground">
+          {resendCooldownUntil > Date.now() ? (
+            <>Resend code in {Math.ceil((resendCooldownUntil - Date.now()) / 1000)}s</>
+          ) : (
+            <button
+              type="button"
+              onClick={handleResendOtp}
+              className="text-primary underline hover:no-underline"
+            >
+              Didn&apos;t get it? Resend code
+            </button>
+          )}
+        </p>
 
         {isReturningUser && onUsePassword && (
           <Button type="button" variant="ghost" onClick={onUsePassword} className="w-full text-muted-foreground">

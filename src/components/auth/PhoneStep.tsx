@@ -67,19 +67,20 @@ const PhoneStep = ({ onPhoneChecked, sendOtpForNewUsersOnly }: PhoneStepProps) =
       return;
     }
 
-    // Navigate immediately — don't wait for OTP send
-    setLoading(false);
-    onPhoneChecked(phone, exists);
-
     // Send OTP only when user will see OTP step (new users). Returning users go to password, no OTP needed.
     const shouldSendOtp = !sendOtpForNewUsersOnly || !exists;
     if (shouldSendOtp) {
-      sendOtp(phone).then(({ error: otpErr }) => {
-        if (otpErr) {
-          toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
-        }
-      });
+      const { error: otpErr } = await sendOtp(phone);
+      if (otpErr) {
+        setError(otpErr.message);
+        toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
     }
+
+    setLoading(false);
+    onPhoneChecked(phone, exists);
   };
 
   return (
