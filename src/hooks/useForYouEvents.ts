@@ -17,6 +17,6 @@ export function useForYouEvents(limit = 15) {
   return useQuery({
     queryKey: ['for-you-events', user?.id, profile?.city],
     queryFn: () => fetchForYouEvents(user?.id ?? null, profile?.city ?? null, limit),
-    enabled: !!user,
+    enabled: true, // Run for guests too — fetchForYouEvents backfills with upcoming events when no user
   });
 }

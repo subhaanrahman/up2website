@@ -91,6 +91,27 @@ Deno.serve(async (req) => {
       return errorResponse(500, error.message, { requestId });
     }
 
+    // Sync to auth.users: display_name column in Auth dashboard shows @username
+    if ('username' in updates || 'display_name' in updates) {
+      const serviceClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      );
+      const { data: profile } = await serviceClient
+        .from('profiles')
+        .select('display_name, username')
+        .eq('user_id', user.id)
+        .single();
+      if (profile) {
+        const meta = {
+          ...user.user_metadata,
+          display_name: profile.username ? `@${profile.username}` : profile.display_name,
+          username: profile.username,
+        };
+        await serviceClient.auth.admin.updateUserById(user.id, { user_metadata: meta });
+      }
+    }
+
     return successResponse({ success: true }, requestId);
   } catch (err) {
     edgeLog('error', 'Internal error', { requestId, error: String(err) });
