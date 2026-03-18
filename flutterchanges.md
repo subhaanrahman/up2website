@@ -4,6 +4,16 @@
 
 <!-- New entries -->
 
+### 2026-03-18 — CI: Fix ForgotPasswordStep test assertion
+
+**Files changed:** `src/components/auth/ForgotPasswordStep.test.tsx`
+
+**What changed (React/TS):**
+- ForgotPasswordStep displays "That code wasn't valid..." for invalid/expired OTP (not the raw error message). Test assertion updated from `/invalid or expired/i` to `/that code wasn't valid/i` to match the actual UI text. Fixes CI builds failing on push to main.
+
+**Flutter migration notes:**
+- No new Flutter work. If migrating forgot-password flow, ensure test assertions match the displayed user-facing error message.
+
 ### 2026-03-16 — Profile mapping and loading fixes (phone-only auth)
 
 **Files changed:** `src/contexts/ActiveProfileContext.tsx`, `src/pages/Profile.tsx`, `src/components/DesktopSidebar.tsx`, `src/hooks/useProfileQuery.ts`, `src/hooks/useFeedQuery.ts`

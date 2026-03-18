@@ -141,7 +141,7 @@ describe('ForgotPasswordStep', () => {
     await userEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/invalid or expired/i)).toBeInTheDocument();
+      expect(screen.getByText(/that code wasn't valid/i)).toBeInTheDocument();
       expect(screen.getByPlaceholderText('000000')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
     });
