@@ -29,9 +29,7 @@ interface AuthContextType {
 
 export interface RegisterInput {
   phone: string;
-  password: string;
-  firstName: string;
-  lastName: string;
+  displayName: string;
   username: string;
 }
 

@@ -32,18 +32,21 @@ export async function callEdgeFunction<T = unknown>(
 
   let token: string | undefined;
   if (!PUBLIC_FUNCTIONS.has(functionName)) {
-    let { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
-    // Proactively refresh if the token expires within 60 seconds
+    // Proactively refresh if the token expires within 5 minutes to avoid "invalid JWT" from Edge Functions
+    let sessionToUse = session;
     if (session?.expires_at) {
       const expiresMs = session.expires_at * 1000;
-      if (expiresMs - Date.now() < 60_000) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
-        session = refreshed.session;
+      if (expiresMs - Date.now() < 5 * 60 * 1000) {
+        const { data: refreshed, error } = await supabase.auth.refreshSession();
+        if (!error && refreshed.session) {
+          sessionToUse = refreshed.session;
+        }
       }
     }
 
-    token = session?.access_token;
+    token = sessionToUse?.access_token;
   }
 
   const url = `${config.functionsUrl}/${functionName}`;
@@ -59,13 +62,28 @@ export async function callEdgeFunction<T = unknown>(
   // that allows this header. Safe to enable after pushing the _shared/response.ts update.
   // reqHeaders['X-Request-ID'] = requestId;
 
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     method,
     headers: reqHeaders,
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 
-  const json = await res.json().catch(() => null);
+  let json = await res.json().catch(() => null);
+
+  // On 401, try refreshing the session once and retry (handles token expiry between check and request)
+  if (res.status === 401 && token && !PUBLIC_FUNCTIONS.has(functionName)) {
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    const newToken = refreshed.session?.access_token;
+    if (newToken) {
+      log.info('Retrying after session refresh', { functionName, requestId });
+      res = await fetch(url, {
+        method,
+        headers: { ...reqHeaders, Authorization: `Bearer ${newToken}` },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
+      json = await res.json().catch(() => null);
+    }
+  }
 
   if (!res.ok) {
     const err = parseApiError(res.status, json);

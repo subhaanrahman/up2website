@@ -5,7 +5,8 @@
 NAS_USER="Haan"
 NAS_HOST="192.168.1.126"
 REPO_NAME="up2"
-NAS_GIT_DIR="/volume1/git/${REPO_NAME}.git"
+NAS_GIT_DIR="/volume 2/git/${REPO_NAME}.git"
+NAS_GIT_DIR_URL="/volume%202/git/${REPO_NAME}.git"
 
 echo "=== Setting up git repo on NAS ==="
 echo ""
@@ -15,7 +16,7 @@ echo ""
 
 # Step 1: Create the bare repo on the NAS via SSH
 echo "[1/3] Creating bare git repository on NAS..."
-ssh ${NAS_USER}@${NAS_HOST} "mkdir -p ${NAS_GIT_DIR} && cd ${NAS_GIT_DIR} && git init --bare"
+ssh ${NAS_USER}@${NAS_HOST} "mkdir -p '${NAS_GIT_DIR}' && cd '${NAS_GIT_DIR}' && git init --bare"
 
 if [ $? -ne 0 ]; then
     echo ""
@@ -26,7 +27,7 @@ if [ $? -ne 0 ]; then
     echo "  - Verify you can connect: ssh ${NAS_USER}@${NAS_HOST}"
     echo "  - If the path is wrong, edit NAS_GIT_DIR in this script"
     echo "    Common NAS paths:"
-    echo "      Synology:  /volume1/git/${REPO_NAME}.git"
+    echo "      Synology:  /volume 2/git/${REPO_NAME}.git"
     echo "      TrueNAS:   /mnt/pool/git/${REPO_NAME}.git"
     echo "      OpenWrt:   /opt/git/${REPO_NAME}.git"
     exit 1
@@ -36,11 +37,11 @@ echo ""
 
 # Step 2: Add NAS as a remote
 echo "[2/3] Adding NAS as git remote 'nas'..."
-git remote add nas ssh://${NAS_USER}@${NAS_HOST}${NAS_GIT_DIR} 2>/dev/null
+git remote add nas ssh://${NAS_USER}@${NAS_HOST}${NAS_GIT_DIR_URL} 2>/dev/null
 
 if [ $? -ne 0 ]; then
     echo "Remote 'nas' already exists. Updating URL..."
-    git remote set-url nas ssh://${NAS_USER}@${NAS_HOST}${NAS_GIT_DIR}
+    git remote set-url nas ssh://${NAS_USER}@${NAS_HOST}${NAS_GIT_DIR_URL}
 fi
 
 echo ""

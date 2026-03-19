@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +71,8 @@ const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadge
         </h3>
         <div className="flex flex-col gap-1 min-h-[2.75rem]">
           <div className="flex items-center gap-1 flex-wrap">
-            <Badge variant="primary" className="text-[11px] py-1 px-2">
+            <Badge variant="primary" className="text-[11px] py-1 px-2 gap-1">
+              <Calendar className="h-3 w-3 shrink-0" />
               {formatDateBadge(event)}
             </Badge>
           </div>
@@ -78,8 +80,9 @@ const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadge
             <div className="flex items-center gap-1 flex-wrap">
               <Badge
                 variant="outline"
-                className="w-fit max-w-full break-words text-[11px] py-1 px-2 border border-muted-foreground/[0.35] bg-muted-foreground/10 text-white"
+                className="w-fit max-w-full break-words text-[11px] py-1 px-2 gap-1 border border-muted-foreground/[0.35] bg-muted-foreground/10 text-white"
               >
+                <MapPin className="h-3 w-3 shrink-0" />
                 {venue}
               </Badge>
             </div>

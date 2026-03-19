@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,35 +20,34 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from '@/infrastructure/supabase';
+import { PASSWORD_RULES } from "@/utils/passwordValidation";
 
 const ManageAccount = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const allPasswordRulesPass = PASSWORD_RULES.every((rule) => rule.test(newPassword));
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (newPassword.length < 8) {
-      toast({ title: "Password must be at least 8 characters", variant: "destructive" });
+    if (!allPasswordRulesPass) {
+      toast({ title: "Password does not meet requirements", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      toast({ title: "Password updated successfully" });
+      toast({ title: "Password saved successfully" });
     } catch (err: any) {
       toast({ title: "Failed to update password", description: err?.message || "Please try again.", variant: "destructive" });
     } finally {
@@ -97,39 +96,22 @@ const ManageAccount = () => {
 
         <Separator />
 
-        {/* Change password */}
+        {/* Password setup */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Change Password</h2>
+          <h2 className="text-lg font-semibold text-foreground">Password (Optional)</h2>
+          <p className="text-sm text-muted-foreground">
+            Add a password for extra security. Your account can still be accessed with phone verification codes.
+          </p>
 
           <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
-            <div className="relative">
-              <Input
-                id="current-password"
-                type={showCurrent ? "text" : "password"}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowCurrent(!showCurrent)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="new-password">New Password</Label>
+            <Label htmlFor="new-password">Password</Label>
             <div className="relative">
               <Input
                 id="new-password"
                 type={showNew ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password"
+                placeholder="Create a strong password"
               />
               <button
                 type="button"
@@ -139,25 +121,44 @@ const ManageAccount = () => {
                 {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+            {newPassword && (
+              <div className="space-y-1 mt-2">
+                {PASSWORD_RULES.map((rule) => {
+                  const passes = rule.test(newPassword);
+                  return (
+                    <div key={rule.label} className="flex items-center gap-2 text-sm">
+                      {passes ? (
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                      ) : (
+                        <X className="h-3.5 w-3.5 text-destructive" />
+                      )}
+                      <span className={passes ? "text-muted-foreground" : "text-destructive"}>
+                        {rule.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Label htmlFor="confirm-password">Confirm Password</Label>
             <Input
               id="confirm-password"
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
+              placeholder="Confirm password"
             />
           </div>
 
           <Button
             onClick={handleChangePassword}
-            disabled={!currentPassword || !newPassword || !confirmPassword || saving}
+            disabled={!newPassword || !confirmPassword || !allPasswordRulesPass || saving}
             className="w-full"
           >
-            {saving ? "Updating…" : "Update Password"}
+            {saving ? "Saving…" : "Save Password"}
           </Button>
         </div>
 

@@ -12,11 +12,9 @@ const phoneSchema = z.string().min(8, "Please enter a valid phone number");
 
 interface PhoneStepProps {
   onPhoneChecked: (phone: string, exists: boolean) => void;
-  /** When true, only send OTP for new users (skip for returning users going to password) */
-  sendOtpForNewUsersOnly?: boolean;
 }
 
-const PhoneStep = ({ onPhoneChecked, sendOtpForNewUsersOnly }: PhoneStepProps) => {
+const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
   const { checkPhone, sendOtp } = useAuth();
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -67,16 +65,12 @@ const PhoneStep = ({ onPhoneChecked, sendOtpForNewUsersOnly }: PhoneStepProps) =
       return;
     }
 
-    // Send OTP only when user will see OTP step (new users). Returning users go to password, no OTP needed.
-    const shouldSendOtp = !sendOtpForNewUsersOnly || !exists;
-    if (shouldSendOtp) {
-      const { error: otpErr } = await sendOtp(phone);
-      if (otpErr) {
-        setError(otpErr.message);
-        toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
-        setLoading(false);
-        return;
-      }
+    const { error: otpErr } = await sendOtp(phone);
+    if (otpErr) {
+      setError(otpErr.message);
+      toast({ title: "Error sending code", description: otpErr.message, variant: "destructive" });
+      setLoading(false);
+      return;
     }
 
     setLoading(false);

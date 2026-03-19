@@ -1,7 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-import { hashPassword } from "../_shared/password.ts";
 import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
@@ -10,7 +9,6 @@ function phoneToInternalEmail(phone: string): string {
   return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
 }
 
-const PASSWORD_REGEX = /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,30}$/;
 
 Deno.serve(async (req) => {
@@ -25,23 +23,14 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('register', null, ip);
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    const { phone, password, firstName, lastName, username } = await req.json();
+    const { phone, displayName, username } = await req.json();
 
     // ── Validation ──
     if (!phone || typeof phone !== 'string' || phone.length < 8) {
       return errorResponse(400, 'Invalid phone number', { requestId });
     }
-    if (!password || typeof password !== 'string') {
-      return errorResponse(400, 'Password is required', { requestId });
-    }
-    if (!PASSWORD_REGEX.test(password)) {
-      return errorResponse(400, 'Password must be 8+ characters with at least 1 letter, 1 number, and 1 special character', { requestId });
-    }
-    if (!firstName || typeof firstName !== 'string' || firstName.trim().length < 1) {
-      return errorResponse(400, 'First name is required', { requestId });
-    }
-    if (!lastName || typeof lastName !== 'string' || lastName.trim().length < 1) {
-      return errorResponse(400, 'Last name is required', { requestId });
+    if (!displayName || typeof displayName !== 'string' || displayName.trim().length < 1) {
+      return errorResponse(400, 'Display name is required', { requestId });
     }
     if (!username || typeof username !== 'string' || !USERNAME_REGEX.test(username)) {
       return errorResponse(400, 'Username must be 3-30 characters (letters, numbers, underscores only)', { requestId });
@@ -76,22 +65,18 @@ Deno.serve(async (req) => {
       return errorResponse(409, 'An account with this phone number already exists. Please log in instead.', { requestId });
     }
 
-    // ── Create user with real password for signInWithPassword ──
+    // ── Create user for OTP-only onboarding ──
     const internalEmail = phoneToInternalEmail(phone);
-    const passwordHash = await hashPassword(password);
+    const normalizedDisplayName = displayName.trim();
 
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       phone,
       phone_confirm: true,
       email: internalEmail,
       email_confirm: true,
-      password, // Sets actual Supabase auth password for signInWithPassword
       user_metadata: {
-        display_name: `${firstName.trim()} ${lastName.trim()}`,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
+        display_name: normalizedDisplayName,
         username: username.toLowerCase(),
-        password_hash: passwordHash, // Keep for backward compat
       },
     });
 
@@ -109,10 +94,10 @@ Deno.serve(async (req) => {
 
     // ── Update profile with registration data + phone ──
     const profileData = {
-      display_name: `${firstName.trim()} ${lastName.trim()}`,
+      display_name: normalizedDisplayName,
       username: username.toLowerCase(),
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
+      first_name: normalizedDisplayName,
+      last_name: null,
       phone,
     };
 
@@ -131,7 +116,7 @@ Deno.serve(async (req) => {
       const avatarUrl = await generateAndUploadInitialsAvatar(
         supabaseAdmin,
         userId,
-        `${firstName.trim()} ${lastName.trim()}`,
+        normalizedDisplayName,
       );
       await supabaseAdmin
         .from('profiles')
@@ -142,19 +127,29 @@ Deno.serve(async (req) => {
       edgeLog('error', 'Initials avatar generation failed (non-fatal)', { requestId, error: String(avatarErr) });
     }
 
-    // ── Create session via signInWithPassword using phone (single fast call) ──
+    // ── Create session via server-generated magic link ──
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
     );
 
-    const { data: signInData, error: signInError } = await supabaseAnon.auth.signInWithPassword({
-      phone: phone.replace(/[^0-9]/g, ''),
-      password,
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: internalEmail,
     });
 
-    if (signInError || !signInData?.session) {
-      edgeLog('error', 'signInWithPassword error', { requestId, error: JSON.stringify(signInError) });
+    if (linkError || !linkData?.properties?.hashed_token) {
+      edgeLog('error', 'generateLink error', { requestId, error: JSON.stringify(linkError) });
+      return errorResponse(500, 'Account created but sign-in failed. Please log in manually.', { requestId });
+    }
+
+    const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: 'magiclink',
+    });
+
+    if (verifyError || !verifyData?.session) {
+      edgeLog('error', 'verifyOtp error', { requestId, error: JSON.stringify(verifyError) });
       return errorResponse(500, 'Account created but sign-in failed. Please log in manually.', { requestId });
     }
 
@@ -162,8 +157,8 @@ Deno.serve(async (req) => {
 
     return successResponse({
       success: true,
-      access_token: signInData.session.access_token,
-      refresh_token: signInData.session.refresh_token,
+      access_token: verifyData.session.access_token,
+      refresh_token: verifyData.session.refresh_token,
       user_id: userId,
     }, requestId);
   } catch (err) {

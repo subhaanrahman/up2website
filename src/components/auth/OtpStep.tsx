@@ -14,12 +14,10 @@ interface OtpStepProps {
   phone: string;
   isReturningUser?: boolean;
   onVerified: () => void;
-  onVerifiedNeedPassword?: () => void;
   onBack: () => void;
-  onUsePassword?: () => void;
 }
 
-const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, onBack, onUsePassword }: OtpStepProps) => {
+const OtpStep = ({ phone, isReturningUser, onVerified, onBack }: OtpStepProps) => {
   const { verifyOtp, sendOtp } = useAuth();
   const { toast } = useToast();
   const [otp, setOtp] = useState("");
@@ -53,8 +51,10 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, o
       toast({ title: "Error", description: verifyErr.message, variant: "destructive" });
     } else if (loggedIn) {
       // Session set, redirect will happen
-    } else if (isReturningUser && onVerifiedNeedPassword) {
-      onVerifiedNeedPassword(); // Returning user: go to password step
+    } else if (isReturningUser) {
+      const msg = "Couldn't sign you in with this code. Please request a new code and try again.";
+      setError(msg);
+      toast({ title: "Sign in failed", description: msg, variant: "destructive" });
     } else {
       onVerified(); // New user: go to register
     }
@@ -143,11 +143,6 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onVerifiedNeedPassword, o
           )}
         </p>
 
-        {isReturningUser && onUsePassword && (
-          <Button type="button" variant="ghost" onClick={onUsePassword} className="w-full text-muted-foreground">
-            Use password instead
-          </Button>
-        )}
       </form>
     </>
   );

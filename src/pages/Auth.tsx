@@ -5,12 +5,10 @@ import { useToast } from "@/hooks/use-toast";
 import logoFull from "@/assets/logo-full.png";
 import PhoneStep from "@/components/auth/PhoneStep";
 import OtpStep from "@/components/auth/OtpStep";
-import PasswordStep from "@/components/auth/PasswordStep";
 import RegisterStep from "@/components/auth/RegisterStep";
-import ForgotPasswordStep from "@/components/auth/ForgotPasswordStep";
 import { Button } from "@/components/ui/button";
 
-type AuthStep = "phone" | "otp" | "password" | "register" | "forgot";
+type AuthStep = "phone" | "otp" | "register";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -31,17 +29,12 @@ const Auth = () => {
   const handlePhoneChecked = (phoneNumber: string, exists: boolean) => {
     setPhone(phoneNumber);
     setIsNewUser(!exists);
-    setStep(exists ? "password" : "otp");
+    setStep("otp");
   };
 
   const handleOtpVerified = () => {
-    // OTP verified → collect registration details
-    setStep("register");
-  };
-
-  const handleLoginSuccess = () => {
-    toast({ title: "Welcome back!", description: "You've successfully signed in." });
-    navigate(from);
+    // New users complete profile details after OTP verification.
+    if (isNewUser) setStep("register");
   };
 
   const handleRegisterSuccess = () => {
@@ -62,7 +55,7 @@ const Auth = () => {
 
           {step === "phone" && (
             <>
-              <PhoneStep onPhoneChecked={handlePhoneChecked} sendOtpForNewUsersOnly />
+              <PhoneStep onPhoneChecked={handlePhoneChecked} />
               <button
                 type="button"
                 onClick={() => navigate("/")}
@@ -78,30 +71,7 @@ const Auth = () => {
               phone={phone}
               isReturningUser={!isNewUser}
               onVerified={handleOtpVerified}
-              onVerifiedNeedPassword={() => setStep("password")}
               onBack={() => setStep("phone")}
-              onUsePassword={() => setStep("password")}
-            />
-          )}
-
-          {step === "password" && (
-            <PasswordStep
-              phone={phone}
-              onSuccess={handleLoginSuccess}
-              onBack={() => setStep("phone")}
-              onTryOtpAgain={() => setStep("otp")}
-              onForgotPassword={() => setStep("forgot")}
-            />
-          )}
-
-          {step === "forgot" && (
-            <ForgotPasswordStep
-              phone={phone}
-              onSuccess={() => {
-                toast({ title: "Password reset", description: "Sign in with your new password." });
-                setStep("phone");
-              }}
-              onBack={() => setStep("password")}
             />
           )}
 
