@@ -20,6 +20,8 @@ interface TicketingPanelProps {
   setTicketTiers: (v: TicketTier[]) => void;
   ticketsAvailableFrom: string;
   setTicketsAvailableFrom: (v: string) => void;
+  ticketsAvailableUntil: string;
+  setTicketsAvailableUntil: (v: string) => void;
   soldOutMessageEnabled: boolean;
   setSoldOutMessageEnabled: (v: boolean) => void;
   soldOutMessage: string;
@@ -36,6 +38,7 @@ const TicketingPanel = ({
   discountCodes, setDiscountCodes,
   ticketTiers, setTicketTiers,
   ticketsAvailableFrom, setTicketsAvailableFrom,
+  ticketsAvailableUntil, setTicketsAvailableUntil,
   soldOutMessageEnabled, setSoldOutMessageEnabled,
   soldOutMessage, setSoldOutMessage,
   payoutsReady = false,
@@ -193,6 +196,14 @@ const TicketingPanel = ({
         onChange={setTicketsAvailableFrom}
         label="Tickets Available From"
         helperText="Leave empty to open immediately"
+      />
+
+      {/* Tickets available until */}
+      <DateTimePicker
+        value={ticketsAvailableUntil}
+        onChange={setTicketsAvailableUntil}
+        label="Tickets Available Until"
+        helperText="Leave empty to close at event start"
       />
 
       <TicketTierModal open={tierModalOpen} onOpenChange={setTierModalOpen} onSave={handleSaveTier} existing={editingTier} />

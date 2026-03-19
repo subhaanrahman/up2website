@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
-    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id, publish_at } = body;
+    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id, publish_at, tickets_available_from, tickets_available_until } = body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return errorResponse(400, 'title is required', { requestId });
@@ -86,6 +86,8 @@ Deno.serve(async (req) => {
         organiser_profile_id: validatedOrgId,
         status: eventStatus,
         publish_at: isScheduled ? publish_at : null,
+        tickets_available_from: tickets_available_from || null,
+        tickets_available_until: tickets_available_until || null,
       })
       .select()
       .single();

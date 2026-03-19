@@ -190,14 +190,9 @@ Before committing any code change:
 |----------|---------|
 | `docs/ARCHITECTURE.md` | Full platform architecture (routes, DB, edge functions, risks) |
 | `docs/DATABASE_ARCHITECTURE.md` | Schema deep-dive (46 tables, RPCs, RLS, indexes) |
-| `docs/CLEANUP_ARCHITECTURE_TODO.md` | Remaining architecture work (sections 5-8 open) |
+| `docs/PLATFORM_TODOS.md` | Consolidated todos (pre-launch, backend, Stripe, optimisation, API, cleanup) |
 | `docs/SECURITY_CHECKLIST.md` | Which tables are locked, which are edge-only, which are client-writable |
-| `docs/STRIPE_TODO.md` | Payment integration phases (Phase 3: refunds pending) |
-| `docs/BACKEND_TODO.md` | Backend feature work (refunds, reminders, guestlist, admin) |
 | `docs/GAMIFICATION_OPTIONS.md` | Points, ranks, badges roadmap |
-| `docs/API_CHECKLIST.md` | Third-party API integrations status |
-| `docs/OPTIMISE_CHECKLIST.md` | Performance optimization tasks |
-| `docs/DB_OPTIMISATION_CHECKLIST.md` | Database performance tasks |
 
 ---
 

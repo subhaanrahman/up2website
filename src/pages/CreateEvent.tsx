@@ -58,6 +58,7 @@ const CreateEvent = () => {
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
   const [ticketsAvailableFrom, setTicketsAvailableFrom] = useState("");
+  const [ticketsAvailableUntil, setTicketsAvailableUntil] = useState("");
   const [soldOutMessageEnabled, setSoldOutMessageEnabled] = useState(false);
   const [soldOutMessage, setSoldOutMessage] = useState("");
 
@@ -182,6 +183,8 @@ const CreateEvent = () => {
         coverImage: coverImage || undefined,
         organiserProfileId: orgProfileId,
         publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
+        ticketsAvailableFrom: ticketsAvailableFrom ? new Date(ticketsAvailableFrom).toISOString() : undefined,
+        ticketsAvailableUntil: ticketsAvailableUntil ? new Date(ticketsAvailableUntil).toISOString() : undefined,
       });
 
       const eventId = (data as any).id;
@@ -271,6 +274,7 @@ const CreateEvent = () => {
               discountCodes={discountCodes} setDiscountCodes={setDiscountCodes}
               ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
               ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
+              ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
               payoutsReady={payoutsReady}

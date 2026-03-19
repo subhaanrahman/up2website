@@ -1,4 +1,4 @@
-// Hardcoded city list — replace with Google Places API before launch (see docs/API_CHECKLIST.md)
+// Hardcoded city list — replace with Google Places API before launch (see docs/PLATFORM_TODOS.md)
 
 export const CITIES = [
   // Australia

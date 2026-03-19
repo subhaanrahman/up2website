@@ -22,6 +22,8 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     category: row.category as string | null,
     maxGuests: row.max_guests as number | null,
     isPublic: row.is_public as boolean,
+    ticketsAvailableFrom: (row.tickets_available_from as string) ?? null,
+    ticketsAvailableUntil: (row.tickets_available_until as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };

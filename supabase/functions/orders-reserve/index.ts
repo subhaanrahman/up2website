@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
     // Verify event exists, is published, and get canonical price
     const { data: event, error: eventError } = await serviceClient
       .from('events')
-      .select('id, max_guests, title, ticket_price_cents, status')
+      .select('id, max_guests, title, ticket_price_cents, status, event_date, tickets_available_from, tickets_available_until')
       .eq('id', event_id)
       .single();
 
@@ -69,6 +69,21 @@ Deno.serve(async (req) => {
     // Only allow purchases for published events
     if (event.status !== 'published') {
       return errorResponse(400, 'Event is not available for ticket sales', { requestId });
+    }
+
+    // Enforce ticket sales window
+    const now = new Date();
+    if (event.tickets_available_from) {
+      const from = new Date(event.tickets_available_from);
+      if (now < from) {
+        return errorResponse(400, 'Ticket sales not yet open', { requestId });
+      }
+    }
+    const effectiveEnd = event.tickets_available_until
+      ? new Date(event.tickets_available_until)
+      : new Date(new Date(event.event_date).getTime() - 60 * 1000);
+    if (now >= effectiveEnd) {
+      return errorResponse(400, 'Ticket sales have ended', { requestId });
     }
 
     // Derive price from ticket tier (preferred) or fallback to event price
