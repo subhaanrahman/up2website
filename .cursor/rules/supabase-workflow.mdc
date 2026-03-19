@@ -10,17 +10,18 @@ alwaysApply: false
 
 ## Schema Changes: Migrations Only
 
-**RULE:** All database schema changes MUST be made via migration files in `supabase/migrations/`. Do NOT use Supabase MCP `apply_migration` or the Supabase Dashboard SQL editor for schema changes—they bypass local version control and cause migration history drift between local and remote.
+**RULE:** All database schema changes MUST be made via migration files in `supabase/migrations/`. Every `supabase db push` MUST have a corresponding migration file—never suggest db push without creating the migration file first. Do NOT use Supabase MCP `apply_migration` or the Supabase Dashboard SQL editor for schema changes—they bypass local version control and cause migration history drift between local and remote.
 
 ### Process
 
-1. Create a new migration file: `supabase/migrations/YYYYMMDDHHMMSS_description.sql` (e.g. `20260319120000_tickets_available_until.sql`)
-2. Write the SQL (ALTER TABLE, CREATE TABLE, etc.)
-3. **After creating or editing a migration file, PROMPT THE USER** to run:
+1. **Always create a migration file first.** Never suggest or mention `supabase db push` without having created the corresponding migration file in `supabase/migrations/`.
+2. Create a new migration file: `supabase/migrations/YYYYMMDDHHMMSS_description.sql` (e.g. `20260319120000_tickets_available_until.sql`)
+3. Write the SQL (ALTER TABLE, CREATE TABLE, etc.)
+4. **After creating or editing a migration file, PROMPT THE USER** to run:
    ```bash
    supabase db push
    ```
-4. The user must run this command in their terminal—MCP cannot run CLI commands. Remind them to run it before continuing or committing.
+5. The user must run this command in their terminal—MCP cannot run CLI commands. Remind them to run it before continuing or committing.
 
 ### User Prompt Template
 
@@ -72,7 +73,7 @@ No user action required for these.
 
 | Task | Handled by | User action |
 |------|------------|-------------|
-| Schema changes (new columns, tables) | Migration file + CLI | **Run `supabase db push`** |
+| Schema changes (new columns, tables) | **Migration file first**, then CLI | Create migration file → **Run `supabase db push`** |
 | Edge function deploy | MCP or CLI | None |
 | Query DB, list tables, logs, types | MCP | None |
 
