@@ -96,7 +96,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
   };
 
   return (
-    <div className="px-4 py-3 border-b border-border">
+    <div className="border-b border-border w-full">
+      <div className="px-4 py-3">
       {repostedBy && (
         <div className="flex items-center gap-1.5 text-[13px] text-muted-foreground mb-1.5 pl-[52px]">
           <Repeat2 className="h-3.5 w-3.5" />
@@ -192,6 +193,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
             </button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

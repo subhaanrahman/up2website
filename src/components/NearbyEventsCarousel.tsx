@@ -1,18 +1,11 @@
 import { useEffect, useCallback, useState } from "react";
-import { Link } from "react-router-dom";
-import { Calendar, DollarSign, MapPin } from "lucide-react";
-import { format } from "date-fns";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { DollarSign } from "lucide-react";
+import { EventTile, type EventTileEvent } from "@/components/EventTile";
+import { Badge } from "@/components/ui/badge";
 import useEmblaCarousel from "embla-carousel-react";
 
-interface NearbyEvent {
-  id: string;
-  title: string;
-  event_date: string;
-  location: string | null;
-  venue_name?: string | null;
+interface NearbyEvent extends EventTileEvent {
   address?: string | null;
-  cover_image: string | null;
   ticket_price_cents: number;
 }
 
@@ -23,6 +16,9 @@ interface NearbyEventsCarouselProps {
 const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" });
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const formatPricePill = (priceCents: number) =>
+    priceCents === 0 ? "Free" : `R${(priceCents / 100).toFixed(2)}`;
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -57,35 +53,19 @@ const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
           <div className="flex">
             {events.map((event) => (
               <div key={event.id} className="min-w-0 shrink-0 grow-0 basis-full">
-                <Link
-                  to={`/events/${event.id}`}
-                  className="flex rounded-tile overflow-hidden bg-card border border-border hover:border-primary/50 transition-colors"
-                >
-                  <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden bg-muted">
-                    <img
-                      src={event.cover_image || getEventFlyer(event.id)}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1 pl-4 pr-3 py-3 flex flex-col justify-center min-w-0">
-                    <h3 className="font-bold text-foreground text-sm truncate capitalize">{event.title}</h3>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5">
-                      <Calendar className="h-3 w-3 text-primary" />
-                      <span>{format(new Date(event.event_date), "EEE MMM d '•' haaa")}</span>
-                    </div>
-                    {(event.venue_name ?? event.location) && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
-                        <span className="truncate">{event.venue_name ?? event.location}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <DollarSign className="h-3 w-3 text-primary" />
-                      <span>{event.ticket_price_cents === 0 ? "Free" : `R${(event.ticket_price_cents / 100).toFixed(2)}`}</span>
-                    </div>
-                  </div>
-                </Link>
+                <EventTile
+                  event={event}
+                  dateRightBadge={(
+                    <Badge
+                      variant="primary"
+                      className="text-[11px] py-1 px-2 gap-1"
+                    >
+                      <DollarSign className="h-3 w-3 shrink-0" />
+                      {formatPricePill(event.ticket_price_cents)}
+                    </Badge>
+                  )}
+                  className="w-full"
+                />
               </div>
             ))}
           </div>

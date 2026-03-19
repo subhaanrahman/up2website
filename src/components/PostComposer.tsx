@@ -145,7 +145,8 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
   const hasContent = postText.trim() || selectedImage || selectedGif;
 
   return (
-    <div ref={composerRef} className="px-4 py-3 border-b border-border">
+    <div ref={composerRef} className="border-b border-border w-full">
+      <div className="px-4 py-3">
       <input
         ref={fileInputRef}
         type="file"
@@ -250,6 +251,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
             </p>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

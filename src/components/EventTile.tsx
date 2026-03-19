@@ -22,6 +22,8 @@ export interface EventTileProps {
   event: EventTileEvent;
   /** Link to event detail — when omitted, renders as div (no link) */
   to?: string;
+  /** Optional badge shown to the right of the date pill in the same row */
+  dateRightBadge?: React.ReactNode;
   /** Optional badges after the date pill (e.g. category, Past, Draft) */
   extraBadges?: React.ReactNode;
   /** Content after the main tile (e.g. ChevronRight, action buttons). Use wrapper="div" when trailing has interactive elements. */
@@ -35,7 +37,7 @@ export interface EventTileProps {
 }
 
 const baseClasses =
-  "flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors min-h-[7rem]";
+  "flex items-center bg-card rounded-tile-sm overflow-hidden hover:bg-card/80 transition-colors min-h-[7rem]";
 
 function formatDateBadge(event: EventTileEvent): string {
   const date = event.event_date ?? event.eventDate;
@@ -53,7 +55,15 @@ function getCoverImage(event: EventTileEvent): string {
   return src || getEventFlyer(event.id);
 }
 
-const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadges?: React.ReactNode }) => {
+const TileContent = ({
+  event,
+  dateRightBadge,
+  extraBadges,
+}: {
+  event: EventTileEvent;
+  dateRightBadge?: React.ReactNode;
+  extraBadges?: React.ReactNode;
+}) => {
   const venue = getVenue(event);
   return (
     <>
@@ -70,11 +80,14 @@ const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadge
           {event.title}
         </h3>
         <div className="flex flex-col gap-1 min-h-[2.75rem]">
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1 min-w-0">
             <Badge variant="primary" className="text-[11px] py-1 px-2 gap-1">
               <Calendar className="h-3 w-3 shrink-0" />
               {formatDateBadge(event)}
             </Badge>
+            {dateRightBadge != null && (
+              <div className="flex-shrink-0">{dateRightBadge}</div>
+            )}
           </div>
           {venue && (
             <div className="flex items-center gap-1 flex-wrap">
@@ -101,6 +114,7 @@ const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadge
 export function EventTile({
   event,
   to,
+  dateRightBadge,
   extraBadges,
   trailing,
   wrapper = "link",
@@ -116,7 +130,7 @@ export function EventTile({
     return (
       <div className={containerClass}>
         <Link to={href} className="flex flex-1 items-center min-w-0">
-          <TileContent event={event} extraBadges={extraBadges} />
+          <TileContent event={event} dateRightBadge={dateRightBadge} extraBadges={extraBadges} />
         </Link>
         {trailingContent != null && (
           <div className="flex items-center gap-0.5 pl-2 pr-3 flex-shrink-0">
@@ -129,7 +143,7 @@ export function EventTile({
 
   return (
     <Link to={href} className={containerClass}>
-      <TileContent event={event} extraBadges={extraBadges} />
+      <TileContent event={event} dateRightBadge={dateRightBadge} extraBadges={extraBadges} />
       {trailingContent}
     </Link>
   );

@@ -197,9 +197,56 @@ All colors MUST be HSL.
     will-change: transform, opacity;
   }
 
+  @keyframes pillShimmer {
+    0% {
+      transform: translateX(-160%) skewX(-20deg);
+      opacity: 0;
+    }
+    6% {
+      opacity: 0.45;
+    }
+    18% {
+      transform: translateX(260%) skewX(-20deg);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(260%) skewX(-20deg);
+      opacity: 0;
+    }
+  }
+
+  .pill-shimmer {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .pill-shimmer::after {
+    content: "";
+    position: absolute;
+    top: -25%;
+    bottom: -25%;
+    left: 0;
+    width: 42%;
+    transform: translateX(-160%) skewX(-20deg);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(0 0% 100% / 0.38) 50%,
+      transparent 100%
+    );
+    pointer-events: none;
+    animation: pillShimmer 5s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .animate-snakeSlide {
       animation: none;
+    }
+
+    .pill-shimmer::after {
+      animation: none;
+      opacity: 0;
     }
   }
 
