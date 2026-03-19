@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Repeat2, MoreHorizontal, BadgeCheck, Trash2, Flag, Ban } from "lucide-react";
 import { getOptimizedUrl } from "@/lib/imageUtils";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { formatDistanceToNow, format } from "date-fns";
+import { EventTile } from "@/components/EventTile";
+import { formatDistanceToNow } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
 import ReactionPicker from "@/components/ReactionPicker";
@@ -156,24 +156,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-tile overflow-hidden border border-border hover:bg-card/80 transition-colors bg-card">
-              <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-                <img
-                  src={eventData.cover_image || getEventFlyer(eventData.id)}
-                  alt={eventData.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
-              <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-                <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{eventData.title}</h3>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge variant="primary">
-                    {`${format(new Date(eventData.event_date), "EEE MMM d '•' haaa")}${(eventData.venue_name ?? eventData.location) ? ` • ${eventData.venue_name ?? eventData.location}` : ""}`}
-                  </Badge>
-                </div>
-              </div>
-            </Link>
+            <EventTile event={eventData} className="mt-2.5" />
           )}
 
           {!eventData && imageUrl && (

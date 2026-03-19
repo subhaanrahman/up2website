@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { EventTile } from "@/components/EventTile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,12 +24,10 @@ import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useActiveProfile, type OrganiserProfile } from "@/contexts/ActiveProfileContext";
-import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
 import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 interface EventItem {
   id: string;
@@ -449,26 +448,11 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: s
   );
 };
 
-const EventListItem = ({ event }: { event: { id: string; title: string; eventDate: string; location: string | null; venueName?: string | null; coverImage: string | null; category: string | null } }) => {
-  return (
-    <Link
-      to={`/events/${event.id}`}
-      className="flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors"
-    >
-      <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-        <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-      </div>
-      <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge variant="primary">
-            {`${format(new Date(event.eventDate), "EEE MMM d '•' haaa")}${(event.venueName ?? event.location) ? ` • ${event.venueName ?? event.location}` : ""}`}
-          </Badge>
-        </div>
-      </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />
-    </Link>
-  );
-};
+const EventListItem = ({ event }: { event: { id: string; title: string; eventDate: string; location: string | null; venueName?: string | null; coverImage: string | null; category: string | null } }) => (
+  <EventTile
+    event={event}
+    trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+  />
+);
 
 export default Profile;

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } fr
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EventTile } from "@/components/EventTile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Calendar, Plus, ChevronRight, Settings, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,8 +17,6 @@ import ProfileQrModal from "@/components/ProfileQrModal";
 import TransferTicketModal from "@/components/TransferTicketModal";
 import { usePendingTransfers, useCancelTransfer } from "@/hooks/usePendingTransfers";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import {
   startOfWeek, startOfMonth, subMonths, isAfter, isBefore, isSameDay
 } from "date-fns";
@@ -98,50 +97,39 @@ function TimeDivider({ label, prominent = false }: { label: string; prominent?: 
 
 /* ── Created event card ── */
 function CreatedEventCard({ event, isPast, isHost }: { event: any; isPast: boolean; isHost?: boolean }) {
-  return (
-    <div
-      className={`flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors ${isPast ? "opacity-60" : ""}`}
-    >
-      <Link to={`/events/${event.id}`} className="flex flex-1 items-center min-w-0">
-        <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-          {event.coverImage ? (
-            <img src={event.coverImage} alt={event.title} className="w-full h-full object-cover" />
-          ) : (
-            <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-          )}
-        </div>
-        <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-          <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Badge variant="primary">
-              {`${format(new Date(event.eventDate), "EEE MMM d '•' haaa")}${(event.venueName || event.location) ? ` • ${event.venueName || event.location}` : ""}`}
-            </Badge>
-            {event.status === "draft" && (
-              <span className="text-xs bg-accent/20 text-accent-foreground px-2.5 py-1 rounded-full font-medium">Draft</span>
-            )}
-          </div>
-        </div>
+  const trailing = isHost ? (
+    <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <Link
+        to={`/events/${event.id}/edit`}
+        className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Edit event"
+      >
+        <Pencil className="h-4 w-4" />
       </Link>
-      {isHost && (
-        <div className="flex items-center gap-0.5 flex-shrink-0 pl-2 pr-3" onClick={(e) => e.stopPropagation()}>
-          <Link
-            to={`/events/${event.id}/edit`}
-            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Edit event"
-          >
-            <Pencil className="h-4 w-4" />
-          </Link>
-          <Link
-            to={`/events/${event.id}/manage`}
-            className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Event settings"
-          >
-            <Settings className="h-4 w-4" />
-          </Link>
-        </div>
-      )}
-      {!isHost && <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+      <Link
+        to={`/events/${event.id}/manage`}
+        className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+        aria-label="Event settings"
+      >
+        <Settings className="h-4 w-4" />
+      </Link>
     </div>
+  ) : (
+    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+  );
+
+  return (
+    <EventTile
+      event={event}
+      wrapper="div"
+      isPast={isPast}
+      extraBadges={
+        event.status === "draft" ? (
+          <span className="text-xs bg-accent/20 text-accent-foreground px-2.5 py-1 rounded-full font-medium">Draft</span>
+        ) : undefined
+      }
+      trailing={trailing}
+    />
   );
 }
 

@@ -13,7 +13,7 @@ const badgeVariants = cva(
         destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80 px-2.5 py-0.5 text-xs font-semibold",
         outline: "text-foreground px-2.5 py-0.5 text-xs font-semibold",
         /** Main Color pill with white text — event dates, categories. */
-        primary: "border border-primary/[0.35] bg-primary/20 text-primary-foreground px-2.5 py-1.5 text-xs",
+        primary: "border border-primary/[0.35] bg-primary/20 text-primary-foreground px-2.5 py-1.5 text-xs w-fit max-w-full min-w-0 break-words self-start",
         /** Main Color pill with white text, larger — profile category (e.g. DJ · Sydney). */
         primaryMd: "border border-primary/[0.35] bg-primary/20 text-primary-foreground px-4 py-1.5 text-sm gap-2",
       },

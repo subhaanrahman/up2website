@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { EventTile } from "@/components/EventTile";
 import { Search, ChevronRight } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
@@ -15,8 +16,6 @@ import { useProfile } from "@/hooks/useProfileQuery";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { EventFilter } from "@/features/events";
-import { format } from "date-fns";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 interface SearchResult {
   id: string;
@@ -146,24 +145,11 @@ const Events = () => {
   );
 
   const renderEventItem = (event: any) => (
-    <Link key={event.id} to={`/events/${event.id}`} className="flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors">
-      <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-        {event.coverImage || event.cover_image ? (
-          <img src={event.coverImage || event.cover_image} alt={event.title} className="w-full h-full object-cover" />
-        ) : (
-          <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-        )}
-      </div>
-      <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-        <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Badge variant="primary">
-            {`${format(new Date(event.eventDate || event.event_date), "EEE MMM d '•' haaa")}${(event.venueName ?? event.location) ? ` • ${event.venueName ?? event.location}` : ""}`}
-          </Badge>
-        </div>
-      </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />
-    </Link>
+    <EventTile
+      key={event.id}
+      event={event}
+      trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+    />
   );
 
   return (

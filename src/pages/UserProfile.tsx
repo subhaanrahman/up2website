@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { EventTile } from "@/components/EventTile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,9 +37,7 @@ import { profilesRepository } from "@/features/social/repositories/profilesRepos
 import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useAuth } from "@/contexts/AuthContext";
-import { format } from "date-fns";
 import { toast } from "sonner";
-import { getEventFlyer } from "@/lib/eventFlyerUtils";
 
 type ConnectionStatus = "none" | "pending_sent" | "pending_received" | "accepted";
 
@@ -586,29 +585,18 @@ const UserProfile = () => {
                 </div>
               ) : (
                 upcomingEvents.map((event: any) => (
-                  <Link
+                  <EventTile
                     key={event.id}
-                    to={`/events/${event.id}`}
-                    className="flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors"
-                  >
-                    <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-                      <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-                      <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge variant="primary">
-                          {`${format(new Date(event.event_date), "EEE MMM d '•' haaa")}${(event.venue_name ?? event.location) ? ` • ${event.venue_name ?? event.location}` : ""}`}
-                        </Badge>
-                        {event.category && (
-                          <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
-                            {event.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />
-                  </Link>
+                    event={event}
+                    extraBadges={
+                      event.category ? (
+                        <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
+                          {event.category}
+                        </span>
+                      ) : undefined
+                    }
+                    trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+                  />
                 ))
               )}
             </TabsContent>
@@ -627,27 +615,16 @@ const UserProfile = () => {
               </div>
             ) : (
               pastEvents.map((event: any) => (
-                <Link
+                <EventTile
                   key={event.id}
-                  to={`/events/${event.id}`}
-                  className="flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors"
-                >
-                  <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-                    <img src={getEventFlyer(event.id)} alt={event.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-                    <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <Badge variant="primary">
-                        {`${format(new Date(event.event_date), "EEE MMM d '•' haaa")}${(event.venue_name ?? event.location) ? ` • ${event.venue_name ?? event.location}` : ""}`}
-                      </Badge>
-                      <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
-                        Past
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />
-                </Link>
+                  event={event}
+                  extraBadges={
+                    <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
+                      Past
+                    </span>
+                  }
+                  trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+                />
               ))
             )}
           </TabsContent>
