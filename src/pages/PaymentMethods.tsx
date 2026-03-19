@@ -36,7 +36,7 @@ const PaymentMethods = () => {
         ) : (
           <div className="space-y-3">
             {methods.map((method: any) => (
-              <div key={method.id} className="bg-card rounded-xl p-4 flex items-center gap-4">
+              <div key={method.id} className="bg-card rounded-tile-sm p-4 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center">
                   <CreditCard className="h-5 w-5 text-foreground" />
                 </div>

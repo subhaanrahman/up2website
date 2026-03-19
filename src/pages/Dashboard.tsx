@@ -158,9 +158,9 @@ const useDmThreads = (mode: "user" | "organiser", organiserProfileIds?: string[]
 const GroupChatTile = ({ chat, unreadCount }: { chat: GroupChat; unreadCount: number }) => (
   <Link
     to={`/messages/${chat.id}`}
-    className="group relative flex flex-col rounded-2xl bg-card border border-border/60 p-4 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 min-h-[168px] overflow-hidden"
+    className="group relative flex flex-col rounded-tile bg-card border border-border/60 p-4 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 min-h-[168px] overflow-hidden"
   >
-    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent rounded-2xl pointer-events-none" />
+    <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent rounded-tile pointer-events-none" />
 
     {/* Unread badge */}
     {unreadCount > 0 && (
@@ -223,7 +223,7 @@ const DmThreadTile = ({ thread, isOrganiserView }: { thread: DmThread; isOrganis
   return (
     <Link
       to={`/messages/dm/${thread.id}`}
-      className="flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-xl transition-colors"
+      className="flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
     >
       <Avatar className="h-12 w-12">
         <AvatarImage src={getOptimizedUrl(avatar, 'AVATAR_SM') || undefined} />
@@ -304,7 +304,7 @@ const Dashboard = () => {
           {orgDmsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 rounded-xl bg-card animate-pulse" />
+                <div key={i} className="h-16 rounded-tile-sm bg-card animate-pulse" />
               ))}
             </div>
           ) : inboxThreads.length > 0 ? (
@@ -350,7 +350,7 @@ const Dashboard = () => {
         {chatsLoading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-[168px] rounded-2xl bg-card animate-pulse" />
+              <div key={i} className="h-[168px] rounded-tile bg-card animate-pulse" />
             ))}
           </div>
         ) : groupChats.length > 0 ? (
@@ -372,7 +372,7 @@ const Dashboard = () => {
         {userDmsLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 rounded-xl bg-card animate-pulse" />
+              <div key={i} className="h-14 rounded-tile-sm bg-card animate-pulse" />
             ))}
           </div>
         ) : dmThreads.length > 0 ? (

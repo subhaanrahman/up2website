@@ -95,7 +95,7 @@ export default function PendingOrganiserInvites() {
         </p>
       </div>
       {invites.map((invite) => (
-        <div key={invite.id} className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+        <div key={invite.id} className="flex items-center gap-3 p-3 bg-primary/5 border border-primary/20 rounded-tile-sm">
           <Avatar className="h-10 w-10">
             <AvatarImage src={invite.organiserAvatar || undefined} />
             <AvatarFallback>{invite.organiserName[0]?.toUpperCase()}</AvatarFallback>

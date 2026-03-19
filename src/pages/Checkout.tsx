@@ -65,14 +65,14 @@ const CheckoutForm = ({
   return (
     <form onSubmit={handleSubmit} className="px-4 pt-4">
       {/* Event Summary */}
-      <div className="bg-card rounded-xl p-4 mb-4">
+      <div className="bg-card rounded-tile-sm p-4 mb-4">
         <h2 className="font-semibold text-foreground mb-1">{state.eventTitle}</h2>
         <p className="text-sm text-muted-foreground">{state.eventDate}</p>
         <p className="text-sm text-muted-foreground">{state.eventLocation}</p>
       </div>
 
       {/* Order Summary */}
-      <div className="bg-card rounded-xl p-4 mb-4">
+      <div className="bg-card rounded-tile-sm p-4 mb-4">
         <h3 className="font-semibold text-foreground mb-3">Order Summary</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -101,13 +101,13 @@ const CheckoutForm = ({
       </div>
 
       {/* Stripe Payment Element */}
-      <div className="bg-card rounded-xl p-4 mb-6">
+      <div className="bg-card rounded-tile-sm p-4 mb-6">
         <h3 className="font-semibold text-foreground mb-3">Payment</h3>
         <PaymentElement />
       </div>
 
       {/* Photo ID Notice */}
-      <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-xl mb-6">
+      <div className="flex items-start gap-3 p-4 bg-primary/5 rounded-tile-sm mb-6">
         <Info className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
         <div className="text-sm">
           <p className="font-medium text-foreground">Photo ID Required</p>

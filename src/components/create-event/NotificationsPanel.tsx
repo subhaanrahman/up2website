@@ -18,7 +18,7 @@ const NotificationsPanel = ({ reminders, setReminders }: NotificationsPanelProps
 
   return (
     <div className="space-y-3 animate-in fade-in-0 duration-200">
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
         <div className="px-4 pt-4 pb-3">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Auto Reminders</p>
           <p className="text-xs text-muted-foreground mt-1">Push notifications sent to attendees</p>

@@ -10,7 +10,7 @@ interface StatCardProps {
 const StatCard = ({ label, value, trend, subtitle }: StatCardProps) => {
   const isPositive = (trend ?? 0) >= 0;
   return (
-    <div className="bg-card border border-border rounded-xl p-4 flex flex-col gap-1">
+    <div className="bg-card border border-border rounded-tile-sm p-4 flex flex-col gap-1">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
         className="text-2xl font-bold text-foreground"

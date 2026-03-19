@@ -170,7 +170,7 @@ const PurchaseModal = ({
             <button
               key={tier.id}
               onClick={() => setSelectedTier(tier.id)}
-              className={`w-full p-4 rounded-xl text-left transition-all ${
+              className={`w-full p-4 rounded-tile-sm text-left transition-all ${
                 selectedTier === tier.id
                   ? "bg-primary/10 border-2 border-primary"
                   : "bg-card border-2 border-transparent hover:border-border"

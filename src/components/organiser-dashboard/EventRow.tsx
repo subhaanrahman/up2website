@@ -16,12 +16,12 @@ const EventRow = ({ event, rsvpCount, onManage }: EventRowProps) => {
   const isDraft = event.status === "draft";
 
   return (
-    <div className="flex items-center bg-card rounded-2xl overflow-hidden">
+    <div className="flex items-center bg-card rounded-tile overflow-hidden">
       <Link
         to={`/events/${event.id}`}
         className="flex items-center flex-1 min-w-0 hover:bg-card/80 transition-colors"
       >
-        <div className="w-28 h-28 flex-shrink-0 relative">
+        <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden relative">
           <img
             src={event.cover_image || getEventFlyer(event.id)}
             alt={event.title}
@@ -36,18 +36,18 @@ const EventRow = ({ event, rsvpCount, onManage }: EventRowProps) => {
             </Badge>
           )}
         </div>
-        <div className="flex-1 px-4 py-3 min-w-0">
-          <h3 className="font-bold text-lg text-foreground line-clamp-2 capitalize leading-tight mb-3">
+        <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
+          <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">
             {event.title}
           </h3>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs bg-primary/15 px-3 py-2 rounded-full text-primary-foreground font-medium h-7 flex items-center border border-primary/30">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
               {format(new Date(event.event_date), "EEE M/d - ha")}
             </span>
           </div>
         </div>
       </Link>
-      <div className="flex items-center gap-1 pr-2 flex-shrink-0">
+      <div className="flex items-center gap-0.5 pl-2 pr-3 flex-shrink-0">
         <Button
           variant="ghost"
           size="icon"

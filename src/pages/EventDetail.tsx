@@ -399,11 +399,11 @@ const EventDetail = () => {
 
       {/* Cover image */}
       <div className="px-4 pb-4">
-        <div className="rounded-2xl overflow-hidden">
+        <div className="rounded-tile overflow-hidden">
           {eventImage ? (
             <img src={getOptimizedUrl(eventImage, 'EVENT_HERO') || eventImage} alt={eventTitle} className="w-full aspect-[4/5] object-cover" />
           ) : (
-            <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-2xl">
+            <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-tile">
               <span className="text-6xl">🎉</span>
             </div>
           )}
@@ -548,7 +548,7 @@ const EventDetail = () => {
         )}
 
         {/* Venue / Map */}
-        <div className="bg-card rounded-xl p-4">
+        <div className="bg-card rounded-tile-sm p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
           <div className="aspect-video rounded-lg mb-3 overflow-hidden">
             {eventAddress ? (

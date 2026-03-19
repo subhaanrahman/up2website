@@ -24,7 +24,7 @@ const ProfileQrModal = ({ open, onOpenChange, displayName, username, avatarUrl, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-background border-none p-0 max-w-sm w-full sm:rounded-xl flex flex-col">
+      <DialogContent className="bg-background border-none p-0 max-w-sm w-full sm:rounded-tile-sm flex flex-col">
         <div className="pt-6 pb-2 px-6">
           <h2 className="text-xl font-bold text-foreground text-center tracking-wide">
             QR CODE
@@ -47,7 +47,7 @@ const ProfileQrModal = ({ open, onOpenChange, displayName, username, avatarUrl, 
           </div>
 
           {/* QR Code */}
-          <div className="bg-card rounded-2xl p-6">
+          <div className="bg-card rounded-tile p-6">
             <QRCodeSVG
               value={profileUrl}
               size={200}

@@ -169,7 +169,7 @@ const OrganiserTeam = () => {
         {/* Owner card */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Owner</p>
-          <div className="flex items-center gap-3 p-3 bg-card rounded-xl">
+          <div className="flex items-center gap-3 p-3 bg-card rounded-tile-sm">
             <Avatar className="h-10 w-10">
               <AvatarImage src={activeOrg.avatarUrl || undefined} />
               <AvatarFallback>{activeOrg.displayName[0]?.toUpperCase()}</AvatarFallback>
@@ -216,7 +216,7 @@ const OrganiserTeam = () => {
 
             {/* Search results */}
             {searchQuery && (
-              <div className="bg-card rounded-xl overflow-hidden border border-border">
+              <div className="bg-card rounded-tile-sm overflow-hidden border border-border">
                 {searching ? (
                   <p className="p-4 text-sm text-muted-foreground text-center">Searching...</p>
                 ) : searchResults.length === 0 ? (
@@ -255,7 +255,7 @@ const OrganiserTeam = () => {
           ) : (
             <div className="space-y-2">
               {members.map((member) => (
-                <div key={member.id} className="p-3 bg-card rounded-xl space-y-3">
+                <div key={member.id} className="p-3 bg-card rounded-tile-sm space-y-3">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={member.avatarUrl || undefined} />

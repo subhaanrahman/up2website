@@ -31,7 +31,7 @@ const PointsAnimation = ({ points, show, onComplete }: PointsAnimationProps) => 
           <div className="absolute inset-0 bg-primary/30 blur-3xl rounded-full scale-150" />
           
           {/* Main content */}
-          <div className="relative bg-card/95 backdrop-blur-sm border border-primary/50 rounded-2xl px-8 py-6 shadow-2xl">
+          <div className="relative bg-card/95 backdrop-blur-sm border border-primary/50 rounded-tile px-8 py-6 shadow-2xl">
             <div className="flex flex-col items-center gap-3">
               {/* Icon with pulse */}
               <div className="relative">

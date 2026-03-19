@@ -154,8 +154,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
-              <div className="w-28 h-28 flex-shrink-0 overflow-hidden bg-muted">
+            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-tile overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
+              <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden bg-muted">
                 <img
                   src={eventData.cover_image || getEventFlyer(eventData.id)}
                   alt={eventData.title}
@@ -163,14 +163,14 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
                   loading="lazy"
                 />
               </div>
-              <div className="flex-1 px-4 py-3 flex flex-col justify-center min-w-0">
+              <div className="flex-1 pl-4 pr-3 py-3 flex flex-col justify-center min-w-0">
                 <h4 className="font-bold text-foreground text-sm truncate capitalize">{eventData.title}</h4>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5">
                   <Calendar className="h-3 w-3 text-primary" />
                   <span>{format(new Date(eventData.event_date), "EEE M/d - ha")}</span>
                 </div>
                 {eventData.location && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                     <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
                     <span className="truncate">{eventData.location}</span>
                   </div>
@@ -180,12 +180,12 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
           )}
 
           {!eventData && imageUrl && (
-            <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
+            <div className="mt-2.5 rounded-tile overflow-hidden border border-border">
               <img src={getOptimizedUrl(imageUrl, 'FEED_IMAGE') || imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}
           {gifUrl && (
-            <div className="mt-2.5 rounded-2xl overflow-hidden border border-border">
+            <div className="mt-2.5 rounded-tile overflow-hidden border border-border">
               <img src={gifUrl} alt="GIF" className="w-full max-h-[512px] object-cover" loading="lazy" />
             </div>
           )}

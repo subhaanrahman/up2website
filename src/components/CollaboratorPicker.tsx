@@ -52,7 +52,7 @@ const CollaboratorPicker = ({ currentUserId, excludeIds, onSelect, onClose }: Co
   }, [currentUserId, excludeIds, search]);
 
   return (
-    <div className="mt-2 border border-border rounded-xl bg-card p-2 max-h-48 overflow-y-auto">
+    <div className="mt-2 border border-border rounded-tile-sm bg-card p-2 max-h-48 overflow-y-auto">
       <Input
         placeholder="Search friends..."
         value={search}

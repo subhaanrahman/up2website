@@ -14,7 +14,7 @@ const ComingSoonCard = ({
   title: string;
   description: string;
 }) => (
-  <div className="bg-card border border-border rounded-xl p-4 flex items-start gap-3 opacity-70">
+  <div className="bg-card border border-border rounded-tile-sm p-4 flex items-start gap-3 opacity-70">
     <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">
       <Icon className="h-5 w-5 text-muted-foreground" />
     </div>
@@ -37,7 +37,7 @@ const FollowersPromotionTab = ({ followerCount }: FollowersPromotionTabProps) =>
   return (
     <div className="space-y-4">
       {/* Live follower count */}
-      <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+      <div className="bg-card border border-border rounded-tile-sm p-4 flex items-center gap-3">
         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
           <Users className="h-5 w-5 text-primary" />
         </div>

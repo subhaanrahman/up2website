@@ -91,7 +91,7 @@ const ContactUs = () => {
 
           <a
             href="mailto:support@socialsoiree.app"
-            className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
           >
             <Mail className="h-5 w-5 text-foreground" />
             <span className="text-foreground text-sm">support@socialsoiree.app</span>
@@ -101,7 +101,7 @@ const ContactUs = () => {
             href="https://instagram.com/socialsoiree"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
           >
             <Instagram className="h-5 w-5 text-foreground" />
             <span className="text-foreground text-sm">@socialsoiree</span>
@@ -111,7 +111,7 @@ const ContactUs = () => {
             href="https://twitter.com/socialsoiree"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
           >
             <Twitter className="h-5 w-5 text-foreground" />
             <span className="text-foreground text-sm">@socialsoiree</span>

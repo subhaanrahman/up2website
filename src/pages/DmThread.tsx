@@ -185,7 +185,7 @@ const DmThread = () => {
           return (
             <div key={msg.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                className={`max-w-[75%] rounded-tile px-4 py-2.5 ${
                   own
                     ? "bg-primary text-primary-foreground rounded-br-md"
                     : "bg-secondary text-foreground rounded-bl-md"

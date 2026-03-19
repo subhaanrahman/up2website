@@ -98,7 +98,7 @@ export default function FriendRequestsSection() {
       {/* Header bar */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-card rounded-xl"
+        className="w-full flex items-center justify-between px-4 py-3 bg-card rounded-tile-sm"
       >
         <div className="flex items-center gap-2">
           <UserPlus className="h-5 w-5 text-primary" />
@@ -117,7 +117,7 @@ export default function FriendRequestsSection() {
           {requests.map((req) => (
             <div
               key={req.connectionId}
-              className="flex items-center gap-3 p-3 bg-card rounded-xl"
+              className="flex items-center gap-3 p-3 bg-card rounded-tile-sm"
             >
               <Link to={`/user/${req.requesterId}`}>
                 <Avatar className="h-11 w-11">

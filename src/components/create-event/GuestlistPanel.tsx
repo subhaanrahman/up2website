@@ -23,7 +23,7 @@ const GuestlistPanel = ({
     <div className="space-y-3 animate-in fade-in-0 duration-200">
 
       {/* Enable toggle */}
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <div>
             <p className="text-[15px] font-medium text-foreground">Enable Guestlist / VIPs</p>
@@ -44,7 +44,7 @@ const GuestlistPanel = ({
           />
 
           {/* Capacity */}
-          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+          <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Max Guestlist Capacity</p>
             <input
               type="number"
@@ -56,7 +56,7 @@ const GuestlistPanel = ({
           </div>
 
           {/* Require approval + Coming Soon */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-4">
               <div>
                 <p className="text-[15px] font-medium text-foreground">Require Approval</p>

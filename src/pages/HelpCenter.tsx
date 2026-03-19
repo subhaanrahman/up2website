@@ -91,7 +91,7 @@ const HelpCenter = () => {
 
         {/* Feedback Form */}
         {showFeedbackForm && (
-          <div className="mb-6 p-4 bg-card rounded-xl space-y-3">
+          <div className="mb-6 p-4 bg-card rounded-tile-sm space-y-3">
             <h3 className="font-semibold text-foreground">Send Feedback</h3>
             <Textarea
               placeholder="Tell us what you think..."
@@ -118,7 +118,7 @@ const HelpCenter = () => {
               <AccordionItem 
                 key={index} 
                 value={`item-${index}`}
-                className="bg-card rounded-xl border-0 px-4"
+                className="bg-card rounded-tile-sm border-0 px-4"
               >
                 <AccordionTrigger className="text-left text-foreground hover:no-underline py-4">
                   {faq.question}

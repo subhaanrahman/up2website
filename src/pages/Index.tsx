@@ -343,7 +343,7 @@ function SuggestedFriendsSection({
       <div className="overflow-x-auto scrollbar-hide">
         <div className="flex gap-3 px-4 pb-2">
           {profiles.map(friend => (
-            <div key={friend.user_id} className="flex-shrink-0 w-32 rounded-2xl bg-card border border-border p-4 flex flex-col items-center">
+            <div key={friend.user_id} className="flex-shrink-0 w-32 rounded-tile bg-card border border-border p-4 flex flex-col items-center">
               <Link to={`/user/${friend.user_id}`}>
                 <Avatar className="h-16 w-16 mb-3">
                   <AvatarImage src={friend.avatar_url || ""} />

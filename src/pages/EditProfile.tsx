@@ -180,7 +180,7 @@ const EditProfile = () => {
         <div className="space-y-3">
 
           {/* Name + Username */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Display Name</p>
               <input
@@ -208,7 +208,7 @@ const EditProfile = () => {
           </div>
 
           {/* Bio */}
-          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+          <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Bio</p>
             <textarea
               value={formData.bio}
@@ -220,7 +220,7 @@ const EditProfile = () => {
           </div>
 
           {/* Classification */}
-          <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+          <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Classification</p>
             <Select
               value={formData.page_classification || "none"}
@@ -239,7 +239,7 @@ const EditProfile = () => {
           </div>
 
           {/* Instagram + City */}
-          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
             <div className="px-4 pt-4 pb-3">
               <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Instagram</p>
               <div className="flex items-center gap-1">
@@ -291,7 +291,7 @@ const EditProfile = () => {
         <Button
           onClick={handleSave}
           disabled={updateProfileMutation.isPending}
-          className="w-full mt-6 h-12 rounded-2xl font-bold tracking-widest text-sm"
+          className="w-full mt-6 h-12 rounded-tile font-bold tracking-widest text-sm"
         >
           {updateProfileMutation.isPending ? "SAVING…" : "SAVE CHANGES"}
         </Button>

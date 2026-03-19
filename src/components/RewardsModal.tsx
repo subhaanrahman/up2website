@@ -47,7 +47,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="bg-background border-none p-0 max-w-md w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-xl flex items-center justify-center">
+        <DialogContent className="bg-background border-none p-0 max-w-md w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-tile-sm flex items-center justify-center">
           <div className="animate-pulse text-muted-foreground">Loading...</div>
         </DialogContent>
       </Dialog>
@@ -56,7 +56,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-background border-none p-0 max-w-md w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-xl flex flex-col">
+      <DialogContent className="bg-background border-none p-0 max-w-md w-full h-[100dvh] max-h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-tile-sm flex flex-col">
         {/* Header */}
         <div className="pt-6 pb-2 px-6">
           <h2 className="text-xl font-bold text-foreground text-center tracking-wide">
@@ -107,7 +107,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
             </div>
 
             {/* Current Rank */}
-            <div className="bg-card rounded-xl p-4 mb-6">
+            <div className="bg-card rounded-tile-sm p-4 mb-6">
               <div className="flex items-center gap-3">
                 <div
                   className="h-12 w-12 rounded-full flex items-center justify-center"
@@ -128,7 +128,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
                 <Crown className="h-4 w-4 text-primary" />
                 Rank Progression
               </h3>
-              <div className="bg-card rounded-xl p-4 space-y-2">
+              <div className="bg-card rounded-tile-sm p-4 space-y-2">
                 {RANK_ORDER.map((r) => {
                   const isActive = r === rank;
                   const isUnlocked = RANK_ORDER.indexOf(r) <= RANK_ORDER.indexOf(rank);
@@ -170,7 +170,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
                 <Ticket className="h-4 w-4 text-primary" />
                 Coupons & Rewards
               </h3>
-              <div className="bg-card rounded-xl p-4">
+              <div className="bg-card rounded-tile-sm p-4">
                 {availableVouchers.length === 0 && usedVouchers.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     Level up to earn $5 ticket vouchers!
@@ -220,7 +220,7 @@ const RewardsModal = ({ open, onOpenChange }: RewardsModalProps) => {
                 <Zap className="h-4 w-4 text-primary" />
                 Earn Points
               </h3>
-              <div className="bg-card rounded-xl p-4 space-y-2">
+              <div className="bg-card rounded-tile-sm p-4 space-y-2">
                 {Object.entries(POINT_VALUES).map(([action, pts]) => (
                   <div key={action} className="flex items-center justify-between py-1.5">
                     <span className="text-sm text-muted-foreground">

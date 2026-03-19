@@ -111,7 +111,7 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
   };
 
   return (
-    <div className="bg-card rounded-xl p-4">
+    <div className="bg-card rounded-tile-sm p-4">
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare className="h-5 w-5 text-primary" />
         <h3 className="font-semibold text-foreground">Event Board</h3>

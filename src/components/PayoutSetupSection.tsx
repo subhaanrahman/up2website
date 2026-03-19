@@ -70,7 +70,7 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-xl p-4">
+      <div className="bg-card border border-border rounded-tile-sm p-4">
         <div className="flex items-center gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Loading payout status...</span>
@@ -83,7 +83,7 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
   const isPending = status?.connected && !status?.charges_enabled;
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+    <div className="bg-card border border-border rounded-tile-sm p-4 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CreditCard className="h-5 w-5 text-foreground" />

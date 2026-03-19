@@ -185,7 +185,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
 
 
               {imagePreview && (
-                <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
+                <div className="relative mt-2 rounded-tile overflow-hidden border border-border">
                   <img src={imagePreview} alt="Preview" className="w-full max-h-64 object-cover" />
                   <button onClick={clearMedia} className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1">
                     <X className="h-4 w-4 text-foreground" />
@@ -194,7 +194,7 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
               )}
 
               {selectedGif && (
-                <div className="relative mt-2 rounded-2xl overflow-hidden border border-border">
+                <div className="relative mt-2 rounded-tile overflow-hidden border border-border">
                   <img src={selectedGif} alt="GIF" className="w-full max-h-64 object-cover" />
                   <button onClick={clearMedia} className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1">
                     <X className="h-4 w-4 text-foreground" />

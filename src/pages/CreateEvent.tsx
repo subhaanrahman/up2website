@@ -302,7 +302,7 @@ const CreateEvent = () => {
               />
               <Button
                 type="button"
-                className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm"
+                className="w-full h-12 rounded-tile font-bold tracking-widest text-sm"
                 disabled={createEventMutation.isPending}
                 onClick={handleSubmit}
               >

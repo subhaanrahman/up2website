@@ -36,7 +36,7 @@ export function DateTimePicker({
   };
 
   return (
-    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+    <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
       <DatePicker
         date={dateStr}
         setDate={setDate}
@@ -69,7 +69,7 @@ export function DatePicker({
     <Popover>
       <PopoverTrigger asChild>
         <button type="button" className="w-full px-4 pt-4 pb-3 text-left flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="h-10 w-10 rounded-tile-sm bg-primary/10 flex items-center justify-center flex-shrink-0">
             <CalendarDays className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
@@ -87,7 +87,7 @@ export function DatePicker({
           onSelect={(d) => { if (d) setDate(format(d, "yyyy-MM-dd")); }}
           disabled={disablePast ? (d) => d < new Date(new Date().setHours(0, 0, 0, 0)) : undefined}
           initialFocus
-          className="rounded-2xl"
+          className="rounded-tile"
         />
       </PopoverContent>
     </Popover>
@@ -127,7 +127,7 @@ export function TimePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="w-full px-4 pt-3 pb-4 text-left flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <div className="h-10 w-10 rounded-tile-sm bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Clock className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
@@ -142,7 +142,7 @@ export function TimePicker({
         <div className="p-4">
           <p className="text-xs font-bold tracking-widest uppercase text-muted-foreground mb-3 text-center">Pick a time</p>
           <div className="flex gap-2 justify-center">
-            <div className="flex flex-col h-[180px] overflow-y-auto scrollbar-hide rounded-xl bg-secondary/50 snap-y snap-mandatory">
+            <div className="flex flex-col h-[180px] overflow-y-auto scrollbar-hide rounded-tile-sm bg-secondary/50 snap-y snap-mandatory">
               {hours.map((h) => (
                 <button
                   key={h}
@@ -157,7 +157,7 @@ export function TimePicker({
               ))}
             </div>
             <div className="flex items-center text-muted-foreground font-bold">:</div>
-            <div className="flex flex-col h-[180px] overflow-y-auto scrollbar-hide rounded-xl bg-secondary/50 snap-y snap-mandatory">
+            <div className="flex flex-col h-[180px] overflow-y-auto scrollbar-hide rounded-tile-sm bg-secondary/50 snap-y snap-mandatory">
               {minutes.map((m) => (
                 <button
                   key={m}
@@ -171,7 +171,7 @@ export function TimePicker({
                 </button>
               ))}
             </div>
-            <div className="flex flex-col justify-center gap-1 rounded-xl bg-secondary/50 px-1 py-1">
+            <div className="flex flex-col justify-center gap-1 rounded-tile-sm bg-secondary/50 px-1 py-1">
               {(["AM", "PM"] as const).map((p) => (
                 <button
                   key={p}

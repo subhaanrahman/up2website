@@ -68,7 +68,7 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
 
   return (
     <Link to={`/events/${id}`} className="group block">
-      <div className="bg-card rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+      <div className="bg-card rounded-tile-sm overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         <div className="relative aspect-square overflow-hidden">
           <img
             src={getOptimizedUrl(image, 'EVENT_CARD') || image}

@@ -433,14 +433,14 @@ const ManageEvent = () => {
               <div className="py-6">
                 <h3 className="font-semibold text-foreground mb-3">Refund Requests</h3>
                 {refundsData.filter((r: any) => r.status === "pending").length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-border rounded-xl">
+                  <div className="text-center py-8 border border-dashed border-border rounded-tile-sm">
                     <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">No pending refund requests</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {refundsData.filter((r: any) => r.status === "pending").map((refund: any) => (
-                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-xl border border-border">
+                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-tile-sm border border-border">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">Order {refund.order_id.slice(0, 8)}</p>
                           {refund.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{refund.reason}</p>}
@@ -460,14 +460,14 @@ const ManageEvent = () => {
               <div className="py-6">
                 <h3 className="font-semibold text-foreground mb-3">Processed Refunds</h3>
                 {refundsData.filter((r: any) => r.status !== "pending").length === 0 ? (
-                  <div className="text-center py-8 border border-dashed border-border rounded-xl">
+                  <div className="text-center py-8 border border-dashed border-border rounded-tile-sm">
                     <X className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">No processed refunds</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {refundsData.filter((r: any) => r.status !== "pending").map((refund: any) => (
-                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-xl border border-border">
+                      <div key={refund.id} className="flex items-start justify-between p-4 bg-card rounded-tile-sm border border-border">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">Order {refund.order_id.slice(0, 8)}</p>
                           {refund.reason && <p className="text-xs text-muted-foreground mt-0.5 truncate">{refund.reason}</p>}

@@ -65,7 +65,7 @@ const TicketingPanel = ({
     <div className="space-y-3 animate-in fade-in-0 duration-200">
 
       {!payoutsReady && (
-        <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10 rounded-2xl">
+        <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10 rounded-tile">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
             Set up payouts in your organiser profile before creating paid ticket tiers.
@@ -83,7 +83,7 @@ const TicketingPanel = ({
       )}
 
       {/* Capacity */}
-      <div className="bg-card rounded-2xl border border-border/50 px-4 pt-4 pb-4">
+      <div className="bg-card rounded-tile border border-border/50 px-4 pt-4 pb-4">
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Capacity</p>
         <input
           type="number"
@@ -95,7 +95,7 @@ const TicketingPanel = ({
       </div>
 
       {/* Toggles */}
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <p className="text-[15px] font-medium text-foreground">Show tickets remaining</p>
           <Switch checked={showRemaining} onCheckedChange={setShowRemaining} />
@@ -122,7 +122,7 @@ const TicketingPanel = ({
       </div>
 
       {/* Ticket Tiers */}
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
         <div className="px-4 pt-4 pb-2">
           <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Ticket Tiers</p>
         </div>
@@ -153,7 +153,7 @@ const TicketingPanel = ({
       </div>
 
       {/* Discount Codes */}
-      <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+      <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <p className="text-[15px] font-medium text-foreground">Discount Codes</p>
           <Switch checked={discountsEnabled} onCheckedChange={setDiscountsEnabled} />

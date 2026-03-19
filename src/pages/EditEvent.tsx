@@ -325,12 +325,12 @@ const EditEvent = () => {
                     placeholder="Unlimited"
                   />
                 </div>
-                <Button type="submit" size="lg" className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>
+                <Button type="submit" size="lg" className="w-full h-12 rounded-tile font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive" size="lg" className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm">
+                    <Button type="button" variant="destructive" size="lg" className="w-full h-12 rounded-tile font-bold tracking-widest text-sm">
                       <Trash2 className="h-5 w-5 mr-2" /> Delete Event
                     </Button>
                   </AlertDialogTrigger>
@@ -364,7 +364,7 @@ const EditEvent = () => {
                   payoutsReady={payoutsReady}
                 />
                 <div className="mt-4">
-                  <Button type="submit" size="lg" className="w-full h-12 rounded-2xl font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>
+                  <Button type="submit" size="lg" className="w-full h-12 rounded-tile font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>
                     {updateMutation.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </div>
