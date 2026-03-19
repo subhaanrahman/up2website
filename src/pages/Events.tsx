@@ -211,7 +211,7 @@ const Events = () => {
           ) : displayEvents.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">No upcoming events found</p>
           ) : (
-            <div className="space-y-3 pt-1">{displayEvents.map(renderEventItem)}</div>
+            <div className="grid grid-cols-1 gap-3 pt-1 grid-auto-rows-[1fr]">{displayEvents.map(renderEventItem)}</div>
           )}
         </main>
       </div>
@@ -260,7 +260,7 @@ const Events = () => {
             ) : displayEvents.length === 0 ? (
               <p className="text-muted-foreground py-12 text-center">No upcoming events found</p>
             ) : (
-              <div className="space-y-3 max-w-lg">{displayEvents.map(renderEventItem)}</div>
+              <div className="grid grid-cols-1 gap-3 max-w-lg grid-auto-rows-[1fr]">{displayEvents.map(renderEventItem)}</div>
             )}
           </div>
         </div>

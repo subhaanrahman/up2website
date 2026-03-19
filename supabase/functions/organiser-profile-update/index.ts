@@ -11,7 +11,7 @@ const updateSchema = z.object({
   profile_id: z.string().uuid(),
   display_name: z.string().trim().min(1).max(100).optional(),
   username: z.string().regex(/^[a-z0-9_]{3,30}$/, 'Username must be 3-30 lowercase alphanumeric or underscores').optional(),
-  bio: z.string().trim().max(500).optional().nullable(),
+  bio: z.preprocess((val) => (val === "" ? null : val), z.string().trim().max(500).optional().nullable()),
   city: z.string().trim().max(100).optional().nullable(),
   instagram_handle: z.string().trim().max(30).regex(/^[a-zA-Z0-9._]*$/, 'Invalid Instagram handle').optional().nullable(),
   category: z.enum(CATEGORIES).optional(),

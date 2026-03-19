@@ -34,13 +34,17 @@ export interface EventTileProps {
 }
 
 const baseClasses =
-  "flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors";
+  "flex items-center bg-card rounded-tile overflow-hidden hover:bg-card/80 transition-colors min-h-[7rem]";
 
 function formatDateBadge(event: EventTileEvent): string {
   const date = event.event_date ?? event.eventDate;
-  const venue = event.venue_name ?? event.venueName ?? event.location;
   if (!date) return "TBD";
-  return `${format(new Date(date), "EEE MMM d '•' haaa")}${venue ? ` • ${venue}` : ""}`;
+  return format(new Date(date), "EEE MMM d '•' haaa");
+}
+
+function getVenue(event: EventTileEvent): string | null {
+  const v = event.venue_name ?? event.venueName ?? event.location;
+  return v ?? null;
 }
 
 function getCoverImage(event: EventTileEvent): string {
@@ -48,27 +52,48 @@ function getCoverImage(event: EventTileEvent): string {
   return src || getEventFlyer(event.id);
 }
 
-const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadges?: React.ReactNode }) => (
-  <>
-    <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-      <img
-        src={getCoverImage(event)}
-        alt={event.title}
-        className="w-full h-full object-cover"
-        loading="lazy"
-      />
-    </div>
-    <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
-      <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">
-        {event.title}
-      </h3>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <Badge variant="primary">{formatDateBadge(event)}</Badge>
-        {extraBadges}
+const TileContent = ({ event, extraBadges }: { event: EventTileEvent; extraBadges?: React.ReactNode }) => {
+  const venue = getVenue(event);
+  return (
+    <>
+      <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
+        <img
+          src={getCoverImage(event)}
+          alt={event.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
       </div>
-    </div>
-  </>
-);
+      <div className="flex-1 pl-4 pr-2 py-2 min-w-0 flex flex-col justify-center">
+        <h3 className="font-bold text-base text-foreground line-clamp-2 mb-1 capitalize leading-tight">
+          {event.title}
+        </h3>
+        <div className="flex flex-col gap-1 min-h-[2.75rem]">
+          <div className="flex items-center gap-1 flex-wrap">
+            <Badge variant="primary" className="text-[11px] py-1 px-2">
+              {formatDateBadge(event)}
+            </Badge>
+          </div>
+          {venue && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <Badge
+                variant="outline"
+                className="w-fit max-w-full break-words text-[11px] py-1 px-2 border border-muted-foreground/[0.35] bg-muted-foreground/10 text-white"
+              >
+                {venue}
+              </Badge>
+            </div>
+          )}
+          {extraBadges && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {extraBadges}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+};
 
 export function EventTile({
   event,

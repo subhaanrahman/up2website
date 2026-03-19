@@ -1,0 +1,28 @@
+---
+description: EventTile layout consistency and equal heights on a page
+globs:
+  - src/components/EventTile.tsx
+  - "**/EventTile*
+  - "**/*EventRow*
+  - "**/*TicketEventCard*
+  - "**/*CreatedEventCard*
+alwaysApply: false
+---
+
+# EventTile Layout Rule
+
+## Equal Heights on a Single Page
+
+**RULE:** On any page that displays multiple EventTiles in a list, all tiles MUST have the same vertical height and match layout based on responsiveness.
+
+### Implementation
+
+1. **EventTile component** uses `min-h-[7rem]` so every tile is at least as tall as the image (h-28).
+2. **Pills container** uses `min-h-[2.75rem]` so the date/venue badge area always reserves space for 2 rows, even when pills fit on one line. This keeps tile heights consistent regardless of venue name length.
+3. **Responsive layout:** Date and venue pills use `flex-wrap`—they sit side-by-side when space allows and wrap below when it doesn't. Because all tiles on a page share the same container width, they all wrap or don't wrap together, so layout stays consistent.
+
+### When Adding EventTile Lists
+
+- Use `grid grid-cols-1 gap-3 grid-auto-rows-[1fr]` for the list container so all tiles in the list have equal height.
+- Do not override EventTile's `min-h-[7rem]` unless you have a specific reason.
+- Keep the pills container `min-h-[2.75rem]` so tiles without a venue still match the height of tiles with a venue.

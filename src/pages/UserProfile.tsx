@@ -584,20 +584,22 @@ const UserProfile = () => {
                   <p>No upcoming events</p>
                 </div>
               ) : (
-                upcomingEvents.map((event: any) => (
-                  <EventTile
-                    key={event.id}
-                    event={event}
-                    extraBadges={
-                      event.category ? (
-                        <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
-                          {event.category}
-                        </span>
-                      ) : undefined
-                    }
-                    trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
-                  />
-                ))
+                <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+                  {upcomingEvents.map((event: any) => (
+                    <EventTile
+                      key={event.id}
+                      event={event}
+                      extraBadges={
+                        event.category ? (
+                          <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
+                            {event.category}
+                          </span>
+                        ) : undefined
+                      }
+                      trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+                    />
+                  ))}
+                </div>
               )}
             </TabsContent>
           )}
@@ -614,18 +616,20 @@ const UserProfile = () => {
                 <p>No past events</p>
               </div>
             ) : (
-              pastEvents.map((event: any) => (
-                <EventTile
-                  key={event.id}
-                  event={event}
-                  extraBadges={
-                    <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
-                      Past
-                    </span>
-                  }
-                  trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
-                />
-              ))
+              <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+                {pastEvents.map((event: any) => (
+                  <EventTile
+                    key={event.id}
+                    event={event}
+                    extraBadges={
+                      <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
+                        Past
+                      </span>
+                    }
+                    trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
+                  />
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>

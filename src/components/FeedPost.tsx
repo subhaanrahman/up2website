@@ -156,7 +156,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <EventTile event={eventData} className="mt-2.5" />
+            <EventTile event={eventData} className="mt-2.5 w-full" />
           )}
 
           {!eventData && imageUrl && (

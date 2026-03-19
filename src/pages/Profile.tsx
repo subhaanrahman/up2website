@@ -372,7 +372,9 @@ const Profile = () => {
                 )}
               </div>
             ) : (
-              upcomingEvents.map((event) => <EventListItem key={event.id} event={event} />)
+              <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+                {upcomingEvents.map((event) => <EventListItem key={event.id} event={event} />)}
+              </div>
             )}
           </TabsContent>
 
@@ -388,7 +390,9 @@ const Profile = () => {
                 <p>No past events</p>
               </div>
             ) : (
-              pastEvents.map((event) => <EventListItem key={event.id} event={event} />)
+              <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+                {pastEvents.map((event) => <EventListItem key={event.id} event={event} />)}
+              </div>
             )}
           </TabsContent>
         </Tabs>

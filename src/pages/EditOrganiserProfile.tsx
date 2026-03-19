@@ -84,7 +84,12 @@ const EditOrganiserProfile = () => {
       await callEdgeFunction("organiser-profile-update", {
         body: {
           profile_id: activeOrg.id,
-          ...formData,
+          display_name: formData.display_name,
+          username: formData.username,
+          bio: formData.bio.trim() || null,
+          city: formData.city || null,
+          instagram_handle: formData.instagram_handle || null,
+          category: formData.category,
           opening_hours: formData.category === "Venue" ? formData.opening_hours : null,
         },
       });

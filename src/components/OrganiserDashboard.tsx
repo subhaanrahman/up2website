@@ -115,16 +115,17 @@ const OrganiserDashboard = () => {
 
     }
     return (
-      <div className="space-y-3">
-        {list.map((event) =>
-        <EventRow
-          key={event.id}
-          event={event}
-          rsvpCount={rsvpCounts?.[event.id] || 0}
-          onManage={() => setManageEvent({ id: event.id, title: event.title })} />
-
-        )}
-      </div>);
+      <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+        {list.map((event) => (
+          <EventRow
+            key={event.id}
+            event={event}
+            rsvpCount={rsvpCounts?.[event.id] || 0}
+            onManage={() => setManageEvent({ id: event.id, title: event.title })}
+          />
+        ))}
+      </div>
+    );
 
   };
 

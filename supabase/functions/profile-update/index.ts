@@ -9,7 +9,7 @@ const profileUpdateSchema = z.object({
   action: z.literal('update'),
   display_name: z.string().trim().max(100).optional(),
   username: z.string().regex(/^[a-zA-Z0-9_-]{3,30}$/, 'Username must be 3-30 alphanumeric characters, hyphens or underscores').optional(),
-  bio: z.string().trim().max(500).optional().nullable(),
+  bio: z.preprocess((val) => (val === "" ? null : val), z.string().trim().max(500).optional().nullable()),
   city: z.string().trim().max(100).optional().nullable(),
   page_classification: z.enum(['DJ', 'Promoter', 'Artist']).optional().nullable(),
   profile_tier: z.enum(['personal', 'professional']).optional(),

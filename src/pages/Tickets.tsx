@@ -284,7 +284,11 @@ const Tickets = () => {
       elements.push(
         <TimeDivider key={`divider-${group}`} label={groupLabel[group]} />
       );
-      items.forEach((t) => elements.push(renderCard(t, isPast)));
+      elements.push(
+        <div key={`grid-${group}`} className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+          {items.map((t) => renderCard(t, isPast))}
+        </div>
+      );
     }
     return elements;
   };
@@ -310,7 +314,9 @@ const Tickets = () => {
           <TimeDivider label="Today" prominent />
         </div>
         {todayPlans.length > 0 ? (
-          todayPlans.map((t) => renderCard(t, false))
+          <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+            {todayPlans.map((t) => renderCard(t, false))}
+          </div>
         ) : (
           <div className="text-center py-2 text-muted-foreground">
             <p className="text-sm">No plans today</p>
@@ -342,17 +348,21 @@ const Tickets = () => {
         {upcomingCreated.length > 0 && (
           <>
             <TimeDivider label="Upcoming" />
-            {upcomingCreated.map((e) => (
-              <CreatedEventCard key={e.id} event={e} isPast={false} isHost={(e as any).isHost} />
-            ))}
+            <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+              {upcomingCreated.map((e) => (
+                <CreatedEventCard key={e.id} event={e} isPast={false} isHost={(e as any).isHost} />
+              ))}
+            </div>
           </>
         )}
         {pastCreated.length > 0 && (
           <>
             <TimeDivider label="Past" prominent />
-            {pastCreated.map((e) => (
-              <CreatedEventCard key={e.id} event={e} isPast={true} isHost={(e as any).isHost} />
-            ))}
+            <div className="grid grid-cols-1 gap-3 grid-auto-rows-[1fr]">
+              {pastCreated.map((e) => (
+                <CreatedEventCard key={e.id} event={e} isPast={true} isHost={(e as any).isHost} />
+              ))}
+            </div>
           </>
         )}
       </div>
