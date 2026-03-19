@@ -1,0 +1,81 @@
+---
+description: Supabase schema, migrations, MCP usage, and when the user must run db push
+globs: 
+  - supabase/**/*
+  - "**/*supabase*"
+alwaysApply: false
+---
+
+# Supabase Workflow & MCP Usage
+
+## Schema Changes: Migrations Only
+
+**RULE:** All database schema changes MUST be made via migration files in `supabase/migrations/`. Do NOT use Supabase MCP `apply_migration` or the Supabase Dashboard SQL editor for schema changes—they bypass local version control and cause migration history drift between local and remote.
+
+### Process
+
+1. Create a new migration file: `supabase/migrations/YYYYMMDDHHMMSS_description.sql` (e.g. `20260319120000_tickets_available_until.sql`)
+2. Write the SQL (ALTER TABLE, CREATE TABLE, etc.)
+3. **After creating or editing a migration file, PROMPT THE USER** to run:
+   ```bash
+   supabase db push
+   ```
+4. The user must run this command in their terminal—MCP cannot run CLI commands. Remind them to run it before continuing or committing.
+
+### User Prompt Template
+
+When you add or modify a migration file, add a clear note for the user:
+
+> **Action required:** Run `supabase db push` in your terminal to apply the migration to the remote database. MCP cannot run CLI commands—this step must be done manually.
+
+---
+
+## Edge Functions: MCP or CLI
+
+Edge function deployments CAN be handled by Supabase MCP (`deploy_edge_function`) or via CLI (`supabase functions deploy`). Source of truth is always `supabase/functions/` in the repo.
+
+---
+
+## MCP Tool Usage — Practices
+
+When using Supabase MCP tools (`user-supabase`), adhere to these practices:
+
+| Tool | Use for | Do NOT use for |
+|------|---------|----------------|
+| `execute_sql` | Read-only queries (SELECT, inspection, counts) | DDL (CREATE/ALTER/DROP) or DML writes that change schema/data structure |
+| `list_tables` | Inspecting schema, table/column overview | — |
+| `apply_migration` | **Never use** | Schema changes — use migration files + `supabase db push` instead |
+
+**Code conventions when suggesting changes:**
+- All DB access via repositories (`src/features/*/repositories/`), never direct `supabase.from()` in pages/hooks
+- Sensitive mutations via edge functions, not client Supabase calls
+- Import Supabase from `@/infrastructure/supabase` only
+
+---
+
+## Read-Only: MCP Handles It
+
+Supabase MCP can handle these without any follow-up:
+
+- `execute_sql` — Query/inspect data (read-only queries only)
+- `list_tables` — List tables
+- `list_migrations` — View migration history
+- `get_logs` — Service logs
+- `generate_typescript_types` — Regenerate types
+- `deploy_edge_function` — Deploy edge functions
+
+No user action required for these.
+
+---
+
+## Quick Reference: Who Does What
+
+| Task | Handled by | User action |
+|------|------------|-------------|
+| Schema changes (new columns, tables) | Migration file + CLI | **Run `supabase db push`** |
+| Edge function deploy | MCP or CLI | None |
+| Query DB, list tables, logs, types | MCP | None |
+
+**Summary for the user:**
+- **All Supabase MCP calls** (query, deploy functions, logs, etc.) — MCP handles it, no follow-up.
+- **Partial workflow — requires final `supabase db push`:** Any time a migration file is created or modified, the user must run `supabase db push` in the terminal. MCP cannot run CLI commands.

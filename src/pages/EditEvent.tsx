@@ -60,6 +60,7 @@ const EditEvent = () => {
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
   const [ticketsAvailableFrom, setTicketsAvailableFrom] = useState("");
+  const [ticketsAvailableUntil, setTicketsAvailableUntil] = useState("");
   const [soldOutMessageEnabled, setSoldOutMessageEnabled] = useState(false);
   const [soldOutMessage, setSoldOutMessage] = useState("");
 
@@ -79,6 +80,8 @@ const EditEvent = () => {
       setAddress(event.address || "");
       setCapacity(event.maxGuests?.toString() || "");
       setCoverImage(event.coverImage || null);
+      setTicketsAvailableFrom(event.ticketsAvailableFrom || "");
+      setTicketsAvailableUntil(event.ticketsAvailableUntil || "");
     }
   }, [event]);
 
@@ -220,6 +223,8 @@ const EditEvent = () => {
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         coverImage: coverImage || undefined,
+        ticketsAvailableFrom: ticketsAvailableFrom ? new Date(ticketsAvailableFrom).toISOString() : null,
+        ticketsAvailableUntil: ticketsAvailableUntil ? new Date(ticketsAvailableUntil).toISOString() : null,
       });
 
       // Sync co-hosts: remove old, add new
@@ -365,6 +370,7 @@ const EditEvent = () => {
                   discountCodes={discountCodes} setDiscountCodes={setDiscountCodes}
                   ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
                   ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
+                  ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
                   soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
                   soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
                   payoutsReady={payoutsReady}

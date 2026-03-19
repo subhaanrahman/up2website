@@ -189,7 +189,8 @@ Standard junction tables with cascade-ready FKs.
 | guestlist_require_approval | boolean | **⚠️ No approval UI** |
 | guestlist_max_capacity | integer | Separate from max_guests |
 | show_tickets_remaining | boolean | |
-| tickets_available_from | timestamptz | |
+| tickets_available_from | timestamptz | Null = open immediately |
+| tickets_available_until | timestamptz | Null = close 1 min before event |
 | publish_at | timestamptz | **⚠️ Not enforced — events visible immediately** |
 | sold_out_message | text | |
 | tags | jsonb | Default '[]' |
@@ -372,7 +373,7 @@ Tables added to `supabase_realtime`:
 - `rate_limits (endpoint, ip_address, window_start)` — Partial unique (WHERE ip_address IS NOT NULL)
 
 ### Recommended (Not Yet Created)
-See `docs/DB_OPTIMISATION_CHECKLIST.md` for full list. High-priority:
+See `docs/PLATFORM_TODOS.md` (Optimisation section) for full list. High-priority:
 - `notifications(user_id, created_at)` — Feed queries
 - `notifications(user_id) WHERE read = false` — Unread count
 - `rsvps(event_id, status)` — Capacity checks

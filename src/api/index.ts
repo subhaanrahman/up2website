@@ -33,6 +33,8 @@ export const eventsApi = {
         cover_image: input.coverImage,
         organiser_profile_id: input.organiserProfileId,
         publish_at: input.publishAt,
+        tickets_available_from: input.ticketsAvailableFrom,
+        tickets_available_until: input.ticketsAvailableUntil,
       },
     });
   },
@@ -53,6 +55,8 @@ export const eventsApi = {
         max_guests: fields.maxGuests,
         is_public: fields.isPublic,
         cover_image: fields.coverImage,
+        tickets_available_from: fields.ticketsAvailableFrom,
+        tickets_available_until: fields.ticketsAvailableUntil,
       },
     });
   },

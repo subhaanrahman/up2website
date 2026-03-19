@@ -414,6 +414,7 @@ export type Database = {
           tags: Json | null
           ticket_price_cents: number
           tickets_available_from: string | null
+          tickets_available_until: string | null
           title: string
           updated_at: string
         }
@@ -441,6 +442,7 @@ export type Database = {
           tags?: Json | null
           ticket_price_cents?: number
           tickets_available_from?: string | null
+          tickets_available_until?: string | null
           title: string
           updated_at?: string
         }
@@ -468,6 +470,7 @@ export type Database = {
           tags?: Json | null
           ticket_price_cents?: number
           tickets_available_from?: string | null
+          tickets_available_until?: string | null
           title?: string
           updated_at?: string
         }

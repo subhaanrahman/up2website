@@ -264,10 +264,10 @@ Located in `supabase/functions/_shared/`:
 | Supabase types (auto-generated) | `src/integrations/supabase/types.ts` |
 | Architecture docs | `docs/ARCHITECTURE.md` |
 | Database schema docs | `docs/DATABASE_ARCHITECTURE.md` |
-| Cleanup roadmap | `docs/CLEANUP_ARCHITECTURE_TODO.md` |
+| Cleanup roadmap | `docs/PLATFORM_TODOS.md` |
 | Security checklist | `docs/SECURITY_CHECKLIST.md` (includes upload validation TODOs) |
-| Stripe integration plan | `docs/STRIPE_TODO.md` |
-| Backend TODOs | `docs/BACKEND_TODO.md` |
+| Stripe integration plan | `docs/PLATFORM_TODOS.md` |
+| Backend TODOs | `docs/PLATFORM_TODOS.md` |
 
 ---
 

@@ -14,6 +14,8 @@ export interface EventEntity {
   category: string | null;
   maxGuests: number | null;
   isPublic: boolean;
+  ticketsAvailableFrom: string | null;
+  ticketsAvailableUntil: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +33,8 @@ export interface CreateEventInput {
   coverImage?: string;
   organiserProfileId?: string;
   publishAt?: string;
+  ticketsAvailableFrom?: string | null;
+  ticketsAvailableUntil?: string | null;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {
