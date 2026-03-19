@@ -15,6 +15,8 @@ interface DraftData {
   title: string;
   description?: string;
   location?: string;
+  venueName?: string;
+  address?: string;
   date: string;
   time?: string;
   capacity?: string;
@@ -64,7 +66,7 @@ const OnboardingRequired = () => {
       navigate("/create");
       return;
     }
-    const { title, description, location: loc, date, time, capacity: cap, coverImage, cohosts, reminders, ticketTiers, organiserProfileId: orgId, publishAt } = draftData;
+    const { title, description, venueName, address, date, time, capacity: cap, coverImage, cohosts, reminders, ticketTiers, organiserProfileId: orgId, publishAt } = draftData;
     if (!title) {
       toast({ title: "Title required", description: "Event title is required for draft.", variant: "destructive" });
       return;
@@ -75,7 +77,8 @@ const OnboardingRequired = () => {
       const data = await eventsApi.create({
         title: title || "Untitled Event",
         description,
-        location: loc,
+        venueName,
+        address,
         eventDate: eventDateTime,
         maxGuests: cap ? parseInt(cap) : undefined,
         isPublic: false,

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronRight, ArrowRightLeft, Clock, X } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
@@ -11,6 +12,7 @@ interface TicketEventCardProps {
   eventId: string;
   title?: string;
   eventDate?: string;
+  venue?: string | null;
   isPast: boolean;
   ticketStatus: TicketStatus;
   hasPendingTransfer?: boolean;
@@ -24,6 +26,7 @@ const TicketEventCard = ({
   eventId,
   title,
   eventDate,
+  venue,
   isPast,
   ticketStatus,
   hasPendingTransfer,
@@ -52,9 +55,11 @@ const TicketEventCard = ({
           {title}
         </h3>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-            {eventDate ? format(new Date(eventDate), "EEE M/d - ha") : "TBD"}
-          </span>
+          <Badge variant="primary">
+            {eventDate
+              ? `${format(new Date(eventDate), "EEE MMM d '•' haaa")}${venue ? ` • ${venue}` : ""}`
+              : "TBD"}
+          </Badge>
           {hasPendingTransfer && (
             <span className="text-xs bg-amber-500/15 px-2.5 py-1.5 rounded-full text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 border border-amber-500/30">
               <Clock className="h-3 w-3" />

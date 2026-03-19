@@ -41,9 +41,9 @@ const EventRow = ({ event, rsvpCount, onManage }: EventRowProps) => {
             {event.title}
           </h3>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-              {format(new Date(event.event_date), "EEE M/d - ha")}
-            </span>
+            <Badge variant="primary">
+              {`${format(new Date(event.event_date), "EEE MMM d '•' haaa")}${(event.venue_name ?? event.location) ? ` • ${event.venue_name ?? event.location}` : ""}`}
+            </Badge>
           </div>
         </div>
       </Link>

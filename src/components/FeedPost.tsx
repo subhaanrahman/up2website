@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Repeat2, MoreHorizontal, BadgeCheck, Calendar, MapPin, Trash2, Flag, Ban } from "lucide-react";
+import { Repeat2, MoreHorizontal, BadgeCheck, Trash2, Flag, Ban } from "lucide-react";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { formatDistanceToNow, format } from "date-fns";
@@ -37,6 +38,7 @@ interface FeedPostProps {
     title: string;
     event_date: string;
     location: string | null;
+    venue_name?: string | null;
     cover_image: string | null;
   } | null;
   collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
@@ -154,8 +156,8 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-tile overflow-hidden border border-border hover:border-primary/50 transition-colors bg-card">
-              <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden bg-muted">
+            <Link to={`/events/${eventData.id}`} className="flex mt-2.5 rounded-tile overflow-hidden border border-border hover:bg-card/80 transition-colors bg-card">
+              <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
                 <img
                   src={eventData.cover_image || getEventFlyer(eventData.id)}
                   alt={eventData.title}
@@ -163,18 +165,13 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
                   loading="lazy"
                 />
               </div>
-              <div className="flex-1 pl-4 pr-3 py-3 flex flex-col justify-center min-w-0">
-                <h4 className="font-bold text-foreground text-sm truncate capitalize">{eventData.title}</h4>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5">
-                  <Calendar className="h-3 w-3 text-primary" />
-                  <span>{format(new Date(eventData.event_date), "EEE M/d - ha")}</span>
+              <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
+                <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{eventData.title}</h3>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Badge variant="primary">
+                    {`${format(new Date(eventData.event_date), "EEE MMM d '•' haaa")}${(eventData.venue_name ?? eventData.location) ? ` • ${eventData.venue_name ?? eventData.location}` : ""}`}
+                  </Badge>
                 </div>
-                {eventData.location && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                    <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
-                    <span className="truncate">{eventData.location}</span>
-                  </div>
-                )}
               </div>
             </Link>
           )}

@@ -207,7 +207,7 @@ const EventDetail = () => {
         eventId: dbEvent.id,
         eventTitle: dbEvent.title,
         eventDate: format(new Date(dbEvent.eventDate), "EEEE, MMM d • h:mm a"),
-        eventLocation: dbEvent.location || "TBD",
+        eventLocation: dbEvent.venueName || dbEvent.location || dbEvent.address || "TBD",
         tierId: tier.id,
         tierName: tier.name,
         tierPriceCents: tier.priceCents,
@@ -241,7 +241,7 @@ const EventDetail = () => {
     downloadIcsFile({
       title: dbEvent.title,
       description: dbEvent.description,
-      location: dbEvent.location,
+      location: dbEvent.address || dbEvent.location,
       startDate: new Date(dbEvent.eventDate),
       endDate: dbEvent.endDate ? new Date(dbEvent.endDate) : null,
     });
@@ -351,26 +351,17 @@ const EventDetail = () => {
   const eventImage = foundMockEvent?.image || dbEvent?.coverImage || (id ? getEventFlyer(id) : undefined);
   
   const startDate = dbEvent ? new Date(dbEvent.eventDate) : null;
-  const endDateObj = dbEvent?.endDate ? new Date(dbEvent.endDate) : null;
   
   const formatEventDate = () => {
     if (foundMockEvent) return foundMockEvent.date;
     if (!startDate) return "";
-    const startStr = format(startDate, "EEEE, MMM d");
-    if (endDateObj && format(endDateObj, "yyyy-MM-dd") !== format(startDate, "yyyy-MM-dd")) {
-      return `${startStr} – ${format(endDateObj, "EEEE, MMM d")}`;
-    }
-    return startStr;
+    return format(startDate, "EEEE, MMM d");
   };
   
   const eventDate = formatEventDate();
-  const eventTime = foundMockEvent ? "9:00 PM" : startDate
-    ? (endDateObj
-      ? `${format(startDate, "h:mm a")} – ${format(endDateObj, "h:mm a")}`
-      : format(startDate, "h:mm a"))
-    : "";
-  const eventLocation = foundMockEvent?.location || dbEvent?.category || "";
-  const eventAddress = foundMockEvent?.address || dbEvent?.location || "";
+  const eventTime = foundMockEvent ? "9:00 PM" : startDate ? format(startDate, "h:mm a") : "";
+  const eventVenueName = foundMockEvent?.location || dbEvent?.venueName || dbEvent?.location || "";
+  const eventAddress = foundMockEvent?.address || dbEvent?.address || dbEvent?.location || "";
   const eventDescription = foundMockEvent?.description || dbEvent?.description || "";
   const attendees = foundMockEvent?.attendees || 0;
   const guests = foundMockEvent?.guests || [];
@@ -427,8 +418,8 @@ const EventDetail = () => {
         <div className="flex items-start justify-between">
           <div>
             <p className="font-bold text-foreground text-lg">{eventDate}</p>
-            <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
-            <p className="text-sm text-muted-foreground">{eventAddress.split(',').slice(1).join(',').trim() || "Venue address"}</p>
+            <p className="text-foreground font-medium">{eventVenueName || "Venue"}</p>
+            <p className="text-sm text-muted-foreground">{eventAddress || "Address"}</p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Link to={displayHostLink} className="flex items-center gap-1 hover:opacity-80 transition-opacity">

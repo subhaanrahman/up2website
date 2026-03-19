@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Calendar, Plus, ChevronRight, Settings, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +27,7 @@ interface TicketEvent {
   eventId: string;
   title: string;
   eventDate: string;
+  venue?: string | null;
   ticketStatus: TicketStatus;
 }
 
@@ -111,9 +113,9 @@ function CreatedEventCard({ event, isPast, isHost }: { event: any; isPast: boole
         <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
           <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-              {format(new Date(event.eventDate), "EEE M/d - ha")}
-            </span>
+            <Badge variant="primary">
+              {`${format(new Date(event.eventDate), "EEE MMM d '•' haaa")}${(event.venueName || event.location) ? ` • ${event.venueName || event.location}` : ""}`}
+            </Badge>
             {event.status === "draft" && (
               <span className="text-xs bg-accent/20 text-accent-foreground px-2.5 py-1 rounded-full font-medium">Draft</span>
             )}
@@ -175,6 +177,7 @@ const Tickets = () => {
     eventId: e.id,
     title: e.title,
     eventDate: e.eventDate,
+    venue: e.venueName || e.location,
     ticketStatus: (e as any).ticketStatus as TicketStatus,
   }));
 
@@ -271,6 +274,7 @@ const Tickets = () => {
       eventId={t.eventId}
       title={t.title}
       eventDate={t.eventDate}
+      venue={t.venue}
       isPast={isPast}
       ticketStatus={t.ticketStatus}
       hasPendingTransfer={pendingEventIds.has(t.eventId)}

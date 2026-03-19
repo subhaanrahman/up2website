@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -63,7 +64,7 @@ const Profile = () => {
       const now = new Date().toISOString();
       const { data: events, error: evErr } = await supabase
         .from("events")
-        .select("id, title, event_date, location, cover_image, category")
+        .select("id, title, event_date, location, venue_name, cover_image, category")
         .in("id", eventIds)
         .eq("status", "published")
         .or(`publish_at.is.null,publish_at.lte.${now}`)
@@ -74,6 +75,7 @@ const Profile = () => {
         title: e.title,
         eventDate: e.event_date,
         location: e.location,
+        venueName: e.venue_name ?? null,
         coverImage: e.cover_image,
         category: e.category,
       }));
@@ -96,7 +98,7 @@ const Profile = () => {
       const now = new Date().toISOString();
       const { data: events, error: evErr } = await supabase
         .from("events")
-        .select("id, title, event_date, location, cover_image, category")
+        .select("id, title, event_date, location, venue_name, cover_image, category")
         .in("id", eventIds)
         .eq("status", "published")
         .or(`publish_at.is.null,publish_at.lte.${now}`)
@@ -107,6 +109,7 @@ const Profile = () => {
         title: e.title,
         eventDate: e.event_date,
         location: e.location,
+        venueName: e.venue_name ?? null,
         coverImage: e.cover_image,
         category: e.category,
       }));
@@ -129,6 +132,7 @@ const Profile = () => {
         title: row.title,
         eventDate: row.event_date,
         location: row.location,
+        venueName: row.venue_name ?? null,
         coverImage: row.cover_image,
         category: row.category,
       }));
@@ -297,7 +301,7 @@ const Profile = () => {
           )}
 
           {(classification || city) && (
-            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/15 text-primary-foreground text-sm font-medium mb-3 mx-auto">
+            <Badge variant="primaryMd" className="mb-3 mx-auto">
               {classification && (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide">
                   <span>{classification}</span>
@@ -327,7 +331,7 @@ const Profile = () => {
                   <MapPin className="h-3.5 w-3.5" />
                 </span>
               )}
-            </div>
+            </Badge>
           )}
 
         </div>
@@ -445,7 +449,7 @@ const ProfileFeedTab = ({ userId, isOrganiser, organiserProfileId }: { userId: s
   );
 };
 
-const EventListItem = ({ event }: { event: { id: string; title: string; eventDate: string; location: string | null; coverImage: string | null; category: string | null } }) => {
+const EventListItem = ({ event }: { event: { id: string; title: string; eventDate: string; location: string | null; venueName?: string | null; coverImage: string | null; category: string | null } }) => {
   return (
     <Link
       to={`/events/${event.id}`}
@@ -457,9 +461,9 @@ const EventListItem = ({ event }: { event: { id: string; title: string; eventDat
       <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
         <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-            {format(new Date(event.eventDate), "EEE M/d - ha")}
-          </span>
+          <Badge variant="primary">
+            {`${format(new Date(event.eventDate), "EEE MMM d '•' haaa")}${(event.venueName ?? event.location) ? ` • ${event.venueName ?? event.location}` : ""}`}
+          </Badge>
         </div>
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />

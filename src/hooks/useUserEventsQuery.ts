@@ -8,6 +8,8 @@ export interface UserEvent {
   eventDate: string;
   coverImage: string | null;
   location: string | null;
+  venueName: string | null;
+  address: string | null;
   category: string | null;
   status: string;
 }
@@ -19,6 +21,8 @@ function mapRow(r: any): UserEvent {
     eventDate: r.event_date,
     coverImage: r.cover_image,
     location: r.location,
+    venueName: r.venue_name ?? null,
+    address: r.address ?? null,
     category: r.category,
     status: r.status,
   };
@@ -41,17 +45,17 @@ export function useUserPlannedEvents(userId: string | undefined) {
       const [rsvpResult, orderResult, savedResult, cohostResult, hostedResult] = await Promise.all([
         supabase
           .from('rsvps')
-          .select('event_id, status, events (id, title, event_date, cover_image, location, category, status)')
+          .select('event_id, status, events (id, title, event_date, cover_image, location, venue_name, address, category, status)')
           .eq('user_id', userId)
           .in('status', ['going', 'interested', 'pending']),
         supabase
           .from('orders')
-          .select('event_id, status, events:event_id (id, title, event_date, cover_image, location, category, status)')
+          .select('event_id, status, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status)')
           .eq('user_id', userId)
           .eq('status', 'confirmed'),
         supabase
           .from('saved_events')
-          .select('event_id, events:event_id (id, title, event_date, cover_image, location, category, status)')
+          .select('event_id, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status)')
           .eq('user_id', userId),
         supabase.from('event_cohosts').select('event_id').eq('user_id', userId),
         profileId
@@ -126,7 +130,7 @@ export function useUserCreatedEvents(userId: string | undefined) {
 
       let query = supabase
         .from('events')
-        .select('id, title, event_date, cover_image, location, category, status')
+        .select('id, title, event_date, cover_image, location, venue_name, address, category, status')
         .order('event_date', { ascending: false });
 
       if (isOrganiser) {
@@ -155,7 +159,7 @@ export function useUserCreatedEvents(userId: string | undefined) {
       if (cohostEventIds.length > 0) {
         const { data: cohostRows, error: cohostEventsError } = await supabase
           .from('events')
-          .select('id, title, event_date, cover_image, location, category, status')
+          .select('id, title, event_date, cover_image, location, venue_name, address, category, status')
           .in('id', cohostEventIds as string[]);
         if (cohostEventsError) throw cohostEventsError;
         cohostEvents = (cohostRows || [])

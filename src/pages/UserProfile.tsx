@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -511,7 +512,7 @@ const UserProfile = () => {
           )}
 
           {(profile.page_classification || profile.city) && (
-            <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/15 text-primary-foreground text-sm font-medium mb-3 mx-auto">
+            <Badge variant="primaryMd" className="mb-3 mx-auto">
               {profile.page_classification && (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium tracking-wide">
                   <span>{profile.page_classification}</span>
@@ -541,7 +542,7 @@ const UserProfile = () => {
                   <MapPin className="h-3.5 w-3.5" />
                 </span>
               )}
-            </div>
+            </Badge>
           )}
 
 
@@ -596,9 +597,9 @@ const UserProfile = () => {
                     <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
                       <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-                          {format(new Date(event.event_date), "EEE M/d - ha")}
-                        </span>
+                        <Badge variant="primary">
+                          {`${format(new Date(event.event_date), "EEE MMM d '•' haaa")}${(event.venue_name ?? event.location) ? ` • ${event.venue_name ?? event.location}` : ""}`}
+                        </Badge>
                         {event.category && (
                           <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
                             {event.category}
@@ -637,9 +638,9 @@ const UserProfile = () => {
                   <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
                     <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-                        {format(new Date(event.event_date), "EEE M/d - ha")}
-                      </span>
+                      <Badge variant="primary">
+                        {`${format(new Date(event.event_date), "EEE MMM d '•' haaa")}${(event.venue_name ?? event.location) ? ` • ${event.venue_name ?? event.location}` : ""}`}
+                      </Badge>
                       <span className="text-xs bg-secondary px-2.5 py-1.5 rounded-full text-muted-foreground font-medium flex items-center">
                         Past
                       </span>

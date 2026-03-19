@@ -60,14 +60,16 @@ function bodyExcerpt(body: unknown, maxLen = 200): string {
 
 /** Parse an Edge Function JSON error response into an AppError */
 export function parseApiError(status: number, body: unknown): AppError {
-  if (typeof body === 'object' && body !== null && 'error' in body) {
-    const b = body as { error: string; code?: string; request_id?: string; details?: Record<string, unknown> };
-    const details = { ...b.details };
-    if (b.request_id) details.request_id = b.request_id;
-    return new ApiError(b.error, status, Object.keys(details).length > 0 ? details : undefined);
+  if (typeof body === 'object' && body !== null) {
+    const b = body as Record<string, unknown>;
+    const msg = (b.error ?? b.message ?? b.msg) as string | undefined;
+    if (typeof msg === 'string' && msg) {
+      const details = { ...(b.details as Record<string, unknown>) };
+      if (b.request_id) details.request_id = b.request_id;
+      return new ApiError(msg, status, Object.keys(details).length > 0 ? details : undefined);
+    }
   }
-  return new ApiError('An unexpected error occurred', status, {
-    status,
-    bodyExcerpt: bodyExcerpt(body),
-  });
+  const excerpt = bodyExcerpt(body);
+  const fallback = status === 401 ? 'Session expired. Please log out and log back in.' : 'An unexpected error occurred.';
+  return new ApiError(fallback, status, { status, bodyExcerpt: excerpt });
 }

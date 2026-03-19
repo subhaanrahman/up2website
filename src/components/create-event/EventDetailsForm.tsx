@@ -27,15 +27,17 @@ interface EventDetailsFormProps {
   setDate: (v: string) => void;
   time: string;
   setTime: (v: string) => void;
-  location: string;
-  setLocation: (v: string) => void;
+  venueName: string;
+  setVenueName: (v: string) => void;
+  address: string;
+  setAddress: (v: string) => void;
   description: string;
   setDescription: (v: string) => void;
   cohosts: CohostEntry[];
   setCohosts: (v: CohostEntry[]) => void;
   cohostInput: string;
   setCohostInput: (v: string) => void;
-  errors?: { title?: string; date?: string; location?: string };
+  errors?: { title?: string; date?: string; venueName?: string; address?: string };
 }
 
 interface SearchResult {
@@ -52,7 +54,8 @@ const EventDetailsForm = ({
   coverImage, setCoverImage,
   date, setDate,
   time, setTime,
-  location, setLocation,
+  venueName, setVenueName,
+  address, setAddress,
   description, setDescription,
   cohosts, setCohosts,
   cohostInput, setCohostInput,
@@ -224,16 +227,28 @@ const EventDetailsForm = ({
         <TimePicker time={time} setTime={setTime} />
       </div>
 
-      {/* Location */}
-      <div className={`bg-card rounded-tile border px-4 pt-4 pb-4 ${errors.location ? "border-destructive" : "border-border/50"}`}>
-        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Location *</p>
+      {/* Venue name */}
+      <div className={`bg-card rounded-tile border px-4 pt-4 pb-4 ${errors.venueName ? "border-destructive" : "border-border/50"}`}>
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Venue name *</p>
         <input
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder="Where's the event?"
+          value={venueName}
+          onChange={(e) => setVenueName(e.target.value)}
+          placeholder="e.g. The Ritz, Madison Square Garden"
           className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
         />
-        {errors.location && <p className="text-xs text-destructive mt-1">{errors.location}</p>}
+        {errors.venueName && <p className="text-xs text-destructive mt-1">{errors.venueName}</p>}
+      </div>
+
+      {/* Address */}
+      <div className={`bg-card rounded-tile border px-4 pt-4 pb-4 ${errors.address ? "border-destructive" : "border-border/50"}`}>
+        <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5">Address *</p>
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          placeholder="Full address: street, city, state, postcode"
+          className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+        />
+        {errors.address && <p className="text-xs text-destructive mt-1">{errors.address}</p>}
       </div>
 
       {/* Description */}

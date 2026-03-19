@@ -13,12 +13,14 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   location: z.string().max(500).nullable().optional(),
+  venue_name: z.string().max(200).nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
   event_date: z.string().optional(),
   end_date: z.string().nullable().optional(),
   category: z.string().max(50).nullable().optional(),
   max_guests: z.number().int().positive().nullable().optional(),
   is_public: z.boolean().optional(),
-  cover_image: z.string().url().nullable().optional(),
+  cover_image: z.union([z.string().url(), z.literal("")]).nullable().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -135,6 +137,8 @@ Deno.serve(async (req) => {
     if (fields.title !== undefined) updateData.title = fields.title;
     if (fields.description !== undefined) updateData.description = fields.description;
     if (fields.location !== undefined) updateData.location = fields.location;
+    if (fields.venue_name !== undefined) updateData.venue_name = fields.venue_name;
+    if (fields.address !== undefined) updateData.address = fields.address;
     if (fields.event_date !== undefined) updateData.event_date = fields.event_date;
     if (fields.end_date !== undefined) updateData.end_date = fields.end_date;
     if (fields.category !== undefined) updateData.category = fields.category;

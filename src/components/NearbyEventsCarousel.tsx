@@ -10,6 +10,8 @@ interface NearbyEvent {
   title: string;
   event_date: string;
   location: string | null;
+  venue_name?: string | null;
+  address?: string | null;
   cover_image: string | null;
   ticket_price_cents: number;
 }
@@ -70,12 +72,12 @@ const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
                     <h3 className="font-bold text-foreground text-sm truncate capitalize">{event.title}</h3>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1.5">
                       <Calendar className="h-3 w-3 text-primary" />
-                      <span>{format(new Date(event.event_date), "EEE M/d - ha")}</span>
+                      <span>{format(new Date(event.event_date), "EEE MMM d '•' haaa")}</span>
                     </div>
-                    {event.location && (
+                    {(event.venue_name ?? event.location) && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <MapPin className="h-3 w-3 text-primary flex-shrink-0" />
-                        <span className="truncate">{event.location}</span>
+                        <span className="truncate">{event.venue_name ?? event.location}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">

@@ -16,6 +16,8 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     title: row.title as string,
     description: row.description as string | null,
     location: row.location as string | null,
+    venueName: (row.venue_name as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
     eventDate: row.event_date as string,
     endDate: row.end_date as string | null,
     coverImage: row.cover_image as string | null,
@@ -65,11 +67,11 @@ export const eventsRepository = {
 
     if (options.query?.trim()) {
       const term = `%${options.query.trim()}%`;
-      q = q.or(`title.ilike.${term},location.ilike.${term}`);
+      q = q.or(`title.ilike.${term},location.ilike.${term},venue_name.ilike.${term},address.ilike.${term}`);
     }
 
     if (options.city) {
-      q = q.ilike('location', `%${options.city}%`);
+      q = q.or(`location.ilike.%${options.city}%,address.ilike.%${options.city}%`);
     }
 
     // Date-range filters
@@ -235,7 +237,7 @@ export const eventsRepository = {
     const now = new Date().toISOString();
     let query = supabase
       .from('events')
-      .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
+      .select('id, title, event_date, location, venue_name, address, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
       .eq('is_public', true)
       .eq('status', 'published')
       .or(`publish_at.is.null,publish_at.lte.${now}`)
@@ -243,14 +245,14 @@ export const eventsRepository = {
       .order('event_date', { ascending: true })
       .limit(limit);
     if (city) {
-      query = query.ilike('location', `%${city}%`);
+      query = query.or(`location.ilike.%${city}%,address.ilike.%${city}%`);
     }
     const { data, error } = await query;
     if (error) throw error;
     if (city && (data || []).length < 2) {
       const { data: backfill } = await supabase
         .from('events')
-        .select('id, title, event_date, location, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
+        .select('id, title, event_date, location, venue_name, address, cover_image, category, ticket_price_cents, host_id, organiser_profile_id')
         .eq('is_public', true)
         .eq('status', 'published')
         .or(`publish_at.is.null,publish_at.lte.${now}`)
@@ -268,7 +270,7 @@ export const eventsRepository = {
     if (ids.length === 0) return [];
     let query = supabase
       .from('events')
-      .select('id, title, event_date, location, cover_image')
+      .select('id, title, event_date, location, venue_name, address, cover_image')
       .in('id', ids);
     if (publicOnly) {
       const now = new Date().toISOString();

@@ -39,14 +39,15 @@ const CreateEvent = () => {
   const [activeTab, setActiveTab] = useState<BottomTab>("details");
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [publishAt, setPublishAt] = useState("");
-  const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; location?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; venueName?: string; address?: string }>({});
 
   // Details state
   const [title, setTitle] = useState("");
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [location, setLocation] = useState("");
+  const [venueName, setVenueName] = useState("");
+  const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
   const [cohostInput, setCohostInput] = useState("");
@@ -89,7 +90,7 @@ const CreateEvent = () => {
     }
   }, [user, loading, profileLoading, navigate, toast]);
 
-  const hasData = title || date || location || description;
+  const hasData = title || date || venueName || address || description;
 
   const handleClose = () => {
     if (hasData) {
@@ -113,7 +114,8 @@ const CreateEvent = () => {
       await createEventMutation.mutateAsync({
         title: title || "Untitled Event",
         description: description || undefined,
-        location: location || undefined,
+        venueName: venueName || undefined,
+        address: address || undefined,
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         isPublic: false, // draft events are private
@@ -134,11 +136,12 @@ const CreateEvent = () => {
       return;
     }
 
-    if (!title || !date || !location) {
+    if (!title || !date || !venueName || !address) {
       setFormErrors({
         title: !title ? "Event title is required" : undefined,
         date: !date ? "Date is required" : undefined,
-        location: !location ? "Location is required" : undefined,
+        venueName: !venueName ? "Venue name is required" : undefined,
+        address: !address ? "Address is required" : undefined,
       });
       setActiveTab("details");
       return;
@@ -156,7 +159,8 @@ const CreateEvent = () => {
           draftData: {
             title,
             description,
-            location,
+            venueName,
+            address,
             date,
             time,
             capacity,
@@ -176,7 +180,8 @@ const CreateEvent = () => {
       const data = await createEventMutation.mutateAsync({
         title,
         description: description || undefined,
-        location,
+        venueName,
+        address,
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         coverImage: coverImage || undefined,
@@ -256,7 +261,8 @@ const CreateEvent = () => {
               coverImage={coverImage} setCoverImage={setCoverImage}
               date={date} setDate={setDate}
               time={time} setTime={setTime}
-              location={location} setLocation={setLocation}
+              venueName={venueName} setVenueName={setVenueName}
+              address={address} setAddress={setAddress}
               description={description} setDescription={setDescription}
               cohosts={cohosts} setCohosts={setCohosts}
               cohostInput={cohostInput} setCohostInput={setCohostInput}

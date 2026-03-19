@@ -14,6 +14,11 @@ export default {
   	},
   	extend: {
   		colors: {
+  			/* Main Color — semantic alias for theme accent */
+  			main: {
+  				DEFAULT: 'hsl(var(--main-color))',
+  				foreground: 'hsl(var(--main-color-foreground))'
+  			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',

@@ -22,7 +22,7 @@ const CheckoutSuccess = () => {
       if (!paymentIntentId || !user) return null;
       const { data, error } = await supabase
         .from("orders")
-        .select("*, events(title, event_date, location)")
+        .select("*, events(title, event_date, location, venue_name, address)")
         .eq("stripe_payment_intent_id", paymentIntentId)
         .eq("user_id", user.id)
         .maybeSingle();
@@ -105,8 +105,11 @@ const CheckoutSuccess = () => {
                     {format(new Date(event.event_date), "EEEE, MMM d · h:mm a")}
                   </p>
                 )}
-                {event.location && (
-                  <p className="text-sm text-muted-foreground">{event.location}</p>
+                {(event.venue_name ?? event.location) && (
+                  <p className="text-sm text-muted-foreground font-medium">{event.venue_name ?? event.location}</p>
+                )}
+                {event.address && (
+                  <p className="text-sm text-muted-foreground">{event.address}</p>
                 )}
               </div>
             )}

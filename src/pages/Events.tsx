@@ -157,9 +157,9 @@ const Events = () => {
       <div className="flex-1 pl-4 pr-2 py-3 min-w-0">
         <h3 className="font-bold text-lg text-foreground line-clamp-2 mb-2 capitalize leading-tight">{event.title}</h3>
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs bg-primary/15 px-2.5 py-1.5 rounded-full text-primary-foreground font-medium flex items-center border border-primary/30">
-            {format(new Date(event.eventDate || event.event_date), "EEE M/d - ha")}
-          </span>
+          <Badge variant="primary">
+            {`${format(new Date(event.eventDate || event.event_date), "EEE MMM d '•' haaa")}${(event.venueName ?? event.location) ? ` • ${event.venueName ?? event.location}` : ""}`}
+          </Badge>
         </div>
       </div>
       <ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />

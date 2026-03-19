@@ -43,9 +43,10 @@ const EditEvent = () => {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
-  const [location, setLocation] = useState("");
+  const [venueName, setVenueName] = useState("");
+  const [address, setAddress] = useState("");
   const [capacity, setCapacity] = useState("");
-  const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; location?: string }>({});
+  const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; venueName?: string; address?: string }>({});
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
   // Co-host state
@@ -74,7 +75,8 @@ const EditEvent = () => {
       setDescription(event.description || "");
       setDate(format(d, "yyyy-MM-dd"));
       setTime(format(d, "HH:mm"));
-      setLocation(event.location || "");
+      setVenueName(event.venueName || event.location || "");
+      setAddress(event.address || "");
       setCapacity(event.maxGuests?.toString() || "");
       setCoverImage(event.coverImage || null);
     }
@@ -194,11 +196,12 @@ const EditEvent = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || !title || !date || !location) {
+    if (!id || !title || !date || !venueName || !address) {
       setFormErrors({
         title: !title ? "Event title is required" : undefined,
         date: !date ? "Date is required" : undefined,
-        location: !location ? "Location is required" : undefined,
+        venueName: !venueName ? "Venue name is required" : undefined,
+        address: !address ? "Address is required" : undefined,
       });
       setActiveTab("details");
       return;
@@ -212,7 +215,8 @@ const EditEvent = () => {
         id,
         title,
         description: description || undefined,
-        location,
+        venueName,
+        address,
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         coverImage: coverImage || undefined,
@@ -251,8 +255,9 @@ const EditEvent = () => {
 
       toast({ title: "Event updated!", description: "Your changes have been saved." });
       navigate(`/events/${id}`);
-    } catch {
-      toast({ title: "Error", description: "Failed to update event.", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to update event.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 
@@ -307,7 +312,8 @@ const EditEvent = () => {
                   coverImage={coverImage} setCoverImage={setCoverImage}
                   date={date} setDate={setDate}
                   time={time} setTime={setTime}
-                  location={location} setLocation={setLocation}
+                  venueName={venueName} setVenueName={setVenueName}
+                  address={address} setAddress={setAddress}
                   description={description} setDescription={setDescription}
                   cohosts={cohosts} setCohosts={setCohosts}
                   cohostInput={cohostInput} setCohostInput={setCohostInput}

@@ -25,7 +25,22 @@ describe('TicketEventCard', () => {
       />,
     );
     expect(screen.getByText('Summer Party')).toBeInTheDocument();
-    expect(screen.getByText(/Mon 6\/15 - 8pm/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mon Jun 15 • 8pm/i)).toBeInTheDocument();
+  });
+
+  it('renders venue when provided', () => {
+    renderWithRouter(
+      <TicketEventCard
+        rsvpId="r1"
+        eventId="e1"
+        title="Summer Party"
+        eventDate="2026-06-15T20:00:00"
+        venue="The Ritz"
+        isPast={false}
+        ticketStatus="purchased"
+      />,
+    );
+    expect(screen.getByText(/Mon Jun 15 • 8pm • The Ritz/i)).toBeInTheDocument();
   });
 
   it('shows TBD when no eventDate', () => {
