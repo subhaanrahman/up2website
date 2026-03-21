@@ -67,6 +67,53 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const pi = event.data.object as Stripe.PaymentIntent;
+        if (pi.metadata?.reservation_type === 'vip_table') {
+          const reservationId = pi.metadata?.vip_reservation_id;
+          if (!reservationId) {
+            edgeLog('error', 'No vip_reservation_id in payment intent metadata', { requestId });
+            break;
+          }
+
+          const { data: reservation, error: reservationErr } = await serviceClient
+            .from('vip_table_reservations')
+            .select('*')
+            .eq('id', reservationId)
+            .single();
+
+          if (reservationErr || !reservation) {
+            edgeLog('error', 'VIP reservation not found', { requestId, reservationId });
+            break;
+          }
+
+          if (reservation.status !== 'reserved') {
+            edgeLog('info', `VIP reservation ${reservationId} already ${reservation.status}, skipping`, { requestId });
+            break;
+          }
+
+          await serviceClient
+            .from('vip_table_reservations')
+            .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+            .eq('id', reservationId);
+
+          await serviceClient
+            .from('rsvps')
+            .upsert(
+              { event_id: reservation.event_id, user_id: reservation.user_id, status: 'going', guest_count: reservation.guest_count },
+              { onConflict: 'event_id,user_id' },
+            );
+
+          await serviceClient.from('notifications').insert({
+            user_id: reservation.user_id,
+            type: 'vip_table_confirmed',
+            title: 'VIP table confirmed',
+            message: 'Your VIP table reservation is confirmed.',
+            link: `/events/${reservation.event_id}`,
+          });
+
+          edgeLog('info', `VIP reservation ${reservationId} confirmed`, { requestId });
+          break;
+        }
+
         const orderId = pi.metadata?.order_id;
         if (!orderId) {
           edgeLog('error', 'No order_id in payment intent metadata', { requestId });
@@ -117,6 +164,19 @@ Deno.serve(async (req) => {
             description: `Purchased ${order.quantity} ticket(s)`,
           }),
         ]);
+
+        // Conversion record (confirmed purchase)
+        await serviceClient
+          .from('event_link_conversions')
+          .upsert(
+            {
+              event_id: order.event_id,
+              order_id: orderId,
+              user_id: order.user_id,
+              click_id: order.referral_click_id ?? null,
+            },
+            { onConflict: 'order_id' },
+          );
 
         edgeLog('info', `Order ${orderId} confirmed, side-effects enqueued`, { requestId });
         break;

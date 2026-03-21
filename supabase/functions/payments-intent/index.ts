@@ -5,6 +5,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { isPaymentsDisabled, paymentsDisabledResponse } from "../_shared/payments-disabled.ts";
 
 const paymentSchema = z.object({
   order_id: z.string().uuid('Invalid order ID'),
@@ -16,6 +17,11 @@ Deno.serve(async (req) => {
   }
 
   const requestId = getRequestId(req);
+
+  if (isPaymentsDisabled()) {
+    edgeLog('warn', 'payments-intent blocked: PAYMENTS_DISABLED', { requestId });
+    return paymentsDisabledResponse(requestId);
+  }
 
   try {
     // Auth

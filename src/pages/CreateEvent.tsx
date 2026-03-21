@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { X, Ticket, ClipboardList, Bell, FileText } from "lucide-react";
 import { DateTimePicker } from "@/components/create-event/DateTimePicker";
@@ -15,7 +15,10 @@ import GuestlistPanel from "@/components/create-event/GuestlistPanel";
 import NotificationsPanel from "@/components/create-event/NotificationsPanel";
 import type { TicketTier } from "@/components/create-event/TicketTierModal";
 import type { DiscountCode } from "@/components/create-event/DiscountCodeModal";
+import type { VipTableTier } from "@/components/create-event/VipTableTierModal";
 import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
+import { AppError } from "@/infrastructure/errors";
+import { supabase } from "@/infrastructure/supabase";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +31,26 @@ import {
 } from "@/components/ui/alert-dialog";
 
 type BottomTab = "details" | "ticketing" | "guestlist" | "notifications";
+
+function edgeErrorMessage(err: unknown): string {
+  if (err instanceof AppError) {
+    const base = err.message;
+    if (err.statusCode === 401) {
+      return `${base} If you changed .env, sign out and sign in so your session matches this Supabase project.`;
+    }
+    return base;
+  }
+  if (err instanceof Error) return err.message;
+  return "Something went wrong. Please try again.";
+}
+
+function parseRefundDeadlineHoursInput(s: string): number | null | undefined {
+  const t = s.trim();
+  if (!t) return undefined;
+  const n = parseInt(t, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 168) return undefined;
+  return n;
+}
 
 const CreateEvent = () => {
   const navigate = useNavigate();
@@ -58,10 +81,15 @@ const CreateEvent = () => {
   const [discountsEnabled, setDiscountsEnabled] = useState(false);
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
+  const [vipTableTiers, setVipTableTiers] = useState<VipTableTier[]>([]);
   const [ticketsAvailableFrom, setTicketsAvailableFrom] = useState("");
   const [ticketsAvailableUntil, setTicketsAvailableUntil] = useState("");
   const [soldOutMessageEnabled, setSoldOutMessageEnabled] = useState(false);
   const [soldOutMessage, setSoldOutMessage] = useState("");
+  const [vipTablesEnabled, setVipTablesEnabled] = useState(false);
+  const [refundsEnabled, setRefundsEnabled] = useState(false);
+  const [refundDeadlineHours, setRefundDeadlineHours] = useState("");
+  const [refundPolicyText, setRefundPolicyText] = useState("");
 
   // Guestlist state
   const [guestlistEnabled, setGuestlistEnabled] = useState(true);
@@ -75,21 +103,21 @@ const CreateEvent = () => {
   // Ticketing is only available when actively using a business (organiser) profile
   const hasOrganiserProfile = isOrganiser;
 
-  // Check if the active organiser has Stripe Connect set up for paid tickets
-  const orgProfileId = activeProfile?.type === "organiser"
-    ? activeProfile.id
-    : organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
-  const { data: connectStatus } = useStripeConnectStatus(orgProfileId);
-  const payoutsReady = connectStatus?.charges_enabled ?? false;
-  const { startOnboarding } = useStripeConnectOnboard(orgProfileId);
+  // Venue / host association for the event (personal creators may still attach their default organiser profile)
+  const eventOrganiserProfileId =
+    activeProfile?.type === "organiser"
+      ? activeProfile.id
+      : organiserProfiles.length > 0
+        ? organiserProfiles[0]?.id
+        : undefined;
 
-  useEffect(() => {
-    if (loading || profileLoading) return;
-    if (!user) {
-      toast({ title: "Sign in required", description: "Please sign in to create an event" });
-      navigate("/auth");
-    }
-  }, [user, loading, profileLoading, navigate, toast]);
+  // Stripe Connect only applies while you're acting as that organiser — not on personal profile
+  // (avoids stripe-connect-status traffic / payout prompts for free guestlist-only creates).
+  const stripeConnectOrganiserId =
+    activeProfile?.type === "organiser" ? activeProfile.id : undefined;
+  const { data: connectStatus } = useStripeConnectStatus(stripeConnectOrganiserId);
+  const payoutsReady = connectStatus?.charges_enabled ?? false;
+  const { startOnboarding } = useStripeConnectOnboard(stripeConnectOrganiserId);
 
   const hasData = title || date || venueName || address || description;
 
@@ -109,9 +137,24 @@ const CreateEvent = () => {
 
     const eventDateTime = time ? `${date || new Date().toISOString().split("T")[0]}T${time}:00` : `${date || new Date().toISOString().split("T")[0]}T00:00:00`;
 
-    const orgProfileId = organiserProfiles.length > 0 ? organiserProfiles[0]?.id : undefined;
-
     try {
+      const { data: { user: freshUser }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !freshUser) {
+        toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+        navigate("/auth");
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({
+          title: "Session not ready",
+          description: "No access token. Sign out and sign in again, or check VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are from the same project.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await createEventMutation.mutateAsync({
         title: title || "Untitled Event",
         description: description || undefined,
@@ -121,12 +164,16 @@ const CreateEvent = () => {
         maxGuests: capacity ? parseInt(capacity) : undefined,
         isPublic: false, // draft events are private
         coverImage: coverImage || undefined,
-        organiserProfileId: orgProfileId,
+        organiserProfileId: eventOrganiserProfileId,
+        vipTablesEnabled,
+        refundsEnabled,
+        refundPolicyText: refundPolicyText.trim() || undefined,
+        refundDeadlineHoursBeforeEvent: parseRefundDeadlineHoursInput(refundDeadlineHours),
       });
       toast({ title: "Draft saved", description: "Your event has been saved as a draft." });
       navigate(-1);
-    } catch {
-      toast({ title: "Error", description: "Failed to save draft.", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: edgeErrorMessage(e), variant: "destructive" });
     }
   };
 
@@ -149,11 +196,33 @@ const CreateEvent = () => {
     }
     setFormErrors({});
 
+    const { data: { user: freshUser }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !freshUser) {
+      toast({
+        title: "Session expired",
+        description: "Your login may be invalid for this project. Sign in again.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      toast({
+        title: "Session not ready",
+        description: "No access token. Sign out and sign in again, or check VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are from the same project.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
     // Gate: paid tiers require Stripe Connect onboarding
     const hasPaidTiers = ticketTiers.some((t) => t.price > 0);
-    if (hasPaidTiers && !payoutsReady) {
+    const hasVipTables = vipTablesEnabled;
+    if ((hasPaidTiers || hasVipTables) && !payoutsReady) {
       navigate("/create/onboarding-required", {
         state: {
           fromCreate: true,
@@ -169,7 +238,9 @@ const CreateEvent = () => {
             cohosts,
             reminders,
             ticketTiers,
-            organiserProfileId: orgProfileId,
+            vipTablesEnabled,
+            vipTableTiers,
+            organiserProfileId: eventOrganiserProfileId,
             publishAt,
           },
         },
@@ -186,10 +257,14 @@ const CreateEvent = () => {
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         coverImage: coverImage || undefined,
-        organiserProfileId: orgProfileId,
+        organiserProfileId: eventOrganiserProfileId,
         publishAt: publishAt ? new Date(publishAt).toISOString() : undefined,
         ticketsAvailableFrom: ticketsAvailableFrom ? new Date(ticketsAvailableFrom).toISOString() : undefined,
         ticketsAvailableUntil: ticketsAvailableUntil ? new Date(ticketsAvailableUntil).toISOString() : undefined,
+        vipTablesEnabled,
+        refundsEnabled,
+        refundPolicyText: refundPolicyText.trim() || undefined,
+        refundDeadlineHoursBeforeEvent: parseRefundDeadlineHoursInput(refundDeadlineHours),
       });
 
       const eventId = (data as any).id;
@@ -217,13 +292,28 @@ const CreateEvent = () => {
         );
       }
 
+      if (vipTablesEnabled && vipTableTiers.length > 0 && eventId) {
+        await eventManagementRepository.upsertVipTableTiers(
+          eventId,
+          vipTableTiers.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description ?? null,
+            minSpendCents: Math.round(t.minSpend * 100),
+            availableQuantity: t.availableQuantity,
+            maxGuests: t.maxGuests,
+            includedItems: t.includedItems,
+          }))
+        );
+      }
+
       toast({
         title: publishAt ? "Event scheduled!" : "Event created!",
         description: publishAt ? "Your event will publish at the scheduled time." : "Your event has been created successfully.",
       });
       navigate(`/events/${eventId}`);
-    } catch {
-      toast({ title: "Error", description: "Failed to create event. Please try again.", variant: "destructive" });
+    } catch (e) {
+      toast({ title: "Error", description: edgeErrorMessage(e), variant: "destructive" });
     }
   };
 
@@ -258,6 +348,15 @@ const CreateEvent = () => {
       {/* Content */}
       <main className="flex-1 overflow-y-auto pb-20">
         <div className="container mx-auto px-4 max-w-lg py-5">
+          {!hasOrganiserProfile && (
+            <div className="mb-4 rounded-tile border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Ticketing &amp; sale windows</span> are available when you use an organiser profile. Open{" "}
+              <Link to="/profile" className="text-primary underline underline-offset-2">
+                Profile
+              </Link>{" "}
+              and switch profiles to set prices, VIP tables, and when tickets go on sale.
+            </div>
+          )}
           {activeTab === "details" && (
             <EventDetailsForm
               title={title} setTitle={setTitle}
@@ -279,12 +378,17 @@ const CreateEvent = () => {
               discountsEnabled={discountsEnabled} setDiscountsEnabled={setDiscountsEnabled}
               discountCodes={discountCodes} setDiscountCodes={setDiscountCodes}
               ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
+              vipTableTiers={vipTableTiers} setVipTableTiers={setVipTableTiers}
               ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
               ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
+              vipTablesEnabled={vipTablesEnabled} setVipTablesEnabled={setVipTablesEnabled}
+              refundsEnabled={refundsEnabled} setRefundsEnabled={setRefundsEnabled}
+              refundDeadlineHours={refundDeadlineHours} setRefundDeadlineHours={setRefundDeadlineHours}
+              refundPolicyText={refundPolicyText} setRefundPolicyText={setRefundPolicyText}
               payoutsReady={payoutsReady}
-              organiserProfileId={orgProfileId}
+              organiserProfileId={stripeConnectOrganiserId}
               onStartOnboarding={startOnboarding}
             />
           )}

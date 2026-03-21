@@ -35,6 +35,10 @@ export const eventsApi = {
         publish_at: input.publishAt,
         tickets_available_from: input.ticketsAvailableFrom,
         tickets_available_until: input.ticketsAvailableUntil,
+        vip_tables_enabled: input.vipTablesEnabled,
+        refunds_enabled: input.refundsEnabled,
+        refund_policy_text: input.refundPolicyText ?? null,
+        refund_deadline_hours_before_event: input.refundDeadlineHoursBeforeEvent ?? null,
       },
     });
   },
@@ -57,6 +61,10 @@ export const eventsApi = {
         cover_image: fields.coverImage,
         tickets_available_from: fields.ticketsAvailableFrom,
         tickets_available_until: fields.ticketsAvailableUntil,
+        vip_tables_enabled: fields.vipTablesEnabled,
+        refunds_enabled: fields.refundsEnabled,
+        refund_policy_text: fields.refundPolicyText,
+        refund_deadline_hours_before_event: fields.refundDeadlineHoursBeforeEvent,
       },
     });
   },
@@ -64,6 +72,14 @@ export const eventsApi = {
   delete(eventId: string) {
     return callEdgeFunction<{ success: boolean }>('events-update', {
       body: { action: 'delete', event_id: eventId },
+    });
+  },
+};
+
+export const refundsApi = {
+  requestSelf(orderId: string) {
+    return callEdgeFunction<{ success: boolean; refund_id?: string }>('refunds-request-self', {
+      body: { order_id: orderId },
     });
   },
 };
@@ -79,6 +95,20 @@ export const rsvpApi = {
   leave(eventId: string) {
     return callEdgeFunction<{ success: boolean }>('rsvp', {
       body: { action: 'leave', event_id: eventId },
+    });
+  },
+};
+
+// --- RSVP Approval API (hosts/cohosts) ---
+export const rsvpApprovalApi = {
+  approve(rsvpId: string) {
+    return callEdgeFunction<{ success: boolean }>('rsvp-approve', {
+      body: { action: 'approve', rsvp_id: rsvpId },
+    });
+  },
+  decline(rsvpId: string) {
+    return callEdgeFunction<{ success: boolean }>('rsvp-approve', {
+      body: { action: 'decline', rsvp_id: rsvpId },
     });
   },
 };
@@ -105,6 +135,10 @@ export const profileApi = {
     });
   },
 
+  regenerateProfileQr(): Promise<{ qr_code: string }> {
+    return callEdgeFunction<{ qr_code: string }>('profile-qr-regenerate', { body: {} });
+  },
+
   async uploadAvatar(file: File): Promise<string> {
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
@@ -127,11 +161,30 @@ export const profileApi = {
   },
 };
 
+// --- Messaging API (writes via message-send edge function) ---
+export const messagingApi = {
+  sendEventMessage(eventId: string, content: string) {
+    return callEdgeFunction<{ success: boolean }>('message-send', {
+      body: { type: 'event-board', event_id: eventId, content },
+    });
+  },
+};
+
 // --- Referrals API (stub) ---
 export const referralsApi = {
   trackShare(eventId: string, channel: string) {
     return callEdgeFunction('referrals-track', {
-      body: { event_id: eventId, channel },
+      body: { action: 'share', event_id: eventId, channel },
+    });
+  },
+  trackClick(eventId: string, channel: string, sessionId: string) {
+    return callEdgeFunction<{ click_id: string }>('referrals-track', {
+      body: { action: 'click', event_id: eventId, channel, session_id: sessionId },
+    });
+  },
+  trackView(eventId: string, sessionId: string) {
+    return callEdgeFunction('referrals-track', {
+      body: { action: 'view', event_id: eventId, session_id: sessionId },
     });
   },
 };

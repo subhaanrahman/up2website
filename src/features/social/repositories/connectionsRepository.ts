@@ -1,4 +1,5 @@
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsBetweenUsersOr, connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { createLogger } from '@/infrastructure/logger';
 
 const log = createLogger('connections.repository');
@@ -72,7 +73,7 @@ export const connectionsRepository = {
       .from('connections')
       .select('requester_id, addressee_id')
       .eq('status', 'accepted')
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+      .or(connectionsParticipantOr(userId));
     if (error) throw error;
     const ids = new Set<string>();
     for (const c of data || []) {
@@ -86,7 +87,7 @@ export const connectionsRepository = {
       .from('connections')
       .select('requester_id, addressee_id')
       .eq('status', 'accepted')
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+      .or(connectionsParticipantOr(userId));
     if (error) throw error;
     return data || [];
   },
@@ -106,9 +107,7 @@ export const connectionsRepository = {
     const { data, error } = await supabase
       .from('connections')
       .select('*')
-      .or(
-        `and(requester_id.eq.${userId1},addressee_id.eq.${userId2}),and(requester_id.eq.${userId2},addressee_id.eq.${userId1})`
-      )
+      .or(connectionsBetweenUsersOr(userId1, userId2))
       .maybeSingle();
     if (error) throw error;
     return data;

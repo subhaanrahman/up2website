@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { promoteWaitlist } from "../_shared/waitlist-service.ts";
 
 /**
  * Marks expired reserved orders (expires_at < now) as expired,
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
     const { data: expiredOrders, error: fetchErr } = await serviceClient
       .from('orders')
-      .select('id, stripe_payment_intent_id')
+      .select('id, stripe_payment_intent_id, event_id')
       .eq('status', 'reserved')
       .lt('expires_at', now);
 
@@ -93,6 +94,19 @@ Deno.serve(async (req) => {
       expired: orders.length,
       cancelled_pi: cancelledPi,
     });
+
+    const eventIds = Array.from(new Set(orders.map((order) => order.event_id).filter(Boolean)));
+    for (const eventId of eventIds) {
+      try {
+        await promoteWaitlist(serviceClient, eventId);
+      } catch (promoteErr) {
+        edgeLog('warn', 'Waitlist promotion failed after expiration', {
+          requestId,
+          event_id: eventId,
+          error: String(promoteErr),
+        });
+      }
+    }
 
     return successResponse({ expired: orders.length, cancelled_pi: cancelledPi }, requestId);
   } catch (err) {

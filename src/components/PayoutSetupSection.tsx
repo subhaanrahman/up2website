@@ -5,6 +5,7 @@ import { CreditCard, ExternalLink, CheckCircle, AlertCircle, Loader2 } from "luc
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PayoutSetupSectionProps {
   organiserProfileId: string;
@@ -20,6 +21,7 @@ interface ConnectStatus {
 
 const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionProps) => {
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<ConnectStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [openingDashboard, setOpeningDashboard] = useState(false);
@@ -39,8 +41,15 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
   }, [organiserProfileId]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setLoading(false);
+      setStatus({ connected: false, onboarding_complete: false, charges_enabled: false, payouts_enabled: false });
+      return;
+    }
+    setLoading(true);
     fetchStatus();
-  }, [fetchStatus]);
+  }, [authLoading, user, fetchStatus]);
 
   // Check for return from Stripe onboarding
   useEffect(() => {

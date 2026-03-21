@@ -4,6 +4,7 @@ import { Copy, Check, Link, UserPlus, Code } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { toast } from "@/hooks/use-toast";
+import { referralsApi } from "@/api";
 
 interface ShareEventLinksModalProps {
   open: boolean;
@@ -15,14 +16,26 @@ interface ShareEventLinksModalProps {
 const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: ShareEventLinksModalProps) => {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
-  const eventUrl = `${window.location.origin}/events/${eventId}`;
-  const rsvpUrl = `${eventUrl}?action=rsvp`;
-  const embedUrl = `${window.location.origin}/embed/${eventId}`;
+  const baseEventUrl = `${window.location.origin}/events/${eventId}`;
+  const buildUrl = (params: Record<string, string>) => {
+    const url = new URL(baseEventUrl);
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    return url.toString();
+  };
+
+  const eventUrl = buildUrl({ ref: 'event_link' });
+  const rsvpUrl = buildUrl({ action: 'rsvp', ref: 'rsvp_link' });
+  const embedUrl = `${window.location.origin}/embed/${eventId}?ref=embed_link`;
   const embedCode = `<iframe src="${embedUrl}" width="400" height="520" frameborder="0" style="border-radius:16px;overflow:hidden;"></iframe>`;
 
-  const copyToClipboard = async (url: string, label: string) => {
+  const copyToClipboard = async (url: string, label: string, channel: string) => {
     await navigator.clipboard.writeText(url);
     setCopiedLink(url);
+    try {
+      await referralsApi.trackShare(eventId, channel);
+    } catch {
+      // Non-blocking: tracking failure shouldn't interrupt UX
+    }
     toast({ title: `${label} copied!` });
     setTimeout(() => setCopiedLink(null), 2000);
   };
@@ -45,7 +58,7 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
           <Button
             variant="outline"
             className="w-full justify-between h-auto py-3 px-4"
-            onClick={() => copyToClipboard(eventUrl, "Event link")}
+            onClick={() => copyToClipboard(eventUrl, "Event link", "event_link")}
           >
             <span className="flex items-center gap-2 text-left">
               <Link className="h-4 w-4 text-primary flex-shrink-0" />
@@ -64,7 +77,7 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
           <Button
             variant="outline"
             className="w-full justify-between h-auto py-3 px-4"
-            onClick={() => copyToClipboard(rsvpUrl, "RSVP link")}
+            onClick={() => copyToClipboard(rsvpUrl, "RSVP link", "rsvp_link")}
           >
             <span className="flex items-center gap-2 text-left">
               <UserPlus className="h-4 w-4 text-primary flex-shrink-0" />
@@ -82,7 +95,7 @@ const ShareEventLinksModal = ({ open, onOpenChange, eventId, eventTitle }: Share
           <Button
             variant="outline"
             className="w-full justify-between h-auto py-3 px-4"
-            onClick={() => copyToClipboard(embedCode, "Embed code")}
+            onClick={() => copyToClipboard(embedCode, "Embed code", "embed_link")}
           >
             <span className="flex items-center gap-2 text-left">
               <Code className="h-4 w-4 text-primary flex-shrink-0" />

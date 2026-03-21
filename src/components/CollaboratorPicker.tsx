@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 
 interface CollaboratorPickerProps {
   currentUserId: string;
@@ -21,7 +22,7 @@ const CollaboratorPicker = ({ currentUserId, excludeIds, onSelect, onClose }: Co
         .from("connections")
         .select("requester_id, addressee_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${currentUserId},addressee_id.eq.${currentUserId}`);
+        .or(connectionsParticipantOr(currentUserId));
 
       if (!connections || connections.length === 0) {
         setResults([]);

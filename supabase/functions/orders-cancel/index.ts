@@ -5,6 +5,7 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { promoteWaitlist } from "../_shared/waitlist-service.ts";
 
 const schema = z.object({
   order_id: z.string().uuid(),
@@ -120,6 +121,16 @@ Deno.serve(async (req) => {
     if (updateErr) {
       edgeLog("error", "orders-cancel update failed", { requestId, error: String(updateErr) });
       return errorResponse(500, "Failed to cancel order", { requestId });
+    }
+
+    try {
+      await promoteWaitlist(serviceClient, order.event_id);
+    } catch (promoteErr) {
+      edgeLog("warn", "Waitlist promotion failed after cancel", {
+        requestId,
+        event_id: order.event_id,
+        error: String(promoteErr),
+      });
     }
 
     edgeLog("info", "Order cancelled", { requestId, order_id });

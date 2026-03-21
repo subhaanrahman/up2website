@@ -5,6 +5,9 @@ import type { CreateEventInput, UpdateEventInput, EventFilter } from '@/features
 
 
 
+/** Default cap for `useEvents()` when no limit is passed (avoids unbounded list fetch). */
+export const DEFAULT_USE_EVENTS_LIMIT = 100;
+
 export const eventKeys = {
   all: ['events'] as const,
   list: (filters?: { limit?: number }) => [...eventKeys.all, 'list', filters] as const,
@@ -15,16 +18,24 @@ export const eventKeys = {
 };
 
 export function useEvents(options?: { limit?: number }) {
+  const limit = options?.limit ?? DEFAULT_USE_EVENTS_LIMIT;
   return useQuery({
-    queryKey: eventKeys.list(options),
-    queryFn: () => eventsService.listEvents(options),
+    queryKey: eventKeys.list({ limit }),
+    queryFn: () => eventsService.listEvents({ limit }),
   });
 }
 
 export function useSearchEvents(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }) {
   return useQuery({
     queryKey: eventKeys.search(options),
-    queryFn: () => eventsService.searchEvents(options),
+    queryFn: async () => {
+      try {
+        return await eventsService.searchEvents(options);
+      } catch {
+        return [];
+      }
+    },
+    retry: 1,
   });
 }
 

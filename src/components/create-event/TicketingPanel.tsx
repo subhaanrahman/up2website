@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Edit2, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import TicketTierModal, { type TicketTier } from "./TicketTierModal";
+import VipTableTierModal, { type VipTableTier } from "./VipTableTierModal";
 import DiscountCodeModal, { type DiscountCode } from "./DiscountCodeModal";
 import { DateTimePicker } from "./DateTimePicker";
 
@@ -18,6 +19,8 @@ interface TicketingPanelProps {
   setDiscountCodes: (v: DiscountCode[]) => void;
   ticketTiers: TicketTier[];
   setTicketTiers: (v: TicketTier[]) => void;
+  vipTableTiers: VipTableTier[];
+  setVipTableTiers: (v: VipTableTier[]) => void;
   ticketsAvailableFrom: string;
   setTicketsAvailableFrom: (v: string) => void;
   ticketsAvailableUntil: string;
@@ -26,6 +29,14 @@ interface TicketingPanelProps {
   setSoldOutMessageEnabled: (v: boolean) => void;
   soldOutMessage: string;
   setSoldOutMessage: (v: string) => void;
+  vipTablesEnabled: boolean;
+  setVipTablesEnabled: (v: boolean) => void;
+  refundsEnabled: boolean;
+  setRefundsEnabled: (v: boolean) => void;
+  refundDeadlineHours: string;
+  setRefundDeadlineHours: (v: string) => void;
+  refundPolicyText: string;
+  setRefundPolicyText: (v: string) => void;
   payoutsReady?: boolean;
   organiserProfileId?: string;
   onStartOnboarding?: () => void;
@@ -37,10 +48,15 @@ const TicketingPanel = ({
   discountsEnabled, setDiscountsEnabled,
   discountCodes, setDiscountCodes,
   ticketTiers, setTicketTiers,
+  vipTableTiers, setVipTableTiers,
   ticketsAvailableFrom, setTicketsAvailableFrom,
   ticketsAvailableUntil, setTicketsAvailableUntil,
   soldOutMessageEnabled, setSoldOutMessageEnabled,
   soldOutMessage, setSoldOutMessage,
+  vipTablesEnabled, setVipTablesEnabled,
+  refundsEnabled, setRefundsEnabled,
+  refundDeadlineHours, setRefundDeadlineHours,
+  refundPolicyText, setRefundPolicyText,
   payoutsReady = false,
   organiserProfileId,
   onStartOnboarding,
@@ -49,6 +65,13 @@ const TicketingPanel = ({
   const [editingTier, setEditingTier] = useState<TicketTier | null>(null);
   const [discountModalOpen, setDiscountModalOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState<DiscountCode | null>(null);
+  const [vipTierModalOpen, setVipTierModalOpen] = useState(false);
+  const [editingVipTier, setEditingVipTier] = useState<VipTableTier | null>(null);
+
+  const wantsPaidOrVipSales =
+    vipTablesEnabled || ticketTiers.some((t) => t.price > 0);
+  /** Paid checkout needs Connect; free tiers / guest-style caps do not. */
+  const hasPaidTicketTier = ticketTiers.some((t) => t.price > 0);
 
   const handleSaveTier = (tier: TicketTier) => {
     setTicketTiers(ticketTiers.some((t) => t.id === tier.id)
@@ -64,14 +87,21 @@ const TicketingPanel = ({
     setEditingDiscount(null);
   };
 
+  const handleSaveVipTier = (tier: VipTableTier) => {
+    setVipTableTiers(vipTableTiers.some((t) => t.id === tier.id)
+      ? vipTableTiers.map((t) => (t.id === tier.id ? tier : t))
+      : [...vipTableTiers, tier]);
+    setEditingVipTier(null);
+  };
+
   return (
     <div className="space-y-3 animate-in fade-in-0 duration-200">
 
-      {!payoutsReady && (
+      {!payoutsReady && wantsPaidOrVipSales && (
         <Alert variant="destructive" className="border-yellow-500/50 bg-yellow-500/10 rounded-tile">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="text-sm">
-            Set up payouts in your organiser profile before creating paid ticket tiers.
+            Set up payouts in your organiser profile before selling paid tickets or VIP tables.
           </AlertDescription>
           {organiserProfileId && onStartOnboarding && (
             <Button
@@ -108,6 +138,64 @@ const TicketingPanel = ({
           <p className="text-[15px] font-medium text-foreground">Custom sold-out message</p>
           <Switch checked={soldOutMessageEnabled} onCheckedChange={setSoldOutMessageEnabled} />
         </div>
+        {organiserProfileId ? (
+          <>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="flex items-center justify-between px-4 py-4">
+              <div>
+                <p className="text-[15px] font-medium text-foreground">Enable VIP tables</p>
+                <p className="text-xs text-muted-foreground">Allow table reservations with minimum spend</p>
+              </div>
+              <Switch checked={vipTablesEnabled} onCheckedChange={setVipTablesEnabled} disabled={!payoutsReady} />
+            </div>
+            <div className="h-px bg-border/50 mx-4" />
+            <div className="flex items-center justify-between px-4 py-4">
+              <div>
+                <p className="text-[15px] font-medium text-foreground">Allow ticket refunds</p>
+                <p className="text-xs text-muted-foreground">Buyers can request a refund before the event</p>
+              </div>
+              <Switch
+                checked={refundsEnabled}
+                onCheckedChange={setRefundsEnabled}
+                disabled={!payoutsReady}
+              />
+            </div>
+            {refundsEnabled && (
+              <>
+                <div className="h-px bg-border/50 mx-4" />
+                <div className="px-4 py-3 space-y-2">
+                  <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">
+                    Refund cutoff (hours before start)
+                  </p>
+                  <p className="text-xs text-muted-foreground">Leave empty to allow until the event starts</p>
+                  <input
+                    type="number"
+                    min={0}
+                    max={168}
+                    value={refundDeadlineHours}
+                    onChange={(e) => setRefundDeadlineHours(e.target.value)}
+                    placeholder="e.g. 24"
+                    className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
+                  />
+                </div>
+                <div className="h-px bg-border/50 mx-4" />
+                <div className="px-4 pt-3 pb-4">
+                  <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-2">
+                    Refund note (optional)
+                  </p>
+                  <textarea
+                    value={refundPolicyText}
+                    onChange={(e) => setRefundPolicyText(e.target.value)}
+                    placeholder="Shown on the event page — e.g. full refund up to 48h before doors."
+                    rows={2}
+                    maxLength={2000}
+                    className="w-full bg-transparent text-foreground text-[15px] placeholder:text-muted-foreground/40 outline-none resize-none leading-relaxed"
+                  />
+                </div>
+              </>
+            )}
+          </>
+        ) : null}
         {soldOutMessageEnabled && (
           <>
             <div className="h-px bg-border/50 mx-4" />
@@ -148,12 +236,44 @@ const TicketingPanel = ({
         <div className={ticketTiers.length > 0 ? "h-px bg-border/50 mx-4" : ""} />
         <button
           onClick={() => { setEditingTier(null); setTierModalOpen(true); }}
-          disabled={!payoutsReady}
+          disabled={!payoutsReady && hasPaidTicketTier}
           className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Plus className="h-4 w-4" /> Add Ticket Tier
         </button>
       </div>
+
+      {vipTablesEnabled ? (
+        <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
+          <div className="px-4 pt-4 pb-2">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">VIP Tables</p>
+          </div>
+          {vipTableTiers.map((tier, i) => (
+            <div key={tier.id}>
+              {i !== 0 && <div className="h-px bg-border/50 mx-4" />}
+              <div className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-[15px] font-medium text-foreground">{tier.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    R{tier.minSpend} · {tier.availableQuantity} tables · {tier.maxGuests} guests
+                  </p>
+                </div>
+                <button onClick={() => { setEditingVipTier(tier); setVipTierModalOpen(true); }} className="p-1.5 rounded-full hover:bg-secondary transition-colors">
+                  <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </div>
+          ))}
+          <div className={vipTableTiers.length > 0 ? "h-px bg-border/50 mx-4" : ""} />
+          <button
+            onClick={() => { setEditingVipTier(null); setVipTierModalOpen(true); }}
+            disabled={!payoutsReady}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-4 w-4" /> Add VIP Table Tier
+          </button>
+        </div>
+      ) : null}
 
       {/* Discount Codes */}
       <div className="bg-card rounded-tile border border-border/50 overflow-hidden">
@@ -206,8 +326,15 @@ const TicketingPanel = ({
         helperText="Leave empty to close at event start"
       />
 
-      <TicketTierModal open={tierModalOpen} onOpenChange={setTierModalOpen} onSave={handleSaveTier} existing={editingTier} />
+      <TicketTierModal
+        open={tierModalOpen}
+        onOpenChange={setTierModalOpen}
+        onSave={handleSaveTier}
+        existing={editingTier}
+        payoutsReady={payoutsReady}
+      />
       <DiscountCodeModal open={discountModalOpen} onOpenChange={setDiscountModalOpen} onSave={handleSaveDiscount} existing={editingDiscount} />
+      <VipTableTierModal open={vipTierModalOpen} onOpenChange={setVipTierModalOpen} onSave={handleSaveVipTier} existing={editingVipTier} />
     </div>
   );
 };

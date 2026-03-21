@@ -6,7 +6,8 @@ WITH parsed_prices AS (
     e.id AS event_id,
     CASE
       WHEN m[2] IS NOT NULL THEN 0
-      ELSE ROUND((m[1])::numeric * 100)::integer
+      WHEN m[1] IS NOT NULL THEN ROUND((m[1])::numeric * 100)::integer
+      ELSE NULL
     END AS parsed_price_cents
   FROM public.events e
   CROSS JOIN LATERAL regexp_match(
@@ -18,14 +19,16 @@ UPDATE public.events e
 SET ticket_price_cents = p.parsed_price_cents
 FROM parsed_prices p
 WHERE e.id = p.event_id
-  AND e.ticket_price_cents = 0;
+  AND e.ticket_price_cents = 0
+  AND p.parsed_price_cents IS NOT NULL;
 
 WITH parsed_prices AS (
   SELECT
     e.id AS event_id,
     CASE
       WHEN m[2] IS NOT NULL THEN 0
-      ELSE ROUND((m[1])::numeric * 100)::integer
+      WHEN m[1] IS NOT NULL THEN ROUND((m[1])::numeric * 100)::integer
+      ELSE NULL
     END AS parsed_price_cents
   FROM public.events e
   CROSS JOIN LATERAL regexp_match(
@@ -41,7 +44,8 @@ SELECT
   NULL,
   0
 FROM parsed_prices p
-WHERE NOT EXISTS (
+WHERE p.parsed_price_cents IS NOT NULL
+  AND NOT EXISTS (
   SELECT 1
   FROM public.ticket_tiers t
   WHERE t.event_id = p.event_id

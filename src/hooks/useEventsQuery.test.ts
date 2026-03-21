@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEvents, useSearchEvents, useEvent } from './useEventsQuery';
+import { useEvents, useSearchEvents, useEvent, DEFAULT_USE_EVENTS_LIMIT } from './useEventsQuery';
 
 vi.mock('@/features/events', () => ({
   eventsService: {
@@ -37,7 +37,7 @@ describe('useEventsQuery', () => {
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
       expect(result.current.data).toEqual(mockEvents);
-      expect(mockListEvents).toHaveBeenCalledWith(undefined);
+      expect(mockListEvents).toHaveBeenCalledWith({ limit: DEFAULT_USE_EVENTS_LIMIT });
     });
 
     it('passes limit to listEvents', async () => {

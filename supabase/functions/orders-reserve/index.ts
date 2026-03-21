@@ -4,12 +4,14 @@ import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { isPaymentsDisabled, paymentsDisabledResponse } from "../_shared/payments-disabled.ts";
 
 const reserveSchema = z.object({
   event_id: z.string().uuid('Invalid event ID'),
   ticket_tier_id: z.string().uuid('Invalid ticket tier ID').optional(),
   quantity: z.number().int().min(1).max(20).default(1),
   currency: z.string().length(3).default('zar'),
+  referral_click_id: z.string().uuid().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -18,6 +20,11 @@ Deno.serve(async (req) => {
   }
 
   const requestId = getRequestId(req);
+
+  if (isPaymentsDisabled()) {
+    edgeLog('warn', 'orders-reserve blocked: PAYMENTS_DISABLED', { requestId });
+    return paymentsDisabledResponse(requestId);
+  }
 
   try {
     // Auth
@@ -48,7 +55,7 @@ Deno.serve(async (req) => {
       return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
-    const { event_id, ticket_tier_id, quantity, currency } = parsed.data;
+    const { event_id, ticket_tier_id, quantity, currency, referral_click_id } = parsed.data;
 
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -84,6 +91,24 @@ Deno.serve(async (req) => {
       : new Date(new Date(event.event_date).getTime() - 60 * 1000);
     if (now >= effectiveEnd) {
       return errorResponse(400, 'Ticket sales have ended', { requestId });
+    }
+
+    // Validate referral click (if provided)
+    let validatedClickId: string | null = null;
+    if (referral_click_id) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: clickRow } = await serviceClient
+        .from('event_link_clicks')
+        .select('id, event_id, action, created_at')
+        .eq('id', referral_click_id)
+        .eq('event_id', event_id)
+        .eq('action', 'click')
+        .gte('created_at', sevenDaysAgo)
+        .maybeSingle();
+      if (!clickRow) {
+        return errorResponse(400, 'Referral link expired or invalid', { requestId });
+      }
+      validatedClickId = clickRow.id;
     }
 
     // Derive price from ticket tier (preferred) or fallback to event price
@@ -216,6 +241,7 @@ Deno.serve(async (req) => {
         currency,
         status: 'reserved',
         expires_at: expiresAt,
+        referral_click_id: validatedClickId,
       })
       .select()
       .single();

@@ -16,24 +16,33 @@ interface TicketTierModalProps {
   onOpenChange: (open: boolean) => void;
   onSave: (tier: TicketTier) => void;
   existing?: TicketTier | null;
+  /** When false, only R0 (free) tiers can be saved — matches Stripe Connect not ready. */
+  payoutsReady?: boolean;
 }
 
-const TicketTierModal = ({ open, onOpenChange, onSave, existing }: TicketTierModalProps) => {
+const TicketTierModal = ({ open, onOpenChange, onSave, existing, payoutsReady = true }: TicketTierModalProps) => {
   const [name, setName] = useState(existing?.name || "");
   const [price, setPrice] = useState(existing?.price?.toString() || "");
   const [quantity, setQuantity] = useState(existing?.availableQuantity?.toString() || "");
   const [nameError, setNameError] = useState("");
+  const [priceError, setPriceError] = useState("");
 
   const handleSave = () => {
     if (!name.trim()) {
       setNameError("Tier name is required");
       return;
     }
+    const parsedPrice = parseFloat(price) || 0;
+    if (parsedPrice > 0 && !payoutsReady) {
+      setPriceError("Set up organiser payouts before adding paid ticket tiers.");
+      return;
+    }
     setNameError("");
+    setPriceError("");
     onSave({
       id: existing?.id || crypto.randomUUID(),
       name: name.trim(),
-      price: parseFloat(price) || 0,
+      price: parsedPrice,
       availableQuantity: quantity ? parseInt(quantity) : null,
     });
     onOpenChange(false);
@@ -61,7 +70,17 @@ const TicketTierModal = ({ open, onOpenChange, onSave, existing }: TicketTierMod
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Price (R)</Label>
-            <Input type="number" placeholder="0" value={price} onChange={(e) => setPrice(e.target.value)} className="bg-background border-border" />
+            <Input
+              type="number"
+              placeholder="0"
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                if (priceError) setPriceError("");
+              }}
+              className={`bg-background border-border ${priceError ? "border-destructive" : ""}`}
+            />
+            {priceError && <p className="text-xs text-destructive mt-1">{priceError}</p>}
           </div>
           <div className="space-y-2">
             <Label className="text-foreground">Available Quantity</Label>

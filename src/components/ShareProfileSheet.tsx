@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { useQuery } from "@tanstack/react-query";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 
@@ -44,7 +45,7 @@ const ShareProfileSheet = ({ profileUrl, displayName, avatarUrl }: ShareProfileS
         .from("connections")
         .select("requester_id, addressee_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+        .or(connectionsParticipantOr(user.id));
 
       if (!connections?.length) return [];
 

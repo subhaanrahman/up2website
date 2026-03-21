@@ -9,6 +9,13 @@ import type { EventEntity, Rsvp } from '../domain/types';
 
 export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
+/** Columns required by `mapEventRow` — avoids `select('*')` on hot list/search paths (lower PostgREST egress). */
+const EVENT_LIST_COLUMNS =
+  'id,host_id,title,description,location,venue_name,address,event_date,end_date,cover_image,category,max_guests,is_public,vip_tables_enabled,refunds_enabled,refund_policy_text,refund_deadline_hours_before_event,tickets_available_from,tickets_available_until,created_at,updated_at';
+
+/** Safety cap when callers omit `limit` (prevents unbounded published-event scans). */
+const DEFAULT_EVENTS_LIST_LIMIT = 200;
+
 function mapEventRow(row: Record<string, unknown>): EventEntity {
   return {
     id: row.id as string,
@@ -24,6 +31,11 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     category: row.category as string | null,
     maxGuests: row.max_guests as number | null,
     isPublic: row.is_public as boolean,
+    vipTablesEnabled: (row.vip_tables_enabled as boolean) ?? false,
+    refundsEnabled: (row.refunds_enabled as boolean) ?? false,
+    refundPolicyText: (row.refund_policy_text as string | null) ?? null,
+    refundDeadlineHoursBeforeEvent:
+      (row.refund_deadline_hours_before_event as number | null | undefined) ?? null,
     ticketsAvailableFrom: (row.tickets_available_from as string) ?? null,
     ticketsAvailableUntil: (row.tickets_available_until as string) ?? null,
     createdAt: row.created_at as string,
@@ -34,16 +46,14 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
 export const eventsRepository = {
   async list(options?: { limit?: number }): Promise<EventEntity[]> {
     const now = new Date().toISOString();
+    const cap = options?.limit ?? DEFAULT_EVENTS_LIST_LIMIT;
     let query = supabase
       .from('events')
-      .select('*')
+      .select(EVENT_LIST_COLUMNS)
       .eq('status', 'published')
       .or(`publish_at.is.null,publish_at.lte.${now}`)
-      .order('event_date', { ascending: true });
-
-    if (options?.limit) {
-      query = query.limit(options.limit);
-    }
+      .order('event_date', { ascending: true })
+      .limit(cap);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -59,13 +69,15 @@ export const eventsRepository = {
     }
 
     const nowIso = now.toISOString();
+    const cap = options.limit ?? DEFAULT_EVENTS_LIST_LIMIT;
     let q = supabase
       .from('events')
-      .select('*')
+      .select(EVENT_LIST_COLUMNS)
       .eq('status', 'published')
       .or(`publish_at.is.null,publish_at.lte.${nowIso}`)
       .gte('event_date', nowIso)
-      .order('event_date', { ascending: true });
+      .order('event_date', { ascending: true })
+      .limit(cap);
 
     if (options.query?.trim()) {
       const term = `%${options.query.trim()}%`;
@@ -83,10 +95,6 @@ export const eventsRepository = {
       q = q.gte('event_date', startOfToday().toISOString()).lte('event_date', endOfWeek(now, { weekStartsOn: 1 }).toISOString());
     } else if (options.filter === 'thisMonth') {
       q = q.gte('event_date', startOfToday().toISOString()).lte('event_date', endOfMonth(now).toISOString());
-    }
-
-    if (options.limit) {
-      q = q.limit(options.limit);
     }
 
     const { data, error } = await q;
@@ -110,9 +118,7 @@ export const eventsRepository = {
       const term = `%${options.query.trim()}%`;
       q = q.or(`title.ilike.${term},location.ilike.${term}`);
     }
-    if (options.limit) {
-      q = q.limit(options.limit);
-    }
+    q = q.limit(options.limit ?? DEFAULT_EVENTS_LIST_LIMIT);
 
     const { data, error } = await q;
     if (error) throw error;
@@ -140,10 +146,11 @@ export const eventsRepository = {
   async getByHost(hostId: string): Promise<EventEntity[]> {
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(EVENT_LIST_COLUMNS)
       .eq('host_id', hostId)
       .is('organiser_profile_id', null)
-      .order('event_date', { ascending: true });
+      .order('event_date', { ascending: true })
+      .limit(DEFAULT_EVENTS_LIST_LIMIT);
 
     if (error) throw error;
     return (data || []).map(mapEventRow);
@@ -189,7 +196,7 @@ export const eventsRepository = {
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(EVENT_LIST_COLUMNS)
       .in('id', ids)
       .eq('status', 'published')
       .or(`publish_at.is.null,publish_at.lte.${now}`)
@@ -203,7 +210,7 @@ export const eventsRepository = {
     const now = new Date().toISOString();
     const { data, error } = await supabase
       .from('events')
-      .select('*')
+      .select(EVENT_LIST_COLUMNS)
       .in('organiser_profile_id', organiserIds)
       .eq('status', 'published')
       .or(`publish_at.is.null,publish_at.lte.${now}`)

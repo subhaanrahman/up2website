@@ -17,17 +17,8 @@ alwaysApply: false
 1. **Always create a migration file first.** Never suggest or mention `supabase db push` without having created the corresponding migration file in `supabase/migrations/`.
 2. Create a new migration file: `supabase/migrations/YYYYMMDDHHMMSS_description.sql` (e.g. `20260319120000_tickets_available_until.sql`)
 3. Write the SQL (ALTER TABLE, CREATE TABLE, etc.)
-4. **After creating or editing a migration file, PROMPT THE USER** to run:
-   ```bash
-   supabase db push
-   ```
-5. The user must run this command in their terminal—MCP cannot run CLI commands. Remind them to run it before continuing or committing.
-
-### User Prompt Template
-
-When you add or modify a migration file, add a clear note for the user:
-
-> **Action required:** Run `supabase db push` in your terminal to apply the migration to the remote database. MCP cannot run CLI commands—this step must be done manually.
+4. **After creating or editing a migration file, run `supabase db push` for the user** via the terminal/shell tool to apply the migration to the remote database.
+5. If the command fails (e.g. auth, network, or migration conflict), inform the user and prompt them to run it manually or resolve the issue.
 
 ---
 

@@ -6,6 +6,7 @@ import { EventTile } from "@/components/EventTile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Calendar, Plus, ChevronRight, Settings, Pencil } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/infrastructure/supabase";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useUserPlannedEvents, useUserCreatedEvents } from "@/hooks/useUserEventsQuery";
@@ -17,6 +18,9 @@ import ProfileQrModal from "@/components/ProfileQrModal";
 import TransferTicketModal from "@/components/TransferTicketModal";
 import { usePendingTransfers, useCancelTransfer } from "@/hooks/usePendingTransfers";
 import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { refundsApi } from "@/api";
+import { ticketSelfRefundAllowed } from "@/utils/refundEligibility";
 import {
   startOfWeek, startOfMonth, subMonths, isAfter, isBefore, isSameDay
 } from "date-fns";
@@ -28,6 +32,7 @@ interface TicketEvent {
   eventDate: string;
   venue?: string | null;
   ticketStatus: TicketStatus;
+  orderId?: string;
 }
 
 /* ── Time-group helpers ── */
@@ -142,6 +147,7 @@ const Tickets = () => {
   const { isOrganiser, activeProfile } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const dividerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -159,15 +165,98 @@ const Tickets = () => {
 
   const now = useMemo(() => new Date(), []);
 
+  const { data: ordersByEvent = new Map<string, string>() } = useQuery({
+    queryKey: ["my-confirmed-orders", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, event_id, created_at")
+        .eq("user_id", user!.id)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const map = new Map<string, string>();
+      for (const row of data || []) {
+        if (!map.has(row.event_id)) map.set(row.event_id, row.id);
+      }
+      return map;
+    },
+    enabled: !!user?.id,
+  });
+
+  const planEventIds = useMemo(
+    () => [...new Set(plannedEvents.map((e) => e.id))],
+    [plannedEvents],
+  );
+
+  const { data: eventRefundMeta = {} } = useQuery({
+    queryKey: ["events-refund-meta", planEventIds.sort().join(",")],
+    queryFn: async () => {
+      if (planEventIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("events")
+        .select("id, refunds_enabled, refund_deadline_hours_before_event, event_date")
+        .in("id", planEventIds);
+      if (error) throw error;
+      const m: Record<
+        string,
+        { refunds_enabled: boolean; refund_deadline_hours_before_event: number | null; event_date: string }
+      > = {};
+      for (const r of data || []) {
+        m[r.id] = {
+          refunds_enabled: !!r.refunds_enabled,
+          refund_deadline_hours_before_event: r.refund_deadline_hours_before_event,
+          event_date: r.event_date,
+        };
+      }
+      return m;
+    },
+    enabled: planEventIds.length > 0,
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: (orderId: string) => refundsApi.requestSelf(orderId),
+    onSuccess: () => {
+      toast({ title: "Refund processed", description: "Your ticket purchase was refunded." });
+      queryClient.invalidateQueries({ queryKey: ["user-planned-events"] });
+      queryClient.invalidateQueries({ queryKey: ["my-confirmed-orders"] });
+      refetchPlans();
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : "Could not process refund.";
+      toast({ title: "Refund failed", description: msg, variant: "destructive" });
+    },
+  });
+
   // --- My Plans data ---
-  const planTickets: TicketEvent[] = plannedEvents.map((e, i) => ({
-    rsvpId: `plan-${e.id}-${i}`,
-    eventId: e.id,
-    title: e.title,
-    eventDate: e.eventDate,
-    venue: e.venueName || e.location,
-    ticketStatus: (e as any).ticketStatus as TicketStatus,
-  }));
+  const planTickets: TicketEvent[] = useMemo(
+    () =>
+      plannedEvents.map((e, i) => ({
+        rsvpId: `plan-${e.id}-${i}`,
+        eventId: e.id,
+        title: e.title,
+        eventDate: e.eventDate,
+        venue: e.venueName || e.location,
+        ticketStatus: (e as { ticketStatus: TicketStatus }).ticketStatus,
+        orderId: ordersByEvent.get(e.id),
+      })),
+    [plannedEvents, ordersByEvent],
+  );
+
+  const canRequestRefundFor = useCallback(
+    (t: TicketEvent) => {
+      if (t.ticketStatus !== "purchased" || !t.orderId) return false;
+      const meta = eventRefundMeta[t.eventId];
+      if (!meta) return false;
+      return ticketSelfRefundAllowed({
+        now,
+        eventDate: new Date(meta.event_date),
+        refundsEnabled: meta.refunds_enabled,
+        refundDeadlineHoursBeforeEvent: meta.refund_deadline_hours_before_event,
+      }).ok;
+    },
+    [eventRefundMeta, now],
+  );
 
   const filteredPlans = planTickets.filter((t) =>
     t.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -269,6 +358,12 @@ const Tickets = () => {
       onQrClick={() => setQrOpen(true)}
       onTransferClick={() => setTransferEvent({ eventId: t.eventId, title: t.title })}
       onCancelTransfer={() => handleCancelTransfer(t.eventId)}
+      canRequestRefund={canRequestRefundFor(t)}
+      refundLoading={refundMutation.isPending}
+      onRefundClick={() => {
+        if (!t.orderId || !window.confirm("Request a refund for this ticket? This cannot be undone.")) return;
+        refundMutation.mutate(t.orderId);
+      }}
     />
   );
 

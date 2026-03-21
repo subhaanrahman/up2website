@@ -5,5 +5,6 @@ dist
 playwright-report
 test-results
 coverage
-.env
+# .env is needed at build time for VITE_* vars (Supabase, Stripe).
+# Exclude supabase/.env (has service role keys; not needed for frontend build).
 supabase/.env

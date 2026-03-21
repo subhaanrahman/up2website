@@ -216,6 +216,17 @@ const OrganiserDashboard = () => {
               label="Total Revenue"
               value={analyticsLoading ? "..." : formatCurrency(analytics?.total_revenue_cents || 0)} />
             <StatCard
+              label="Net Revenue"
+              value={analyticsLoading ? "..." : formatCurrency(analytics?.total_net_revenue_cents || 0)}
+              subtitle="After platform fees" />
+            <StatCard
+              label="VIP Revenue"
+              value={analyticsLoading ? "..." : formatCurrency(analytics?.vip_revenue_cents || 0)}
+              subtitle="VIP tables" />
+            <StatCard
+              label="VIP Reservations"
+              value={analyticsLoading ? "..." : String(analytics?.vip_reservations || 0)} />
+            <StatCard
               label="Total Attendees"
               value={analyticsLoading ? "..." : String(analytics?.total_attendees || 0)} />
             <StatCard
@@ -231,8 +242,11 @@ const OrganiserDashboard = () => {
               value={analyticsLoading ? "..." : String(analytics?.vip_guestlist_count || 0)} />
             <StatCard
               label="Views / Impressions"
-              value={analyticsLoading ? "..." : String(analytics?.total_views || 0)}
-              subtitle="Tracking coming soon" />
+              value={analyticsLoading ? "..." : String(analytics?.total_views || 0)} />
+            <StatCard
+              label="Conversions"
+              value={analyticsLoading ? "..." : String(analytics?.total_conversions || 0)}
+              subtitle="Confirmed orders" />
             <StatCard
               label="Conversion Rate"
               value={analyticsLoading ? "..." : `${analytics?.conversion_rate_pct || 0}%`}
@@ -264,6 +278,42 @@ const OrganiserDashboard = () => {
             timeframe={timeframe}
             analytics={analytics}
           />
+        </div>
+      )}
+
+      {selectedEventId === "all" && analytics?.demographics && (
+        <div className="px-4 mb-6">
+          <div className="rounded-tile-sm border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold text-foreground font-display tracking-[0.08em] uppercase mb-3">
+              Audience
+            </h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Followers</span>
+                <span className="text-foreground font-medium">{analytics.demographics.follower_attendees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Non-followers</span>
+                <span className="text-foreground font-medium">{analytics.demographics.non_follower_attendees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">New attendees</span>
+                <span className="text-foreground font-medium">{analytics.demographics.new_attendees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Returning</span>
+                <span className="text-foreground font-medium">{analytics.demographics.returning_attendees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Ticket holders</span>
+                <span className="text-foreground font-medium">{analytics.demographics.ticket_attendees}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">RSVP-only</span>
+                <span className="text-foreground font-medium">{analytics.demographics.rsvp_only_attendees}</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

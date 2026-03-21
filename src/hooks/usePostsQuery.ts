@@ -1,5 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
@@ -217,30 +216,17 @@ async function fetchFeedWithReposts(currentUserId?: string): Promise<PostWithAut
   return merged;
 }
 
+/**
+ * @deprecated Prefer `usePaginatedFeed` from `@/hooks/useFeedQuery`. Legacy non-paginated feed (limit 50 in fetch path).
+ * Does not register Realtime — the home feed owns debounced `home-feed-realtime` invalidation to avoid duplicate refetches.
+ */
 export function useFeedPosts() {
-  const queryClient = useQueryClient();
   const { user } = useAuth();
 
-  const query = useQuery({
-    queryKey: ["feed-posts"],
+  return useQuery({
+    queryKey: ["feed-posts", "legacy"],
     queryFn: () => fetchFeedWithReposts(user?.id),
   });
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("feed-posts-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "post_reposts" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
-
-  return query;
 }
 
 export function useUserPosts(authorId?: string) {

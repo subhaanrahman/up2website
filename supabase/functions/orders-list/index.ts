@@ -83,6 +83,24 @@ Deno.serve(async (req) => {
       return errorResponse(500, ordersErr.message, { requestId });
     }
 
+    const orderIds = (orders || []).map((o: any) => o.id).filter(Boolean);
+    const refundsByOrderId: Record<string, any[]> = {};
+    if (orderIds.length > 0) {
+      const { data: refundRows, error: refundsErr } = await serviceClient
+        .from('refunds')
+        .select('id, order_id, stripe_refund_id, amount_cents, reason, status, initiated_by, created_at')
+        .in('order_id', orderIds)
+        .order('created_at', { ascending: false });
+      if (refundsErr) {
+        return errorResponse(500, refundsErr.message, { requestId });
+      }
+      for (const row of refundRows || []) {
+        const oid = row.order_id as string;
+        if (!refundsByOrderId[oid]) refundsByOrderId[oid] = [];
+        refundsByOrderId[oid].push(row);
+      }
+    }
+
     const userIds = [...new Set((orders || []).map((o: any) => o.user_id))];
     let profiles: Record<string, any> = {};
     if (userIds.length > 0) {
@@ -99,8 +117,20 @@ Deno.serve(async (req) => {
       .eq('event_id', event_id)
       .order('created_at', { ascending: false });
 
+    const { data: vipReservations, error: vipErr } = await serviceClient
+      .from('vip_table_reservations')
+      .select('id, user_id, vip_table_tier_id, guest_count, status, amount_cents, currency, created_at, confirmed_at, cancelled_at, stripe_payment_intent_id')
+      .eq('event_id', event_id)
+      .order('created_at', { ascending: false });
+
+    if (vipErr) {
+      return errorResponse(500, vipErr.message, { requestId });
+    }
+
     const rsvpUserIds = [...new Set((rsvps || []).map((r: any) => r.user_id))];
+    const vipUserIds = [...new Set((vipReservations || []).map((r: any) => r.user_id))];
     const missingIds = rsvpUserIds.filter((id: string) => !profiles[id]);
+    const missingVipIds = vipUserIds.filter((id: string) => !profiles[id] && !missingIds.includes(id));
     if (missingIds.length > 0) {
       const { data: extraProfiles } = await serviceClient
         .from('profiles')
@@ -108,10 +138,43 @@ Deno.serve(async (req) => {
         .in('user_id', missingIds);
       extraProfiles?.forEach((p: any) => { profiles[p.user_id] = p; });
     }
+    if (missingVipIds.length > 0) {
+      const { data: extraProfiles } = await serviceClient
+        .from('profiles')
+        .select('user_id, display_name, first_name, last_name, email, phone')
+        .in('user_id', missingVipIds);
+      extraProfiles?.forEach((p: any) => { profiles[p.user_id] = p; });
+    }
+
+    const vipTierIds = [...new Set((vipReservations || []).map((r: any) => r.vip_table_tier_id).filter(Boolean))];
+    let vipTiers: Record<string, any> = {};
+    if (vipTierIds.length > 0) {
+      const { data: vipTierRows } = await serviceClient
+        .from('vip_table_tiers')
+        .select('id, name')
+        .in('id', vipTierIds);
+      vipTierRows?.forEach((t: any) => { vipTiers[t.id] = t; });
+    }
+
+    const vipReservationIds = (vipReservations || []).map((r: any) => r.id);
+    let vipRefundMap: Record<string, any> = {};
+    if (vipReservationIds.length > 0) {
+      const { data: vipRefunds } = await serviceClient
+        .from('vip_refunds')
+        .select('id, vip_reservation_id, amount_cents, reason, status, stripe_refund_id, created_at')
+        .in('vip_reservation_id', vipReservationIds)
+        .order('created_at', { ascending: false });
+      vipRefunds?.forEach((refund: any) => {
+        if (!vipRefundMap[refund.vip_reservation_id]) {
+          vipRefundMap[refund.vip_reservation_id] = refund;
+        }
+      });
+    }
 
     const enrichedOrders = (orders || []).map((o: any) => ({
       ...o,
       profile: profiles[o.user_id] || null,
+      refunds: refundsByOrderId[o.id] || [],
     }));
 
     const enrichedRsvps = (rsvps || []).map((r: any) => ({
@@ -119,7 +182,14 @@ Deno.serve(async (req) => {
       profile: profiles[r.user_id] || null,
     }));
 
-    return successResponse({ orders: enrichedOrders, rsvps: enrichedRsvps }, requestId);
+    const enrichedVipReservations = (vipReservations || []).map((r: any) => ({
+      ...r,
+      profile: profiles[r.user_id] || null,
+      tier: r.vip_table_tier_id ? vipTiers[r.vip_table_tier_id] || null : null,
+      refund: vipRefundMap[r.id] || null,
+    }));
+
+    return successResponse({ orders: enrichedOrders, rsvps: enrichedRsvps, vip_reservations: enrichedVipReservations }, requestId);
   } catch (err) {
     edgeLog('error', 'orders-list error', { requestId, error: String(err) });
     return errorResponse(500, 'Internal server error', { requestId });

@@ -23,18 +23,19 @@ const EventAnalytics = () => {
     enabled: !!id,
   });
 
-  // Fetch event-specific ticket counts
+  // Fetch event-specific analytics
   const { data: eventOrders, isLoading } = useQuery({
     queryKey: ["event-orders-stats", id],
     queryFn: async () => {
-      if (!id) return { totalRevenue: 0, ticketsSold: 0, attendees: 0 };
+      if (!id) return { totalRevenue: 0, netRevenue: 0, ticketsSold: 0, attendees: 0, views: 0, conversions: 0 };
       const { data: orders } = await supabase
         .from("orders")
-        .select("amount_cents, quantity, status")
+        .select("amount_cents, platform_fee_cents, quantity, status")
         .eq("event_id", id)
         .eq("status", "confirmed");
 
       const totalRevenue = orders?.reduce((s, o) => s + o.amount_cents, 0) || 0;
+      const netRevenue = orders?.reduce((s, o) => s + (o.amount_cents - (o.platform_fee_cents || 0)), 0) || 0;
       const ticketsSold = orders?.reduce((s, o) => s + o.quantity, 0) || 0;
 
       const { count: attendees } = await supabase
@@ -43,15 +44,37 @@ const EventAnalytics = () => {
         .eq("event_id", id)
         .eq("status", "going");
 
-      return { totalRevenue, ticketsSold, attendees: attendees || 0 };
+      const { count: views } = await supabase
+        .from("event_views")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", id);
+
+      const { count: conversions } = await supabase
+        .from("event_link_conversions")
+        .select("id", { count: "exact", head: true })
+        .eq("event_id", id);
+
+      return {
+        totalRevenue,
+        netRevenue,
+        ticketsSold,
+        attendees: attendees || 0,
+        views: views || 0,
+        conversions: conversions || 0,
+      };
     },
     enabled: !!id,
   });
 
+  const conversionRate = eventOrders?.views ? Math.round(((eventOrders?.conversions || 0) / eventOrders.views) * 100) : 0;
+
   const stats = [
     { label: "Revenue", value: `R${((eventOrders?.totalRevenue || 0) / 100).toFixed(2)}` },
+    { label: "Net Revenue", value: `R${((eventOrders?.netRevenue || 0) / 100).toFixed(2)}` },
     { label: "Tickets Sold", value: eventOrders?.ticketsSold || 0 },
     { label: "Attendees (RSVP)", value: eventOrders?.attendees || 0 },
+    { label: "Views", value: eventOrders?.views || 0 },
+    { label: "Conversion", value: `${conversionRate}%` },
   ];
 
   return (

@@ -14,6 +14,7 @@ import {
   CreditCard,
   Sparkles,
   Ban,
+  QrCode,
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 const settingsItems = [
+  { icon: QrCode, label: "Digital ID", path: "/settings/digital-id", description: "Your personal QR code for event check-in" },
   { icon: SettingsIcon, label: "Manage Account", path: "/settings/account", description: "Account settings and preferences" },
   { icon: Bell, label: "Notifications", path: "/settings/notifications", description: "Manage notification preferences" },
   { icon: ShieldCheck, label: "Email Verification", path: "/settings/email-verification", description: "Verify your email for extra security" },

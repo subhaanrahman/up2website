@@ -33,7 +33,32 @@ Deno.serve(async (req) => {
     if (!allowed) return rateLimitResponse(corsHeaders);
 
     const body = await req.json();
-    const { title, description, location, event_date, end_date, category, max_guests, is_public, organiser_profile_id, publish_at, tickets_available_from, tickets_available_until } = body;
+    const {
+      title,
+      description,
+      location,
+      event_date,
+      end_date,
+      category,
+      max_guests,
+      is_public,
+      organiser_profile_id,
+      publish_at,
+      tickets_available_from,
+      tickets_available_until,
+      vip_tables_enabled,
+      refunds_enabled,
+      refund_policy_text,
+      refund_deadline_hours_before_event,
+    } = body;
+
+    const refundDeadlineHours = (() => {
+      const v = refund_deadline_hours_before_event;
+      if (v === undefined || v === null || v === "") return null;
+      const n = typeof v === "number" ? v : parseInt(String(v), 10);
+      if (!Number.isFinite(n) || n < 0 || n > 168) return null;
+      return n;
+    })();
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return errorResponse(400, 'title is required', { requestId });
@@ -88,6 +113,13 @@ Deno.serve(async (req) => {
         publish_at: isScheduled ? publish_at : null,
         tickets_available_from: tickets_available_from || null,
         tickets_available_until: tickets_available_until || null,
+        vip_tables_enabled: vip_tables_enabled ?? false,
+        refunds_enabled: refunds_enabled === true,
+        refund_policy_text:
+          typeof refund_policy_text === "string" && refund_policy_text.trim().length > 0
+            ? refund_policy_text.trim().slice(0, 2000)
+            : null,
+        refund_deadline_hours_before_event: refundDeadlineHours,
       })
       .select()
       .single();

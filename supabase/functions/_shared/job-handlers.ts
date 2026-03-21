@@ -111,12 +111,19 @@ registerHandler<AutoRsvpPayload>(
 registerHandler<TicketsIssuePayload>(
   'tickets.issue',
   async (payload, sc) => {
-    const tickets = Array.from({ length: payload.quantity }, (_, i) => ({
+    const { data: profile } = await sc
+      .from('profiles')
+      .select('qr_code')
+      .eq('user_id', payload.user_id)
+      .maybeSingle();
+    const profileQr = profile?.qr_code ?? `TKT-${payload.order_id.slice(0, 8)}-${crypto.randomUUID().slice(0, 8)}`;
+
+    const tickets = Array.from({ length: payload.quantity }, () => ({
       order_id: payload.order_id,
       event_id: payload.event_id,
       ticket_tier_id: payload.ticket_tier_id,
       user_id: payload.user_id,
-      qr_code: `TKT-${payload.order_id.slice(0, 8)}-${i + 1}-${crypto.randomUUID().slice(0, 8)}`,
+      qr_code: profileQr,
       status: 'valid',
     }));
 

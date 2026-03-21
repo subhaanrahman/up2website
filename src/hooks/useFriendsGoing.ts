@@ -1,6 +1,7 @@
 // P-06 & P-19: Hook to get friends going to an event
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface FriendGoing {
@@ -22,7 +23,7 @@ export function useFriendsGoing(eventId: string | undefined) {
         .from('connections')
         .select('requester_id, addressee_id')
         .eq('status', 'accepted')
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+        .or(connectionsParticipantOr(user.id));
 
       if (!connections || connections.length === 0) return [];
 

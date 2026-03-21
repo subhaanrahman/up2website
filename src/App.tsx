@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
@@ -31,6 +32,7 @@ import ConnectMusic from "./pages/ConnectMusic";
 import ContactUs from "./pages/ContactUs";
 import Notifications from "./pages/Notifications";
 import Checkout from "./pages/Checkout";
+import VipCheckout from "./pages/VipCheckout";
 import MessageThread from "./pages/MessageThread";
 import DmThread from "./pages/DmThread";
 import UserProfile from "./pages/UserProfile";
@@ -39,6 +41,7 @@ import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
 import EditOrganiserProfile from "./pages/EditOrganiserProfile";
 import OrganiserTeam from "./pages/OrganiserTeam";
 import FriendsFollowing from "./pages/FriendsFollowing";
+import Followers from "./pages/Followers";
 import ManageEvent from "./pages/ManageEvent";
 import EventCheckIn from "./pages/EventCheckIn";
 import TermsOfService from "./pages/TermsOfService";
@@ -46,10 +49,12 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import EmailVerification from "./pages/EmailVerification";
 import EventAnalytics from "./pages/EventAnalytics";
 import CheckoutSuccess from "./pages/CheckoutSuccess";
+import VipCheckoutSuccess from "./pages/VipCheckoutSuccess";
 import PaymentMethods from "./pages/PaymentMethods";
 import EventEmbed from "./pages/EventEmbed";
 import BlockedUsers from "./pages/BlockedUsers";
 import MusicCallback from "./pages/MusicCallback";
+import DigitalIdSettings from "./pages/DigitalIdSettings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +78,7 @@ const App = () => (
           <Sonner />
         <BrowserRouter>
           <PhoneFrame>
+            <ErrorBoundary>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
@@ -101,6 +107,7 @@ const App = () => (
               <Route path="/profile/edit-organiser" element={<ProtectedRoute><EditOrganiserProfile /></ProtectedRoute>} />
               <Route path="/profile/organiser-team" element={<ProtectedRoute><OrganiserTeam /></ProtectedRoute>} />
               <Route path="/profile/friends" element={<ProtectedRoute><FriendsFollowing /></ProtectedRoute>} />
+              <Route path="/profile/followers" element={<ProtectedRoute><Followers /></ProtectedRoute>} />
               <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
               <Route path="/create/onboarding-required" element={<ProtectedRoute><OnboardingRequired /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
@@ -117,12 +124,16 @@ const App = () => (
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
               <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+              <Route path="/vip-checkout" element={<ProtectedRoute><VipCheckout /></ProtectedRoute>} />
+              <Route path="/vip-checkout/success" element={<ProtectedRoute><VipCheckoutSuccess /></ProtectedRoute>} />
               <Route path="/settings/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
               <Route path="/settings/blocked-users" element={<ProtectedRoute><BlockedUsers /></ProtectedRoute>} />
+              <Route path="/settings/digital-id" element={<ProtectedRoute><DigitalIdSettings /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </ErrorBoundary>
           </PhoneFrame>
         </BrowserRouter>
         </TooltipProvider>

@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { createLogger } from '@/infrastructure/logger';
 
 const log = createLogger('recommendation.service');
@@ -49,7 +50,7 @@ export async function getSuggestedFriends(
     const { data: connections } = await supabase
       .from('connections')
       .select('requester_id, addressee_id')
-      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+      .or(connectionsParticipantOr(userId));
 
     if (connections && connections.length > 0) {
       const connectedIds = new Set<string>();

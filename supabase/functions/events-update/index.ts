@@ -21,6 +21,10 @@ const updateSchema = z.object({
   cover_image: z.string().url().nullable().optional(),
   tickets_available_from: z.string().nullable().optional(),
   tickets_available_until: z.string().nullable().optional(),
+  vip_tables_enabled: z.boolean().optional(),
+  refunds_enabled: z.boolean().optional(),
+  refund_policy_text: z.string().max(2000).nullable().optional(),
+  refund_deadline_hours_before_event: z.number().int().min(0).max(168).nullable().optional(),
 });
 
 Deno.serve(async (req) => {
@@ -145,6 +149,17 @@ Deno.serve(async (req) => {
     if (fields.cover_image !== undefined) updateData.cover_image = fields.cover_image;
     if (fields.tickets_available_from !== undefined) updateData.tickets_available_from = fields.tickets_available_from;
     if (fields.tickets_available_until !== undefined) updateData.tickets_available_until = fields.tickets_available_until;
+    if (fields.vip_tables_enabled !== undefined) updateData.vip_tables_enabled = fields.vip_tables_enabled;
+    if (fields.refunds_enabled !== undefined) updateData.refunds_enabled = fields.refunds_enabled;
+    if (fields.refund_policy_text !== undefined) {
+      updateData.refund_policy_text =
+        fields.refund_policy_text === null || fields.refund_policy_text.trim() === ""
+          ? null
+          : fields.refund_policy_text.trim().slice(0, 2000);
+    }
+    if (fields.refund_deadline_hours_before_event !== undefined) {
+      updateData.refund_deadline_hours_before_event = fields.refund_deadline_hours_before_event;
+    }
 
     if (Object.keys(updateData).length === 0) {
       return errorResponse(400, 'No fields to update', { requestId });

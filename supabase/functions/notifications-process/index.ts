@@ -51,42 +51,32 @@ Deno.serve(async (req) => {
     const now = new Date();
     const notifications: NotificationInsert[] = [];
 
-    // ─── 1. UPCOMING EVENT REMINDERS ───────────────────────────────────
-    // Day before: events happening tomorrow
-    // Day of: events happening today
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStart = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
-    const tomorrowEnd = new Date(tomorrowStart);
-    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart);
-    todayEnd.setDate(todayEnd.getDate() + 1);
-
-    // Fetch events happening tomorrow
-    const { data: tomorrowEvents } = await serviceClient
-      .from('events')
-      .select('id, title, cover_image, event_date')
-      .gte('event_date', tomorrowStart.toISOString())
-      .lt('event_date', tomorrowEnd.toISOString())
-      .eq('status', 'published');
-
-    // Fetch events happening today
-    const { data: todayEvents } = await serviceClient
-      .from('events')
-      .select('id, title, cover_image, event_date')
-      .gte('event_date', todayStart.toISOString())
-      .lt('event_date', todayEnd.toISOString())
-      .eq('status', 'published');
-
-    const reminderEventIds = [
-      ...(tomorrowEvents || []).map(e => e.id),
-      ...(todayEvents || []).map(e => e.id),
+    // ─── 1. UPCOMING EVENT REMINDERS (CONFIGURABLE) ────────────────────
+    const reminderConfigs = [
+      { type: '1_week', offsetMs: 7 * 24 * 60 * 60 * 1000, title: '📅 Next week!', message: 'is happening next week.' },
+      { type: '1_day', offsetMs: 24 * 60 * 60 * 1000, title: '📅 Tomorrow\'s event', message: 'is tomorrow. Don\'t forget!' },
+      { type: '2_hours', offsetMs: 2 * 60 * 60 * 1000, title: '⏰ Starting soon', message: 'starts in about 2 hours.' },
     ];
 
-    if (reminderEventIds.length > 0) {
-      // Get all users who RSVP'd or have orders for these events
+    const reminderWindowMs = 60 * 60 * 1000; // 1-hour window
+
+    for (const cfg of reminderConfigs) {
+      const windowStart = new Date(now.getTime() + cfg.offsetMs);
+      const windowEnd = new Date(windowStart.getTime() + reminderWindowMs);
+
+      const { data: reminderRows } = await serviceClient
+        .from('event_reminders')
+        .select('event_id, reminder_type, events!inner(id, title, cover_image, event_date, status)')
+        .eq('is_enabled', true)
+        .eq('reminder_type', cfg.type)
+        .gte('events.event_date', windowStart.toISOString())
+        .lt('events.event_date', windowEnd.toISOString())
+        .eq('events.status', 'published');
+
+      const events = (reminderRows || []).map((r: any) => r.events).filter(Boolean);
+      const reminderEventIds = events.map((e: any) => e.id);
+      if (reminderEventIds.length === 0) continue;
+
       const [{ data: rsvps }, { data: orders }] = await Promise.all([
         serviceClient
           .from('rsvps')
@@ -101,11 +91,8 @@ Deno.serve(async (req) => {
       ]);
 
       const eventMap = new Map<string, any>();
-      [...(tomorrowEvents || []), ...(todayEvents || [])].forEach(e => eventMap.set(e.id, e));
+      events.forEach((e: any) => eventMap.set(e.id, e));
 
-      const isTomorrow = new Set((tomorrowEvents || []).map(e => e.id));
-
-      // Combine unique user-event pairs
       const userEventPairs = new Map<string, { user_id: string; event_id: string }>();
       [...(rsvps || []), ...(orders || [])].forEach(r => {
         const key = `${r.user_id}:${r.event_id}`;
@@ -115,16 +102,13 @@ Deno.serve(async (req) => {
       for (const { user_id, event_id } of userEventPairs.values()) {
         const event = eventMap.get(event_id);
         if (!event) continue;
-        const isDay = !isTomorrow.has(event_id);
         notifications.push({
           user_id,
           type: 'upcoming_event',
-          title: isDay ? '🎉 Today\'s the day!' : '📅 Tomorrow\'s event',
-          message: isDay
-            ? `${event.title} is happening today! Get ready.`
-            : `${event.title} is tomorrow. Don't forget!`,
+          title: cfg.title,
+          message: `${event.title} ${cfg.message}`,
           event_image: event.cover_image,
-          link: `/events/${event_id}`,
+          link: `/events/${event_id}?reminder=${cfg.type}`,
         });
       }
     }

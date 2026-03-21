@@ -34,78 +34,86 @@ export function useUnreadMessages() {
     enabled: !!user,
     refetchInterval: 30_000, // poll every 30s
     queryFn: async (): Promise<{ perChat: Record<string, number>; total: number }> => {
-      if (!user) return { perChat: {}, total: 0 };
+      const fallback = { perChat: {} as Record<string, number>, total: 0 };
+      if (!user) return fallback;
 
-      // 1. Get user's group chat memberships
-      const { data: memberships } = await supabase
-        .from("group_chat_members")
-        .select("group_chat_id")
-        .eq("user_id", user.id);
+      try {
+        // 1. Get user's group chat memberships
+        const { data: memberships } = await supabase
+          .from("group_chat_members")
+          .select("group_chat_id")
+          .eq("user_id", user.id);
 
-      const chatIds = (memberships || []).map((m) => m.group_chat_id);
+        const chatIds = (memberships || []).map((m) => m.group_chat_id);
 
-      // 2. Get user's DM threads
-      const { data: dmThreads } = await supabase
-        .from("dm_threads")
-        .select("id")
-        .eq("user_id", user.id);
+        // 2. Get user's DM threads (as user) + organiser threads (as organiser)
+        const userThreadsRes = await supabase.from("dm_threads").select("id").eq("user_id", user.id);
 
-      const dmIds = (dmThreads || []).map((t) => t.id);
+        let organiserThreads: { id: string }[] = [];
+        const orgsRes = await supabase.from("organiser_profiles").select("id").eq("owner_id", user.id);
+        if (!orgsRes.error && orgsRes.data?.length) {
+          const orgIds = orgsRes.data.map((o) => o.id);
+          const threadsRes = await supabase.from("dm_threads").select("id").in("organiser_profile_id", orgIds);
+          organiserThreads = Array.isArray(threadsRes.data) ? threadsRes.data : [];
+        }
 
-      const lastReadMap = getLastReadMap();
-      const perChat: Record<string, number> = {};
-      let total = 0;
+        const userThreadData = Array.isArray(userThreadsRes.data) ? userThreadsRes.data : [];
+        const dmIds = [...userThreadData.map((t) => t.id), ...organiserThreads.map((t) => t.id)];
 
-      // 3. Count unread group chat messages per chat
-      if (chatIds.length > 0) {
-        await Promise.all(
-          chatIds.map(async (chatId) => {
-            const lastRead = lastReadMap[chatId];
-            // No stored timestamp = user hasn't visited yet, don't count as unread
-            if (!lastRead) return;
+        const lastReadMap = getLastReadMap();
+        const perChat: Record<string, number> = {};
+        let total = 0;
 
-            let q = supabase
-              .from("group_chat_messages")
-              .select("id", { count: "exact", head: true })
-              .eq("group_chat_id", chatId)
-              .neq("sender_id", user.id)
-              .gt("created_at", lastRead);
+        // 3. Count unread group chat messages per chat
+        if (chatIds.length > 0) {
+          await Promise.all(
+            chatIds.map(async (chatId) => {
+              const lastRead = lastReadMap[chatId];
+              if (!lastRead) return;
 
-            const { count } = await q;
-            const unread = count || 0;
-            if (unread > 0) {
-              perChat[chatId] = unread;
-              total += unread;
-            }
-          })
-        );
+              const { count } = await supabase
+                .from("group_chat_messages")
+                .select("id", { count: "exact", head: true })
+                .eq("group_chat_id", chatId)
+                .neq("sender_id", user.id)
+                .gt("created_at", lastRead);
+
+              const unread = count || 0;
+              if (unread > 0) {
+                perChat[chatId] = unread;
+                total += unread;
+              }
+            })
+          );
+        }
+
+        // 4. Count unread DM messages per thread
+        if (dmIds.length > 0) {
+          await Promise.all(
+            dmIds.map(async (threadId) => {
+              const lastRead = lastReadMap[threadId];
+              if (!lastRead) return;
+
+              const { count } = await supabase
+                .from("dm_messages")
+                .select("id", { count: "exact", head: true })
+                .eq("thread_id", threadId)
+                .neq("sender_id", user.id)
+                .gt("created_at", lastRead);
+
+              const unread = count || 0;
+              if (unread > 0) {
+                perChat[threadId] = unread;
+                total += unread;
+              }
+            })
+          );
+        }
+
+        return { perChat, total };
+      } catch {
+        return fallback;
       }
-
-      // 4. Count unread DM messages per thread
-      if (dmIds.length > 0) {
-        await Promise.all(
-          dmIds.map(async (threadId) => {
-            const lastRead = lastReadMap[threadId];
-            if (!lastRead) return;
-
-            let q = supabase
-              .from("dm_messages")
-              .select("id", { count: "exact", head: true })
-              .eq("thread_id", threadId)
-              .neq("sender_id", user.id)
-              .gt("created_at", lastRead);
-
-            const { count } = await q;
-            const unread = count || 0;
-            if (unread > 0) {
-              perChat[threadId] = unread;
-              total += unread;
-            }
-          })
-        );
-      }
-
-      return { perChat, total };
     },
   });
 

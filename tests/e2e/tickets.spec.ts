@@ -8,8 +8,13 @@ test.describe('Tickets page (authenticated)', () => {
 
   test('shows tabs or ticket content', async ({ page }) => {
     await page.goto('/events');
-    await expect(
-      page.getByRole('tab', { name: /my plans|my events/i }).or(page.getByText(/TICKETS/i))
-    ).toBeVisible({ timeout: 10000 });
+    const tabs = page.getByRole('tab', { name: /my plans|my events/i });
+    const hasTabs = (await tabs.count()) > 0;
+    if (hasTabs) {
+      await expect(tabs.first()).toBeVisible({ timeout: 10000 });
+    } else {
+      const heading = page.getByRole('heading', { name: /tickets|my tickets/i }).first();
+      await expect(heading).toBeVisible({ timeout: 10000 });
+    }
   });
 });

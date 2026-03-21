@@ -8,6 +8,7 @@ import BottomNav from "@/components/BottomNav";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 
 interface FriendItem {
   userId: string;
@@ -41,13 +42,16 @@ const FriendsFollowing = () => {
       setLoading(true);
 
       // Fetch accepted connections (friends)
-      const { data: connections } = await supabase
+      const { data: connections, error: connErr } = await supabase
         .from("connections")
         .select("requester_id, addressee_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+        .or(connectionsParticipantOr(user.id));
 
-      if (connections && connections.length > 0) {
+      if (connErr) {
+        console.error(connErr);
+        setFriends([]);
+      } else if (connections && connections.length > 0) {
         const friendIds = connections.map((c) =>
           c.requester_id === user.id ? c.addressee_id : c.requester_id
         );

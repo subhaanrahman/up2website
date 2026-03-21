@@ -1,12 +1,13 @@
 import { supabase } from '@/infrastructure/supabase';
+import { buildDualColumnIlikeOr } from '@/utils/postgrest-ilike';
 
 export const profilesRepository = {
   async searchProfiles(term: string, opts?: { excludeUserId?: string; limit?: number }) {
-    const q = `%${term}%`;
+    const orFilter = buildDualColumnIlikeOr(['display_name', 'username'], term);
     let query = supabase
       .from('profiles')
       .select('user_id, display_name, username, avatar_url')
-      .or(`display_name.ilike.${q},username.ilike.${q}`);
+      .or(orFilter);
     if (opts?.excludeUserId) {
       query = query.neq('user_id', opts.excludeUserId);
     }
@@ -17,14 +18,14 @@ export const profilesRepository = {
   },
 
   async searchOrganisers(term: string, opts?: { limit?: number; includeOwner?: boolean }) {
-    const q = `%${term}%`;
+    const orFilter = buildDualColumnIlikeOr(['display_name', 'username'], term);
     const fields = opts?.includeOwner
       ? 'id, display_name, username, avatar_url, owner_id'
       : 'id, display_name, username, avatar_url';
     const { data, error } = await supabase
       .from('organiser_profiles')
       .select(fields)
-      .or(`display_name.ilike.${q},username.ilike.${q}`)
+      .or(orFilter)
       .limit(opts?.limit ?? 10);
     if (error) throw error;
     return data || [];

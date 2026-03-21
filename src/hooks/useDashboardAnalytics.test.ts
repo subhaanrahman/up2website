@@ -26,14 +26,24 @@ describe('useDashboardAnalytics', () => {
   it('fetches analytics when organiserProfileId is set', async () => {
     const mockAnalytics = {
       total_revenue_cents: 10000,
+      total_net_revenue_cents: 9000,
       total_attendees: 50,
       net_tickets_sold: 50,
       total_ticket_capacity: 100,
       tickets_sold_pct: 50,
       total_views: 200,
+      total_conversions: 30,
       conversion_rate_pct: 25,
       follower_count: 100,
       vip_guestlist_count: 10,
+      demographics: {
+        follower_attendees: 20,
+        non_follower_attendees: 30,
+        new_attendees: 15,
+        returning_attendees: 35,
+        ticket_attendees: 25,
+        rsvp_only_attendees: 25,
+      },
       timeframe: '30d',
     };
     mockInvoke.mockResolvedValue({ data: mockAnalytics, error: null });

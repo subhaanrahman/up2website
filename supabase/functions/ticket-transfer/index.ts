@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { edgeLog } from "../_shared/logger.ts";
+import { connectionsBetweenUsersOr } from "../_shared/postgrest-connection-filters.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 const ticketSchema = z.object({
@@ -147,7 +148,7 @@ async function handleEventTransfer(
     .from('connections')
     .select('id')
     .eq('status', 'accepted')
-    .or(`and(requester_id.eq.${userId},addressee_id.eq.${recipient_user_id}),and(requester_id.eq.${recipient_user_id},addressee_id.eq.${userId})`)
+    .or(connectionsBetweenUsersOr(userId, recipient_user_id))
     .limit(1)
     .maybeSingle();
 

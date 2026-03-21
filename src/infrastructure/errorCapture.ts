@@ -1,5 +1,6 @@
 import { createLogger } from './logger';
 import type { AppError } from './errors';
+import { captureClientException } from './sentry';
 
 type ApiError = AppError;
 const log = createLogger('error-capture');
@@ -13,5 +14,5 @@ export interface CaptureContext {
 
 export function captureApiError(error: ApiError, context?: CaptureContext): void {
   log.error('API error captured', error, context ?? {});
-  // When Sentry is integrated: Sentry.captureException(error, { extra: context });
+  captureClientException(error, context);
 }

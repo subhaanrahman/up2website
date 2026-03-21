@@ -65,6 +65,7 @@ const EventDetailsForm = ({
   const { toast } = useToast();
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [cohostSearchError, setCohostSearchError] = useState("");
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -99,32 +100,51 @@ const EventDetailsForm = ({
   useEffect(() => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     const query = cohostInput.trim().replace(/^@/, "");
-    if (query.length < 2) { setSearchResults([]); setShowDropdown(false); return; }
+    if (query.length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      setCohostSearchError("");
+      return;
+    }
 
     searchTimeoutRef.current = setTimeout(async () => {
       const term = query;
       const cohostIds = new Set(cohosts.map(c => c.id));
+      setCohostSearchError("");
 
-      const [profilesData, organisersData] = await Promise.all([
-        profilesRepository.searchProfiles(term, { excludeUserId: user?.id, limit: 10 }),
-        profilesRepository.searchOrganisers(term, { limit: 10, includeOwner: true }),
-      ]);
+      try {
+        const [profilesData, organisersData] = await Promise.all([
+          profilesRepository.searchProfiles(term, { excludeUserId: user?.id, limit: 10 }),
+          profilesRepository.searchOrganisers(term, { limit: 10, includeOwner: true }),
+        ]);
 
-      const friendIds = user ? await connectionsRepository.getFriendIds(user.id) : new Set<string>();
+        const friendIds = user ? await connectionsRepository.getFriendIds(user.id) : new Set<string>();
 
-      const results: SearchResult[] = [];
-      for (const o of organisersData || []) {
-        const org = o as unknown as { id: string; display_name: string | null; username: string | null; avatar_url: string | null; owner_id?: string };
-        if (cohostIds.has(org.id) || org.owner_id === user?.id) continue;
-        results.push({ id: org.id, type: "organiser", display_name: org.display_name, username: org.username, avatar_url: org.avatar_url, isFriend: false });
+        const results: SearchResult[] = [];
+        for (const o of organisersData || []) {
+          const org = o as unknown as { id: string; display_name: string | null; username: string | null; avatar_url: string | null; owner_id?: string };
+          if (cohostIds.has(org.id) || org.owner_id === user?.id) continue;
+          results.push({ id: org.id, type: "organiser", display_name: org.display_name, username: org.username, avatar_url: org.avatar_url, isFriend: false });
+        }
+        for (const p of profilesData || []) {
+          if (cohostIds.has(p.user_id)) continue;
+          results.push({ id: p.user_id, type: "personal", display_name: p.display_name, username: p.username, avatar_url: p.avatar_url, isFriend: friendIds.has(p.user_id) });
+        }
+        results.sort((a, b) => (a.isFriend === b.isFriend ? 0 : a.isFriend ? -1 : 1));
+        setSearchResults(results);
+        setShowDropdown(results.length > 0);
+      } catch (e) {
+        console.error(e);
+        setSearchResults([]);
+        setShowDropdown(false);
+        const msg = e instanceof Error ? e.message : "Search failed";
+        setCohostSearchError(msg);
+        toast({
+          title: "Could not search collaborators",
+          description: "Check your connection and try again.",
+          variant: "destructive",
+        });
       }
-      for (const p of profilesData || []) {
-        if (cohostIds.has(p.user_id)) continue;
-        results.push({ id: p.user_id, type: "personal", display_name: p.display_name, username: p.username, avatar_url: p.avatar_url, isFriend: friendIds.has(p.user_id) });
-      }
-      results.sort((a, b) => (a.isFriend === b.isFriend ? 0 : a.isFriend ? -1 : 1));
-      setSearchResults(results);
-      setShowDropdown(results.length > 0);
     }, 300);
 
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
@@ -270,12 +290,20 @@ const EventDetailsForm = ({
         </p>
         <div className="relative">
           <input
+            type="search"
+            name="event-cohost-search"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={cohostInput}
             onChange={(e) => setCohostInput(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-            placeholder="Search @username or name"
+            placeholder="Search by name or @handle"
             className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
           />
+          {cohostSearchError ? (
+            <p className="text-xs text-destructive mt-1">{cohostSearchError}</p>
+          ) : null}
           {showDropdown && (
             <div className="absolute z-50 top-full left-0 right-0 mt-2 bg-card border border-border rounded-tile shadow-xl max-h-48 overflow-y-auto">
               {searchResults.map((result) => (

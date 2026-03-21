@@ -1,6 +1,10 @@
-import { ChevronRight, ArrowRightLeft, Clock, X } from "lucide-react";
-import { EventTile } from "@/components/EventTile";
+import { Link } from "react-router-dom";
+import { ChevronRight, ArrowRightLeft, Clock, X, QrCode, RotateCcw } from "lucide-react";
+import { format } from "date-fns";
+import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EventTile } from "@/components/EventTile";
 
 export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
 
@@ -16,6 +20,9 @@ interface TicketEventCardProps {
   onQrClick?: (e: React.MouseEvent) => void;
   onTransferClick?: (e: React.MouseEvent) => void;
   onCancelTransfer?: (e: React.MouseEvent) => void;
+  canRequestRefund?: boolean;
+  refundLoading?: boolean;
+  onRefundClick?: (e: React.MouseEvent) => void;
 }
 
 const TicketEventCard = ({
@@ -24,11 +31,23 @@ const TicketEventCard = ({
   eventDate,
   venue,
   isPast,
+  ticketStatus,
   hasPendingTransfer,
+  onQrClick,
   onTransferClick,
   onCancelTransfer,
+  canRequestRefund,
+  refundLoading,
+  onRefundClick,
 }: TicketEventCardProps) => {
   const showTransfer = onTransferClick != null && !isPast && !hasPendingTransfer;
+  const showQr = onQrClick != null && !isPast && (ticketStatus === "purchased" || ticketStatus === "going");
+  const showRefund =
+    onRefundClick != null &&
+    canRequestRefund &&
+    !isPast &&
+    ticketStatus === "purchased" &&
+    !hasPendingTransfer;
 
   const event = {
     id: eventId,
@@ -68,6 +87,22 @@ const TicketEventCard = ({
           title="Transfer ticket"
         >
           <ArrowRightLeft className="h-4 w-4" />
+        </Button>
+      )}
+      {showRefund && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          disabled={refundLoading}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRefundClick?.(e);
+          }}
+          title="Request refund"
+        >
+          <RotateCcw className="h-4 w-4" />
         </Button>
       )}
       <ChevronRight className="h-5 w-5 text-muted-foreground" />

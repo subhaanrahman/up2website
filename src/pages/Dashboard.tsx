@@ -216,21 +216,28 @@ const GroupChatTile = ({ chat, unreadCount }: { chat: GroupChat; unreadCount: nu
   </Link>
 );
 
-const DmThreadTile = ({ thread, isOrganiserView }: { thread: DmThread; isOrganiserView: boolean }) => {
+const DmThreadTile = ({ thread, isOrganiserView, unreadCount = 0 }: { thread: DmThread; isOrganiserView: boolean; unreadCount?: number }) => {
   const name = isOrganiserView ? thread.user_name : thread.organiser_name;
   const avatar = isOrganiserView ? thread.user_avatar : thread.organiser_avatar;
 
   return (
     <Link
       to={`/messages/dm/${thread.id}`}
-      className="flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
+      className="relative flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
     >
-      <Avatar className="h-12 w-12">
+      <Avatar className="h-12 w-12 shrink-0">
         <AvatarImage src={getOptimizedUrl(avatar, 'AVATAR_SM') || undefined} />
         <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
           {(name || "?")[0]?.toUpperCase()}
         </AvatarFallback>
       </Avatar>
+      {unreadCount > 0 && (
+        <div className="absolute top-2 left-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5">
+          <span className="text-[10px] font-bold text-primary-foreground leading-none">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </span>
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm text-foreground truncate capitalize">{name}</h3>
@@ -239,7 +246,9 @@ const DmThreadTile = ({ thread, isOrganiserView }: { thread: DmThread; isOrganis
           )}
         </div>
         {thread.last_message && (
-          <p className="text-xs text-muted-foreground truncate">{thread.last_message}</p>
+          <p className={cn("text-xs truncate", unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
+            {thread.last_message}
+          </p>
         )}
       </div>
     </Link>
@@ -378,7 +387,7 @@ const Dashboard = () => {
         ) : dmThreads.length > 0 ? (
           <div className="space-y-1">
             {dmThreads.map((thread) => (
-              <DmThreadTile key={thread.id} thread={thread} isOrganiserView={false} />
+              <DmThreadTile key={thread.id} thread={thread} isOrganiserView={false} unreadCount={perChat[thread.id] || 0} />
             ))}
           </div>
         ) : (

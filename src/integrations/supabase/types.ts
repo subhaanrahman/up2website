@@ -389,6 +389,139 @@ export type Database = {
           },
         ]
       }
+      event_link_clicks: {
+        Row: {
+          action: string
+          channel: string | null
+          created_at: string
+          event_id: string
+          id: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          channel?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          channel?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_link_clicks_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_link_clicks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      event_link_conversions: {
+        Row: {
+          click_id: string | null
+          created_at: string
+          event_id: string
+          id: string
+          order_id: string
+          user_id: string | null
+        }
+        Insert: {
+          click_id?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          order_id: string
+          user_id?: string | null
+        }
+        Update: {
+          click_id?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          order_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_link_conversions_click_id_fkey"
+            columns: ["click_id"]
+            isOneToOne: false
+            referencedRelation: "event_link_clicks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_link_conversions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_link_conversions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_link_conversions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      event_views: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          session_id: string
+          view_date: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          session_id: string
+          view_date?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          session_id?: string
+          view_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_views_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           category: string | null
@@ -408,6 +541,9 @@ export type Database = {
           max_guests: number | null
           organiser_profile_id: string | null
           publish_at: string | null
+          refund_deadline_hours_before_event: number | null
+          refund_policy_text: string | null
+          refunds_enabled: boolean
           show_tickets_remaining: boolean | null
           sold_out_message: string | null
           status: string
@@ -436,6 +572,9 @@ export type Database = {
           max_guests?: number | null
           organiser_profile_id?: string | null
           publish_at?: string | null
+          refund_deadline_hours_before_event?: number | null
+          refund_policy_text?: string | null
+          refunds_enabled?: boolean
           show_tickets_remaining?: boolean | null
           sold_out_message?: string | null
           status?: string
@@ -464,6 +603,9 @@ export type Database = {
           max_guests?: number | null
           organiser_profile_id?: string | null
           publish_at?: string | null
+          refund_deadline_hours_before_event?: number | null
+          refund_policy_text?: string | null
+          refunds_enabled?: boolean
           show_tickets_remaining?: boolean | null
           sold_out_message?: string | null
           status?: string
@@ -777,6 +919,7 @@ export type Database = {
           id: string
           platform_fee_cents: number
           quantity: number
+          referral_click_id: string | null
           reserved_at: string
           status: string
           stripe_account_id: string | null
@@ -796,6 +939,7 @@ export type Database = {
           id?: string
           platform_fee_cents?: number
           quantity?: number
+          referral_click_id?: string | null
           reserved_at?: string
           status?: string
           stripe_account_id?: string | null
@@ -815,6 +959,7 @@ export type Database = {
           id?: string
           platform_fee_cents?: number
           quantity?: number
+          referral_click_id?: string | null
           reserved_at?: string
           status?: string
           stripe_account_id?: string | null
@@ -829,6 +974,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_referral_click_id_fkey"
+            columns: ["referral_click_id"]
+            isOneToOne: false
+            referencedRelation: "event_link_clicks"
             referencedColumns: ["id"]
           },
           {

@@ -15,6 +15,7 @@ export interface UserProfile {
   instagramHandle: string | null;
   isVerified: boolean;
   profileTier: 'personal' | 'professional';
+  qrCode: string | null;
   createdAt: string;
   updatedAt: string;
 }

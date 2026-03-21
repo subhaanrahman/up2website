@@ -1,7 +1,8 @@
 # Up2 Platform — Database Architecture
 
-> Last updated: 2026-03-16  
-> Companion to `docs/ARCHITECTURE.md` — deep-dive into the PostgreSQL schema, relationships, RLS policies, and future table plans.
+> Last updated: 2026-03-24  
+> Companion to `docs/ARCHITECTURE.md` — deep-dive into the PostgreSQL schema, relationships, RLS policies, and future table plans.  
+> **Performance:** [PERFORMANCE.md](PERFORMANCE.md) (slow queries, indexes). **New region:** [REGION_MIGRATION.md](REGION_MIGRATION.md).
 
 ---
 
@@ -13,6 +14,17 @@
 - **Total tables**: 46
 - **Enums**: `app_role` (super_admin, moderator, support), `user_rank` (bronze, silver, gold, platinum, diamond)
 - **Extensions**: `pg_cron`, `pg_net` (for scheduled jobs)
+- **Entry paths (conceptual):** **Guestlist / RSVP** rows (`rsvps`, waitlist, approvals) are separate from **paid tickets** (`orders`, `tickets`, `ticket_tiers`) and **VIP table reservations** (`vip_table_reservations`, `vip_table_tiers`). See [PLATFORM_TODOS.md](PLATFORM_TODOS.md) (Guestlist vs VIP).
+
+### `events` — ticket refund policy (2026-03)
+
+Organiser-configurable fields (migration `20260321120000_event_refund_policy.sql`):
+
+| Column | Purpose |
+|--------|---------|
+| `refunds_enabled` | When true, buyers may call `refunds-request-self` for confirmed orders (subject to timing). |
+| `refund_policy_text` | Optional copy surfaced on event detail / ticketing UX. |
+| `refund_deadline_hours_before_event` | Optional cutoff: refunds only until `event_date` minus *N* hours; `NULL` means “until event starts”. |
 
 ---
 
@@ -101,6 +113,7 @@ auth.users (managed by Supabase)
 | instagram_handle | text | Yes | — | |
 | is_verified | boolean | No | false | Manual verification flag |
 | profile_tier | text | No | 'personal' | 'personal' or 'professional' |
+| qr_code | text | No | — | Unique Digital ID for check-in (e.g. `PID-{uuid}`). Regenerable via `profile-qr-regenerate`. |
 | created_at | timestamptz | No | now() | |
 | updated_at | timestamptz | No | now() | |
 
@@ -185,13 +198,14 @@ Standard junction tables with cascade-ready FKs.
 | ticket_price_cents | integer | Default 0 (free) |
 | category | text | Default 'party' |
 | guestlist_enabled | boolean | Default true |
-| guestlist_deadline | timestamptz | **⚠️ Not enforced** |
-| guestlist_require_approval | boolean | **⚠️ No approval UI** |
+| guestlist_deadline | timestamptz | Enforced in `rsvp_join` |
+| guestlist_require_approval | boolean | Enforced; RSVP enters `pending` until approved |
 | guestlist_max_capacity | integer | Separate from max_guests |
 | show_tickets_remaining | boolean | |
 | tickets_available_from | timestamptz | Null = open immediately |
 | tickets_available_until | timestamptz | Null = close 1 min before event |
 | publish_at | timestamptz | **⚠️ Not enforced — events visible immediately** |
+| vip_tables_enabled | boolean | Enable VIP table reservations |
 | sold_out_message | text | |
 | tags | jsonb | Default '[]' |
 
@@ -202,11 +216,35 @@ Standard junction tables with cascade-ready FKs.
 |--------|------|-------|
 | event_id | uuid | FK → events |
 | user_id | uuid | FK → profiles.user_id |
-| status | text | 'going', 'interested', 'pending' |
+| status | text | 'going', 'maybe', 'not_going', 'interested', 'pending' |
 | guest_count | integer | Default 1, max 5 (server-clamped) |
 
 **Writes**: Exclusively through `rsvp_join` / `rsvp_leave` RPCs. No direct client writes.
 **⚠️ Missing**: Unique constraint on `(event_id, user_id)` — needed for upsert in webhook.
+
+#### `waitlist`
+Capacity overflow queue for free RSVPs.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| event_id | uuid | FK → events |
+| user_id | uuid | User on waitlist |
+| position | integer | 1-based position, recomputed after removals |
+| notified_at | timestamptz | Set when promoted |
+
+**Writes**: Enqueued by `rsvp_join` when capacity is full; promoted by `waitlist-promote` edge function (triggered after RSVP leave, order cancellations, and expiry cleanup).
+
+#### `event_media`
+Additional gallery media per event.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| event_id | uuid | FK → events |
+| url | text | Public URL in `event-media` bucket |
+| sort_order | integer | Gallery order |
+| uploaded_by | uuid | Uploading user |
+
+**Writes**: Inserted by `event-media-upload` edge function (signed upload + DB insert). Deletes via `event-media-manage`.
 
 #### `event_messages`
 Attendee chat messages. **Realtime enabled**.
@@ -216,10 +254,68 @@ Attendee chat messages. **Realtime enabled**.
 #### `ticket_tiers`
 Per-event pricing tiers. `price_cents`, `available_quantity`, `sort_order`, `name`.
 
+#### `vip_table_tiers`
+VIP table offerings per event.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| event_id | uuid | FK → events |
+| name | text | Tier name (e.g. Bronze Table) |
+| min_spend_cents | integer | Minimum spend / table price |
+| available_quantity | integer | Number of tables available |
+| max_guests | integer | Max guests per table |
+| included_items | jsonb | List of inclusions |
+| is_active | boolean | Toggle availability |
+
+**RLS**: Host/organiser owner/member manage. Public can view for public events when `vip_tables_enabled`.
+
+#### `vip_table_reservations`
+Paid reservations for VIP tables.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| event_id | uuid | FK → events |
+| vip_table_tier_id | uuid | FK → vip_table_tiers |
+| user_id | uuid | Reserving user |
+| guest_count | integer | Guests included in table |
+| status | text | reserved, confirmed, cancelled, expired |
+| amount_cents | integer | Total charge (min spend + fee) |
+| platform_fee_cents | integer | 7% service fee |
+| stripe_payment_intent_id | text | Stripe PI |
+| expires_at | timestamptz | 15‑minute reservation hold |
+
+**Writes**: Via `vip-reserve` and `vip-payments-intent` edge functions. `stripe-webhook` confirms reservation and upserts RSVP.
+
+#### `vip_refunds`
+Refund records for VIP reservations.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| vip_reservation_id | uuid | FK → vip_table_reservations |
+| amount_cents | integer | Refunded amount |
+| status | text | pending, succeeded, failed |
+| stripe_refund_id | text | Stripe refund reference |
+| initiated_by | uuid | User who initiated refund |
+
+**Writes**: Via `vip-cancel` edge function (refund flow).
+
+#### VIP Availability RPC
+`get_vip_table_tiers_public(event_id)` returns VIP tiers with `available_remaining` and `sold_out`, filtering to public events with `vip_tables_enabled` and excluding expired holds.
+
 #### `orders`
 15-minute reservation window. States: `reserved` → `confirmed` / `failed` / `expired`. Stores `stripe_payment_intent_id`, `stripe_account_id` (connected account).
+Includes `referral_click_id` (nullable) for conversion attribution.
 
 **⚠️ No cleanup cron**: Expired reserved orders are never cleaned up.
+
+#### `event_link_clicks`
+Share + click tracking. `action` in ('share', 'click'), optional `channel`, optional `session_id`.
+
+#### `event_views`
+Per-event views (deduped by `event_id + session_id + view_date`).
+
+#### `event_link_conversions`
+Confirmed ticket purchase attribution. Links `orders` to optional `event_link_clicks`.
 
 #### `tickets`
 Issued after payment confirmation (via webhook). Contains `qr_code` (unique), `status` ('valid', 'cancelled', 'transferred').
@@ -298,7 +394,7 @@ DB-backed sliding window rate limiter. Used by all edge functions. Probabilistic
 | `avatars` | Yes | Profile and organiser avatar uploads |
 | `post-images` | Yes | Post image uploads |
 | `event-flyers` | Yes | Event cover images |
-| `event-media` | Yes | Additional event media gallery |
+| `event-media` | Yes | Additional event media gallery (uploads via `event-media-upload`) |
 
 **⚠️ Issues**: No cleanup on entity deletion (orphaned files). No image compression/resizing. No CDN cache headers.
 
@@ -319,7 +415,7 @@ DB-backed sliding window rate limiter. Used by all edge functions. Probabilistic
 ### Business Logic Functions
 | Function | Purpose |
 |----------|---------|
-| `rsvp_join(event_id, status, guest_count)` | Atomic RSVP with capacity lock |
+| `rsvp_join(event_id, status, guest_count)` | Atomic RSVP with capacity lock; enqueues waitlist when full |
 | `rsvp_leave(event_id)` | RSVP removal |
 | `award_points(action_type, description)` | Points + rank + voucher with row lock |
 
@@ -446,4 +542,4 @@ All migrations are managed via Lovable Cloud and stored in `supabase/migrations/
 
 ---
 
-*Last updated: 16 March 2026*
+*Last updated: 20 March 2026*

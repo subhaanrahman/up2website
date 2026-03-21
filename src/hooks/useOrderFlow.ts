@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { callEdgeFunction } from '@/infrastructure/api-client';
+import { getValidReferralClickId } from '@/utils/tracking';
 
 interface ReserveInput {
   event_id: string;
@@ -33,8 +34,9 @@ export function useOrderFlow() {
     setReserving(true);
     setError(null);
     try {
+      const referral_click_id = getValidReferralClickId(input.event_id) || undefined;
       const result = await callEdgeFunction<ReserveResult>('orders-reserve', {
-        body: input,
+        body: { ...input, referral_click_id },
       });
       setOrder(result);
       return result;

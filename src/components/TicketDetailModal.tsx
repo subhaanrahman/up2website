@@ -15,9 +15,9 @@ interface TicketDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ticket: {
-    id: string;
+    id?: string;
     qrCode: string;
-    status: string;
+    status?: string;
     tierName?: string;
     eventTitle?: string;
     eventDate?: string;
@@ -78,25 +78,25 @@ const TicketDetailModal = ({
           </div>
 
           <p className="text-xs text-muted-foreground font-mono mb-2">
-            {ticket.qrCode.slice(0, 20)}...
+            {ticket.qrCode?.slice(0, 20)}...
           </p>
 
           <Badge
             variant="outline"
             className={
-              ticket.status === "valid"
+              (ticket.status ?? "valid") === "valid"
                 ? "bg-green-500/10 text-green-600 border-green-500/20"
                 : ticket.status === "used"
                 ? "bg-muted text-muted-foreground"
                 : "bg-destructive/10 text-destructive border-destructive/20"
             }
           >
-            {ticket.status}
+            {ticket.status ?? "valid"}
           </Badge>
         </div>
 
-        {/* Transfer Section */}
-        {ticket.status === "valid" && onTransfer && (
+        {/* Transfer Section - only for purchased tickets with id */}
+        {ticket.id && ticket.status === "valid" && onTransfer && (
           <div className="p-4 border-t border-border">
             {!showTransfer ? (
               <Button

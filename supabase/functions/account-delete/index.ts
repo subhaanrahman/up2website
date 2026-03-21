@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { edgeLog } from "../_shared/logger.ts";
+import { connectionsParticipantOr } from "../_shared/postgrest-connection-filters.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
 Deno.serve(async (req) => {
@@ -37,9 +38,7 @@ Deno.serve(async (req) => {
 
     // Delete profile (cascades handled by FK or manual cleanup)
     await adminClient.from("profiles").delete().eq("user_id", user.id);
-    await adminClient.from("connections").delete().or(
-      `requester_id.eq.${user.id},addressee_id.eq.${user.id}`
-    );
+    await adminClient.from("connections").delete().or(connectionsParticipantOr(user.id));
     await adminClient.from("posts").delete().eq("author_id", user.id);
     await adminClient.from("saved_events").delete().eq("user_id", user.id);
     await adminClient.from("rsvps").delete().eq("user_id", user.id);

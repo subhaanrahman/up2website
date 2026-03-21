@@ -50,15 +50,38 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
+    // Support both: ticket qr_code (legacy TKT-xxx or profile PID-xxx) and profile QR for RSVP-only
     const { data: ticket, error: ticketErr } = await serviceClient
       .from("tickets")
       .select("id, user_id, event_id, status")
       .eq("qr_code", qr_code)
       .eq("event_id", event_id)
       .eq("status", "valid")
+      .limit(1)
       .maybeSingle();
 
-    if (ticketErr || !ticket) {
+    let targetUserId: string | null = ticket ? ticket.user_id : null;
+
+    // Fallback: profile QR (digital ID) for RSVP-only attendees (no ticket)
+    if (!ticketErr && !targetUserId) {
+      const { data: profileRow } = await serviceClient
+        .from("profiles")
+        .select("user_id")
+        .eq("qr_code", qr_code)
+        .maybeSingle();
+      if (profileRow) {
+        const { data: rsvp } = await serviceClient
+          .from("rsvps")
+          .select("id")
+          .eq("event_id", event_id)
+          .eq("user_id", profileRow.user_id)
+          .eq("status", "going")
+          .maybeSingle();
+        if (rsvp) targetUserId = profileRow.user_id;
+      }
+    }
+
+    if (!targetUserId) {
       return errorResponse(404, "Invalid or expired ticket", { requestId });
     }
 
@@ -97,14 +120,14 @@ Deno.serve(async (req) => {
       .from("check_ins")
       .select("id")
       .eq("event_id", event_id)
-      .eq("user_id", ticket.user_id)
+      .eq("user_id", targetUserId)
       .maybeSingle();
 
     if (existingCheckIn) {
       const { data: profile } = await serviceClient
         .from("profiles")
         .select("display_name, first_name, last_name")
-        .eq("user_id", ticket.user_id)
+        .eq("user_id", targetUserId)
         .maybeSingle();
       const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Guest";
       return errorResponse(409, "Already checked in", { requestId, details: { display_name: name } });
@@ -116,7 +139,7 @@ Deno.serve(async (req) => {
       .from("check_ins")
       .insert({
         event_id,
-        user_id: ticket.user_id,
+        user_id: targetUserId,
         checked_in_by: user.id,
         method: "qr",
         checked_in_at: now,
@@ -129,20 +152,23 @@ Deno.serve(async (req) => {
       return errorResponse(500, "Failed to check in", { requestId });
     }
 
-    await serviceClient
-      .from("tickets")
-      .update({ checked_in_at: now })
-      .eq("id", ticket.id);
+    if (ticket) {
+      await serviceClient
+        .from("tickets")
+        .update({ checked_in_at: now })
+        .eq("event_id", event_id)
+        .eq("user_id", targetUserId);
+    }
 
     const { data: profile } = await serviceClient
       .from("profiles")
       .select("display_name, first_name, last_name")
-      .eq("user_id", ticket.user_id)
+      .eq("user_id", targetUserId)
       .maybeSingle();
 
     const displayName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Guest";
 
-    edgeLog("info", "QR check-in success", { requestId, event_id, user_id: ticket.user_id });
+    edgeLog("info", "QR check-in success", { requestId, event_id, user_id: targetUserId });
     return successResponse({ success: true, check_in: checkIn, display_name: displayName }, requestId);
   } catch (err) {
     edgeLog("error", "checkin-qr error", { requestId, error: String(err) });

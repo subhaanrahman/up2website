@@ -6,9 +6,15 @@ vi.mock('@/infrastructure/api-client', () => ({
   callEdgeFunction: vi.fn(),
 }));
 
+vi.mock('@/utils/tracking', () => ({
+  getValidReferralClickId: vi.fn(),
+}));
+
 import { callEdgeFunction } from '@/infrastructure/api-client';
+import { getValidReferralClickId } from '@/utils/tracking';
 
 const mockCallEdgeFunction = callEdgeFunction as ReturnType<typeof vi.fn>;
+const mockGetValidReferralClickId = getValidReferralClickId as ReturnType<typeof vi.fn>;
 
 describe('useOrderFlow', () => {
   beforeEach(() => {
@@ -16,6 +22,7 @@ describe('useOrderFlow', () => {
   });
 
   it('reserve sets order on success', async () => {
+    mockGetValidReferralClickId.mockReturnValueOnce('click_1');
     const mockOrder = {
       id: 'ord_1',
       amount_cents: 5000,
@@ -37,6 +44,14 @@ describe('useOrderFlow', () => {
 
     expect(result.current.order).toEqual(mockOrder);
     expect(result.current.error).toBeNull();
+    expect(mockCallEdgeFunction).toHaveBeenCalledWith('orders-reserve', {
+      body: {
+        event_id: 'evt_1',
+        ticket_tier_id: 'tier_1',
+        quantity: 1,
+        referral_click_id: 'click_1',
+      },
+    });
   });
 
   it('reserve sets error on failure', async () => {

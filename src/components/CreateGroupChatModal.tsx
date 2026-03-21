@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,7 +44,7 @@ const CreateGroupChatModal = ({ open, onOpenChange }: CreateGroupChatModalProps)
         .from("connections")
         .select("requester_id, addressee_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`);
+        .or(connectionsParticipantOr(user.id));
 
       if (!connections || connections.length === 0) {
         setFriends([]);

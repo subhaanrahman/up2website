@@ -14,6 +14,10 @@ export interface EventEntity {
   category: string | null;
   maxGuests: number | null;
   isPublic: boolean;
+  vipTablesEnabled?: boolean;
+  refundsEnabled?: boolean;
+  refundPolicyText?: string | null;
+  refundDeadlineHoursBeforeEvent?: number | null;
   ticketsAvailableFrom: string | null;
   ticketsAvailableUntil: string | null;
   createdAt: string;
@@ -35,6 +39,10 @@ export interface CreateEventInput {
   publishAt?: string;
   ticketsAvailableFrom?: string | null;
   ticketsAvailableUntil?: string | null;
+  vipTablesEnabled?: boolean;
+  refundsEnabled?: boolean;
+  refundPolicyText?: string | null;
+  refundDeadlineHoursBeforeEvent?: number | null;
 }
 
 export interface UpdateEventInput extends Partial<CreateEventInput> {

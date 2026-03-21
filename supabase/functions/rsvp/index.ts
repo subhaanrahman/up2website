@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 import { z } from "https://esm.sh/zod@3.23.8";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import { promoteWaitlist } from "../_shared/waitlist-service.ts";
 
 const rsvpSchema = z.object({
   action: z.enum(['join', 'leave']),
@@ -74,6 +75,16 @@ Deno.serve(async (req) => {
 
       if (error) {
         return errorResponse(400, error.message, { requestId });
+      }
+
+      try {
+        const serviceClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        );
+        await promoteWaitlist(serviceClient, event_id);
+      } catch (promoteErr) {
+        edgeLog('warn', 'Waitlist promotion failed after rsvp_leave', { requestId, error: String(promoteErr) });
       }
 
       return successResponse(data, requestId);

@@ -87,14 +87,27 @@ Deno.serve(async (req) => {
     if (eventIds.length === 0) {
       return successResponse({
         total_revenue_cents: 0,
+        total_net_revenue_cents: 0,
         total_attendees: 0,
         net_tickets_sold: 0,
         total_ticket_capacity: 0,
         tickets_sold_pct: 0,
         total_views: 0,
+        total_conversions: 0,
         conversion_rate_pct: 0,
         follower_count: 0,
         vip_guestlist_count: 0,
+        vip_revenue_cents: 0,
+        vip_net_revenue_cents: 0,
+        vip_reservations: 0,
+        demographics: {
+          follower_attendees: 0,
+          non_follower_attendees: 0,
+          new_attendees: 0,
+          returning_attendees: 0,
+          ticket_attendees: 0,
+          rsvp_only_attendees: 0,
+        },
         timeframe,
       }, requestId);
     }
@@ -103,7 +116,7 @@ Deno.serve(async (req) => {
 
     let ordersQuery = serviceClient
       .from('orders')
-      .select('amount_cents, quantity, status, confirmed_at')
+      .select('amount_cents, quantity, status, confirmed_at, user_id, event_id, platform_fee_cents')
       .in('event_id', eventIds)
       .eq('status', 'confirmed');
     if (sinceDate) {
@@ -112,11 +125,20 @@ Deno.serve(async (req) => {
 
     let rsvpsQuery = serviceClient
       .from('rsvps')
-      .select('id, status, created_at')
+      .select('id, status, created_at, user_id, event_id')
       .in('event_id', eventIds)
       .eq('status', 'going');
     if (sinceDate) {
       rsvpsQuery = rsvpsQuery.gte('created_at', sinceDate.toISOString());
+    }
+
+    let vipQuery = serviceClient
+      .from('vip_table_reservations')
+      .select('amount_cents, status, confirmed_at, event_id, platform_fee_cents')
+      .in('event_id', eventIds)
+      .eq('status', 'confirmed');
+    if (sinceDate) {
+      vipQuery = vipQuery.gte('confirmed_at', sinceDate.toISOString());
     }
 
     const tiersQuery = serviceClient
@@ -129,16 +151,40 @@ Deno.serve(async (req) => {
       .select('id', { count: 'exact', head: true })
       .eq('organiser_profile_id', organiser_profile_id);
 
-    const [ordersRes, rsvpsRes, tiersRes, followersRes] = await Promise.all([
+    const viewsQuery = serviceClient
+      .from('event_views')
+      .select('id', { count: 'exact', head: true })
+      .in('event_id', eventIds);
+    if (sinceDate) {
+      viewsQuery.gte('created_at', sinceDate.toISOString());
+    }
+
+    const conversionsQuery = serviceClient
+      .from('event_link_conversions')
+      .select('id', { count: 'exact', head: true })
+      .in('event_id', eventIds);
+    if (sinceDate) {
+      conversionsQuery.gte('created_at', sinceDate.toISOString());
+    }
+
+    const [ordersRes, rsvpsRes, vipRes, tiersRes, followersRes, viewsRes, conversionsRes] = await Promise.all([
       ordersQuery,
       rsvpsQuery,
+      vipQuery,
       tiersQuery,
       followersQuery,
+      viewsQuery,
+      conversionsQuery,
     ]);
 
     const confirmedOrders = ordersRes.data || [];
+    const confirmedVip = vipRes.data || [];
     const totalRevenueCents = confirmedOrders.reduce((sum, o) => sum + (o.amount_cents || 0), 0);
+    const totalNetRevenueCents = confirmedOrders.reduce((sum, o) => sum + ((o.amount_cents || 0) - (o.platform_fee_cents || 0)), 0);
     const netTicketsSold = confirmedOrders.reduce((sum, o) => sum + (o.quantity || 0), 0);
+    const vipRevenueCents = confirmedVip.reduce((sum, v) => sum + (v.amount_cents || 0), 0);
+    const vipNetRevenueCents = confirmedVip.reduce((sum, v) => sum + ((v.amount_cents || 0) - (v.platform_fee_cents || 0)), 0);
+    const vipReservations = confirmedVip.length;
 
     const totalAttendees = (rsvpsRes.data || []).length;
 
@@ -146,23 +192,79 @@ Deno.serve(async (req) => {
     const totalCapacity = tiers.reduce((sum, t) => sum + (t.available_quantity || 0), 0);
     const ticketsSoldPct = totalCapacity > 0 ? Math.round((netTicketsSold / totalCapacity) * 100) : 0;
 
-    // Views/Impressions — placeholder until event_views table is created
-    const totalViews = 0;
-    const conversionRatePct = totalViews > 0 ? Math.round((netTicketsSold / totalViews) * 100) : 0;
+    const totalViews = viewsRes.count || 0;
+    const totalConversions = conversionsRes.count || 0;
+    const conversionRatePct = totalViews > 0 ? Math.round((totalConversions / totalViews) * 100) : 0;
 
     const followerCount = followersRes.count || 0;
     const vipGuestlistCount = totalAttendees;
 
+    // ── Behavioral demographics ────────────────────────────────────
+    const orderUserIds = new Set((confirmedOrders || []).map(o => o.user_id).filter(Boolean));
+    const rsvpUserIds = new Set((rsvpsRes.data || []).map(r => r.user_id).filter(Boolean));
+    const attendeeUserIds = new Set<string>([...orderUserIds, ...rsvpUserIds].filter(Boolean));
+
+    const { data: followerRows } = await serviceClient
+      .from('organiser_followers')
+      .select('user_id')
+      .eq('organiser_profile_id', organiser_profile_id);
+    const followerUserIds = new Set((followerRows || []).map(f => f.user_id));
+    let followerAttendees = 0;
+    attendeeUserIds.forEach((id) => { if (followerUserIds.has(id)) followerAttendees += 1; });
+    const nonFollowerAttendees = Math.max(0, attendeeUserIds.size - followerAttendees);
+
+    let newAttendees = attendeeUserIds.size;
+    let returningAttendees = 0;
+    if (sinceDate) {
+      const [priorRsvps, priorOrders] = await Promise.all([
+        serviceClient
+          .from('rsvps')
+          .select('user_id')
+          .in('event_id', eventIds)
+          .eq('status', 'going')
+          .lt('created_at', sinceDate.toISOString()),
+        serviceClient
+          .from('orders')
+          .select('user_id')
+          .in('event_id', eventIds)
+          .eq('status', 'confirmed')
+          .lt('confirmed_at', sinceDate.toISOString()),
+      ]);
+      const priorUserIds = new Set<string>([
+        ...(priorRsvps.data || []).map(r => r.user_id),
+        ...(priorOrders.data || []).map(o => o.user_id),
+      ].filter(Boolean));
+      returningAttendees = 0;
+      attendeeUserIds.forEach((id) => { if (priorUserIds.has(id)) returningAttendees += 1; });
+      newAttendees = Math.max(0, attendeeUserIds.size - returningAttendees);
+    }
+
+    let rsvpOnlyAttendees = 0;
+    rsvpUserIds.forEach((id) => { if (!orderUserIds.has(id)) rsvpOnlyAttendees += 1; });
+
     return successResponse({
       total_revenue_cents: totalRevenueCents,
+      total_net_revenue_cents: totalNetRevenueCents,
       total_attendees: totalAttendees,
       net_tickets_sold: netTicketsSold,
       total_ticket_capacity: totalCapacity,
       tickets_sold_pct: ticketsSoldPct,
       total_views: totalViews,
+      total_conversions: totalConversions,
       conversion_rate_pct: conversionRatePct,
       follower_count: followerCount,
       vip_guestlist_count: vipGuestlistCount,
+      vip_revenue_cents: vipRevenueCents,
+      vip_net_revenue_cents: vipNetRevenueCents,
+      vip_reservations: vipReservations,
+      demographics: {
+        follower_attendees: followerAttendees,
+        non_follower_attendees: nonFollowerAttendees,
+        new_attendees: newAttendees,
+        returning_attendees: returningAttendees,
+        ticket_attendees: orderUserIds.size,
+        rsvp_only_attendees: rsvpOnlyAttendees,
+      },
       timeframe,
     }, requestId);
   } catch (err) {

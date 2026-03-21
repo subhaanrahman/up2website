@@ -1,7 +1,8 @@
 # Platform Todos
 
 > Consolidated checklist of pending work across APIs, backend, Stripe, optimisation, and cleanup.  
-> Last updated: 2026-03-19
+> Shipped items (e.g. standard ticket `charge.refunded`, organiser refund ledger via `orders-list`, buyer self-service refunds) are documented in `docs/PAYMENT_FLOW.md` and `docs/ARCHITECTURE.md` so this file stays short.  
+> Last updated: 2026-03-20
 
 ---
 
@@ -9,11 +10,12 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Replace Stripe publishable key | ⏳ Pending | Move `pk_test_PLACEHOLDER` in `src/lib/stripe.ts` to `VITE_STRIPE_PUBLISHABLE_KEY` env var |
-| Verify `STRIPE_WEBHOOK_SECRET` | ⏳ Pending | Create webhook endpoint in Stripe dashboard, confirm signing secret matches |
-| Test end-to-end payment flow | ⏳ Pending | Full test with Stripe test mode |
-| Configure CORS for production domain | ⏳ Pending | Edge functions use `*` wildcard — restrict to production domain |
-| Add unique constraint on `rsvps (event_id, user_id)` | ⏳ Pending | Needed for upsert in webhook |
+| Stripe publishable key in env | ⏳ Pending | Set `VITE_STRIPE_PUBLISHABLE_KEY` (see `src/lib/stripe.ts`); must match Stripe Dashboard **test vs live** mode for each environment. |
+| Verify `STRIPE_WEBHOOK_SECRET` | ⏳ Pending | Stripe → Webhooks → endpoint `{SUPABASE_URL}/functions/v1/stripe-webhook`; signing secret must match Edge secret. See [PAYMENT_FLOW.md](PAYMENT_FLOW.md). |
+| Test end-to-end payment flow | ⏳ Partial | **(A)** Automated **recorded 2026-03-20:** `npm run test` ✅, `npm run build` ✅, `npm run test:e2e` ✅ (14 passed, 2 skipped; no real card). **(B)** Manual sandbox: [PAYMENT_FLOW.md — Manual QA playbook](PAYMENT_FLOW.md#manual-qa-playbook-sandbox). Mark **Done** for (B) when run and noted in release. |
+| Run unit + E2E test suites | ✅ Done (2026-03-20) | Same env prerequisites as [TESTING_GUIDE.md](TESTING_GUIDE.md). Latest recorded run: unit + build + Playwright (14 passed, 2 skipped). Re-run before releases if env or specs change. |
+| Configure CORS for production domain | ⏳ Pending | Edge functions use `*` wildcard — restrict to production domain. **Note:** CORS does **not** fix `401 Invalid JWT` (that is auth/env/session). |
+| Add unique constraint on `rsvps (event_id, user_id)` | ✅ Done | `20260317140000_rsvps_event_user_unique.sql` |
 
 ---
 
@@ -30,52 +32,42 @@
 
 ## Backend
 
-### Check-In System
-- [ ] QR code generation for ticket holders (link to checkin-qr)
+Completed backend items are summarized in `docs/ARCHITECTURE.md` and `docs/DATABASE_ARCHITECTURE.md` to keep this list focused on pending work.
 
-### Media Gallery
-- [ ] Edge function or direct storage upload for event media
-- [ ] RLS: host/organiser can upload, public can view
+---
 
-### Event Board (Attendee Chat)
-- [ ] Message deletion by author or host
-- [ ] Rate limiting on message sends
+## Ticketing Flow — standard tickets (Stripe)
 
-### Share & Ticket Links
-- [ ] Track link clicks / conversions
+**Status: feature-complete for app flows** (reserve → pay → webhook → tickets; Connect onboarding; 7% platform fee on top; refund policy + self-service + organiser ledger). Details: [PAYMENT_FLOW.md](PAYMENT_FLOW.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
-### Direct Messaging (Organiser DMs)
-- [ ] Organiser-initiated DMs (outbound)
-- [ ] Realtime enabled on DM tables
-- [ ] Notification integration for new DM messages
-- [ ] Unread message counts per thread
+- [x] Checkout, webhooks, organiser Connect, refunds (organiser + self-service), Manage Event orders/refunds via `orders-list`
 
-### Group Chat Improvements
-- [ ] Realtime on group chat messages
-- [ ] Group chat notification integration
+---
 
-### Analytics
-- [ ] Per-event view tracking
-- [ ] Detailed sales & revenue dashboard
-- [ ] Attendee demographics
+## Product: Guestlist vs VIP tables
 
-### Waitlist
-- [ ] Wire `rsvp_join` to enqueue to waitlist instead of raising exception at capacity
-- [ ] Notification flow when spots open
-- [ ] Waitlist position management
+| Concept | Meaning in product | Implementation notes |
+|--------|---------------------|----------------------|
+| **Guestlist** | People on the **guest list** / RSVP path — **free entry** or non–card gate (approval, capacity, members-only visibility). Not “VIP minimum spend.” | Guestlist panels, `rsvp` / `rsvp-approve`, waitlist; distinct from paid `orders`. |
+| **VIP tables** | **High-AOV** table bookings (minimum spend, larger payment totals). Separate commercial track from standard tickets. | Backend **partially** shipped (tiers, `vip-reserve`, `vip-payments-intent`, `vip-cancel`, Manage Event, analytics). Treat as **finish later** epic — see below. |
 
-### Event Reminders
-- [ ] Scheduled job to send configured reminders (24h before, 1h before, etc.)
-- [ ] Use existing `event_reminders` table configuration
+---
 
-### Guestlist Approval
-- [ ] Approval/rejection UI for hosts
-- [ ] Enforce `guestlist_deadline` in RSVP flow
-- [ ] Enforce `guestlist_require_approval` — hold RSVPs as pending until approved
+## VIP tables / high-AOV (deferred epic)
 
-### VIP Tables (Future)
-- [ ] Design table booking schema
-- [ ] Payment flow for table reservations
+Finish as a **separate** initiative from standard ticketing (lower platform fee vs standard **7%** is a product decision once AOV/pricing is finalised).
+
+- [ ] Stripe: `charge.refunded` for VIP reservations — sync `vip_refunds` / reservation state (`stripe-webhook`)
+- [ ] Reconciliation report: VIP PaymentIntents vs `vip_table_reservations`
+- [ ] Fee strategy: e.g. lower **application_fee** % than standard tickets for high minimum-spend tables (today VIP uses same **7%** on top in `vip-reserve` — change when product locks)
+- [ ] UX polish, ops runbooks, optional E2E with Stripe test mode
+
+**Still useful today (partial ship):**
+
+- [x] VIP tier availability in Event Detail (sold-out per tier)
+- [x] VIP reservations list in Manage Event
+- [x] VIP cancellation/refund flow (host + attendee) via `vip-cancel`
+- [x] VIP analytics in organiser dashboard
 
 ---
 
@@ -104,23 +96,25 @@
 | 10 | Extract phone normalization to shared utility across functions | Low |
 
 ### Database
-| # | Item | Impact |
-|---|------|--------|
-| 11 | Add unique index on `profiles.username` | Medium |
-| 12 | Organiser profile queries: single RPC or join instead of waterfall | Low |
-| 13 | **notifications(user_id, created_at)** — composite index | High |
-| 14 | **notifications(user_id, read)** — partial index `WHERE read = false` | High |
-| 15 | **posts(created_at DESC)** — feed pagination | Medium |
-| 16 | **posts(author_id, created_at DESC)** — profile feed | Medium |
-| 17 | **rsvps(event_id, status)** — guest count / capacity checks | High |
-| 18 | **rsvps(user_id, status)** — tickets page | Medium |
-| 19 | **connections** — composite indexes for friend queries | Medium |
-| 20 | **events(event_date)** — upcoming/past filtering | Medium |
-| 21 | **events(organiser_profile_id, event_date)** — dashboard | Medium |
-| 22 | **organiser_followers(organiser_profile_id)** — follower count | Low–Medium |
-| 23 | **post_likes(post_id)** — reaction count | Medium |
-| 24 | **profiles(username)** — @mention, profile lookups | Medium |
-| 25 | **event_messages(event_id, created_at)** — event board ordering | Medium |
+Shipped indexes are in migrations (latest batch `20260324120000_performance_indexes.sql`). Use [PERFORMANCE.md](PERFORMANCE.md) (`pg_stat_statements`) to validate in production.
+
+| # | Item | Impact | Status |
+|---|------|--------|--------|
+| 11 | Unique `profiles.username` | Medium | ✅ Done (`UNIQUE` constraint migration) |
+| 12 | Organiser profile queries: single RPC or join instead of waterfall | Low | ⏳ Open |
+| 13 | **notifications(user_id, created_at)** | High | ✅ Done (`idx_notifications_user_id`) |
+| 14 | **notifications** partial unread `(user_id, created_at) WHERE read = false` | High | ✅ Done (`idx_notifications_user_unread_created`) |
+| 15 | **posts(created_at DESC)** — feed pagination | Medium | ✅ Done (`idx_posts_created`) |
+| 16 | **posts(author_id, created_at DESC)** — profile feed | Medium | ✅ Done (`idx_posts_author_created_at`) |
+| 17 | **rsvps(event_id, status)** | High | ✅ Done (`idx_rsvps_event_status`) |
+| 18 | **rsvps(user_id, status)** — tickets / my RSVPs | Medium | ✅ Done (`idx_rsvps_user_status`) |
+| 19 | **connections** — `(requester_id, status)`, `(addressee_id, status, created_at)` | Medium | ✅ Done |
+| 20 | **events(status, event_date)** — list / search | Medium | ✅ Done (`idx_events_status_event_date`) |
+| 21 | **events(organiser_profile_id, event_date)** — organiser dashboard | Medium | ✅ Done (partial index) |
+| 22 | **organiser_followers(organiser_profile_id)** | Low–Medium | ✅ Done (`idx_organiser_followers_organiser_id`) |
+| 23 | **post_likes(post_id)** | Medium | ✅ Done (`idx_post_likes_post`) |
+| 24 | **profiles(username)** — lookups | Medium | ✅ Covered by unique username |
+| 25 | **event_messages(event_id, created_at)** | Medium | ✅ Done (`idx_event_messages_event_created`) |
 
 ### Resource Efficiency
 | # | Item | Impact |
@@ -132,10 +126,11 @@
 
 ---
 
-## Stripe Phase 3 (pending)
+## Stripe Phase 3 (partial)
 
 ### Webhook Updates
-- [ ] Handle `charge.refunded` — update order status to `refunded`, mark tickets as `cancelled`
+- [x] Handle `charge.refunded` (standard ticket orders) — `stripe-webhook` updates order to `refunded`, cancels tickets, upserts `refunds` row (see `docs/PAYMENT_FLOW.md`)
+- [ ] Handle `charge.refunded` for **VIP** reservations — sync `vip_refunds` / reservation state (see [VIP tables / high-AOV (deferred epic)](#vip-tables--high-aov-deferred-epic))
 - [ ] Handle `charge.dispute.created` — flag order, notify admin
 - [ ] Handle `payout.paid` / `payout.failed` (optional) — organiser payout status tracking
 
@@ -157,12 +152,59 @@
 | 4 | Worker/edge function to receive Cloud Tasks and run handlers |
 | 5 | Use for retries, delayed jobs, webhook follow-ups, cleanup |
 | 6 | Defer Pub/Sub until concrete need (document "Cloud Tasks first") |
+| 7 | Alternatives to Cloud Tasks on non-GCP stacks: **Upstash QStash**, **Cloudflare Queues**, or **Inngest** — same idea: HTTP worker + retries + persistence |
+
+---
+
+## Platform hardening (external checklist)
+
+Cross-cutting items from common “Lovable / early SaaS” advice, mapped to this repo. Use this section to retire duplicate notes elsewhere.
+
+### Security / files
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Presigned uploads for all user content | ⏳ Partial | `event-media-upload` uses signed upload URLs. `post-images` (posts, flyer in create flow) still use client `storage.upload`; optional alignment later. |
+| Private bucket + signed **download** URLs | Future | Public `getPublicUrl` is not time-limited; consider for sensitive media. |
+| Virus / malware scanning | Future | Defer while uploads are image-only with MIME + size checks; revisit for arbitrary files. |
+
+### Payments ops
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Global payments kill switch | ✅ Done | Edge secret `PAYMENTS_DISABLED` (`1` / `true` / `yes`) — `orders-reserve`, `payments-intent`, `vip-reserve`, `vip-payments-intent` return 503. |
+| Stripe webhook signatures | ✅ Done | `stripe-webhook` verifies with `STRIPE_WEBHOOK_SECRET`. |
+| Stripe retries | ✅ N/A (provider) | Stripe retries on non-2xx; we return 2xx after successful handling. |
+| Internal DLQ for webhook side-effects | ⏳ Pending | In-process `enqueue()` today; see Cloud Tasks rows above. |
+
+### Audit
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Domain audit today | ✅ Partial | `moderation_actions` (admin), `payment_events` (Stripe + idempotency). |
+| General-purpose `audit_log` | Future | `(actor_id, action, entity_type, entity_id, metadata, request_id)` — add when admin/compliance needs grow. |
+
+### Observability
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Sentry (errors) | ✅ Done | `@sentry/react` init when `VITE_SENTRY_DSN` is set; `ErrorBoundary` + `captureApiError` report to Sentry. |
+| PostHog (funnels / product analytics) | ⏳ Pending | Not integrated; add when funnel work starts. |
+
+### CI / E2E
+
+| Item | Status | Notes |
+|------|--------|--------|
+| Playwright on PRs | ✅ Done | `.github/workflows/ci.yml` — `e2e` job runs `npx playwright install --with-deps` + `npm run test:e2e` when secrets are configured. |
+| Required GitHub Actions secrets | — | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (same as local `.env`; powers the Vite dev server during E2E). Optional: `VITE_STRIPE_PUBLISHABLE_KEY` for checkout specs. If URL/key are missing, the job skips E2E and passes. See [TESTING_GUIDE.md](TESTING_GUIDE.md). |
+| Seeded staging for E2E | ⏳ Optional | `supabase/migrations/seed*.sql` and `npm run seed:sydney` exist; not wired to CI. |
+| Visual / snapshot tests | Future | Not used today. |
 
 ---
 
 ## Quick Wins (1–2 hours each)
 
-1. **Replace Stripe publishable key** — 15 min
+1. **Set `VITE_STRIPE_PUBLISHABLE_KEY`** — 15 min
 2. **Verify STRIPE_WEBHOOK_SECRET** — 15 min
 3. **CORS for production** — 30 min
 4. **DB: Expired orders cleanup** — ensure `orders-expire-cleanup` cron is set — 15 min

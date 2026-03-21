@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
+import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 
 export interface Friend {
   userId: string;
@@ -18,7 +19,7 @@ export function useFriends(userId: string | undefined) {
         .from("connections")
         .select("requester_id, addressee_id")
         .eq("status", "accepted")
-        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+        .or(connectionsParticipantOr(userId));
 
       if (connError) throw connError;
       if (!connections || connections.length === 0) return [];

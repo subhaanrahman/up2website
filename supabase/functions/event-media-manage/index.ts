@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       // Look up the media to find its event, then verify authorization
       const { data: media } = await serviceClient
         .from('event_media')
-        .select('event_id')
+        .select('event_id, url')
         .eq('id', data.media_id)
         .maybeSingle();
 
@@ -129,6 +129,28 @@ Deno.serve(async (req) => {
 
       if (!authorized) {
         return errorResponse(403, 'Not authorized to manage media for this event', { requestId });
+      }
+
+      let storagePath: string | null = null;
+      try {
+        const urlObj = new URL(media.url);
+        const match = urlObj.pathname.match(/event-media\/(.+)$/);
+        storagePath = match?.[1] ?? null;
+      } catch {
+        storagePath = null;
+      }
+
+      if (storagePath) {
+        const { error: storageErr } = await serviceClient.storage
+          .from('event-media')
+          .remove([storagePath]);
+        if (storageErr) {
+          edgeLog('warn', 'Failed to delete media storage object', {
+            requestId,
+            mediaId: data.media_id,
+            error: String(storageErr),
+          });
+        }
       }
 
       const { error: delErr } = await serviceClient.from('event_media').delete().eq('id', data.media_id);

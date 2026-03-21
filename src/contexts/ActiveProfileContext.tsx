@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { supabase } from '@/infrastructure/supabase';
@@ -77,6 +77,11 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   const [activeProfile, setActiveProfile] = useState<ActiveProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+
+  const lastFetchedUserId = useRef<string | null>(null);
+
   const fetchOrganiserProfiles = useCallback(async () => {
     if (!user) {
       setOrganiserProfiles([]);
@@ -119,19 +124,25 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
     }
 
     setOrganiserProfiles([...owned, ...memberProfiles]);
-  }, [user]);
+  }, [user?.id]);
 
   // Initialise active profile from localStorage or default to personal
   useEffect(() => {
     if (!user) {
       setActiveProfile(null);
       setIsLoading(false);
+      lastFetchedUserId.current = null;
       return;
     }
 
     let cancelled = false;
 
-    setIsLoading(true);
+    // Only show loading when fetching for a new user (avoids refresh loop on token refresh)
+    if (lastFetchedUserId.current !== user.id) {
+      setIsLoading(true);
+    }
+    lastFetchedUserId.current = user.id;
+
     fetchOrganiserProfiles().then(() => {
       if (cancelled) return;
 
@@ -157,14 +168,16 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       }
 
       // Default to personal (profile may not be loaded yet; effect will sync when it loads)
-      const personal = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
+      const personal = personalProfileFromUserAndProfile(user.id, user, profileRef.current ?? null);
       setActiveProfile(personal);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(personal));
       setIsLoading(false);
     });
 
-    return () => { cancelled = true; };
-  }, [user, fetchOrganiserProfiles, profile]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, fetchOrganiserProfiles]);
 
   // Sync personal activeProfile when profile data loads from profiles table
   useEffect(() => {

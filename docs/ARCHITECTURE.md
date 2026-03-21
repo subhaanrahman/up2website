@@ -1,6 +1,6 @@
 # Up2 Platform — Architecture Overview
 
-> Last updated: 2026-03-16  
+> Last updated: 2026-03-22  
 > Status: Codebase-grounded reference. Every claim references actual files.
 
 ---
@@ -31,7 +31,7 @@ Server state: `@tanstack/react-query`. Routing: `react-router-dom` v6. Payments:
 | `Checkout` | `/checkout` | Stripe Elements payment form |
 | `CheckoutSuccess` | `/checkout/success` | Post-payment confirmation |
 | `Auth` | `/auth` | Phone → OTP → Password/Register flow |
-| `Settings` | `/settings/*` | Notifications, privacy, help, about, account, music, contact, email verification, payment methods, blocked users |
+| `Settings` | `/settings/*` | Notifications, privacy, help, about, account, music, contact, email verification, payment methods, blocked users, **Digital ID** |
 | `CreateOrganiserProfile` | `/profile/create-organiser` | Organiser profile creation |
 | `EditOrganiserProfile` | `/profile/edit-organiser` | Organiser profile editing |
 | `OrganiserTeam` | `/profile/organiser-team` | Team member management |
@@ -98,8 +98,15 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 ### Event Board (Attendee Chat)
 - **Component**: `src/components/EventBoard.tsx` — real-time message board on event detail pages.
 - **Access**: Visible only to users who are RSVP'd ("going"), have a valid ticket, or are the event host.
+- **Sending**: `messagingApi.sendEventMessage()` routes through `message-send` edge function (participant validation, rate limited).
 - **Data**: Uses `event_messages` table with realtime subscription via `postgres_changes`.
 - **RLS**: Messages viewable/postable only by attendees (RSVP'd) or the event host.
+
+### Digital ID / Profile QR
+- **Profile QR**: Each profile has a unique `profiles.qr_code` (e.g. `PID-{uuid}`) used as a personal ticket for all events.
+- **Check-in**: `checkin-qr` edge function validates profile QR or ticket QR; attendees show one QR for free and paid events.
+- **Regeneration**: `profile-qr-regenerate` edge function (rate limited) regenerates `qr_code` and updates all tickets for that user.
+- **UI**: `DigitalIdSettings` (`/settings/digital-id`), View Ticket on `EventDetail` and `Tickets`, `TicketDetailModal` shows Digital ID QR.
 
 ### Events & Checkout Flow
 1. `EventDetail` → User selects ticket tier → navigates to `/checkout` with state (`eventId`, `tierId`, `quantity`, etc.)
@@ -187,18 +194,31 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - `notifications` — Notification badge updates
 - `user_points` — Loyalty points live sync
 
-### Edge Functions (42 endpoints in `supabase/functions/`)
+### Backend Features Implemented (Summary)
+- Check-in system with profile/ticket QR validation (`checkin-qr`, `profiles.qr_code`)
+- Event board messaging with host moderation
+- Share + ticket link tracking and conversion attribution
+- Organiser DMs with realtime + notifications + unread counts
+- Group chat realtime + notification integration
+- Analytics: per-event views, sales/revenue, attendee demographics
+- Event reminders via scheduled job and `event_reminders`
+- Guestlist approval workflow (pending/approve/decline + deadlines)
+- Media gallery uploads (edge + storage policies) and waitlist flow
+- VIP tables backend (**partial** — tiers, reserve, pay, cancel, Manage Event; webhook/reconciliation/fee strategy deferred — see [PLATFORM_TODOS.md](PLATFORM_TODOS.md))
+
+### Edge Functions (in `supabase/functions/`)
 
 | Category | Functions |
 |----------|-----------|
 | **Auth** | `check-phone`, `send-otp`, `verify-otp`, `login`, `register`, `dev-login`, `dev-profile` |
 | **Profile** | `profile-update`, `avatar-upload`, `backfill-avatars`, `account-delete` |
 | **Email** | `email-verify-send`, `email-verify-confirm` |
-| **Events** | `events-create`, `events-update`, `event-media-manage` |
-| **RSVP** | `rsvp` (join/leave via action param) |
+| **Events** | `events-create`, `events-update`, `event-media-manage`, `event-media-upload` |
+| **RSVP** | `rsvp` (join/leave via action param), `waitlist-promote` |
 | **Organiser** | `organiser-profile-create`, `organiser-profile-update`, `organiser-team-manage` |
 | **Ticketing** | `orders-reserve`, `orders-list`, `validate-discount`, `ticket-transfer`, `checkin-toggle`, `checkin-qr` |
-| **Payments** | `payments-intent`, `stripe-connect-onboard`, `stripe-connect-status`, `stripe-connect-dashboard`, `stripe-webhook` |
+| **VIP** | `vip-reserve`, `vip-payments-intent`, `vip-cancel` |
+| **Payments** | `payments-intent`, `refunds-create`, `refunds-request-self`, `stripe-connect-onboard`, `stripe-connect-status`, `stripe-connect-dashboard`, `stripe-webhook` |
 | **Social** | `attendee-broadcast`, `referrals-track`, `report-create`, `moderation-block`, `gif-search` |
 | **Messaging** | `message-send`, `group-chat-manage` |
 | **Loyalty** | `loyalty-award-points` |
@@ -231,7 +251,7 @@ Every edge function:
 
 | Function | Type | Purpose |
 |----------|------|---------|
-| `rsvp_join(event_id, status, guest_count)` | SECURITY DEFINER | Atomic RSVP with capacity locking, FOR UPDATE, conflict upsert |
+| `rsvp_join(event_id, status, guest_count)` | SECURITY DEFINER | Atomic RSVP with capacity locking; enqueues waitlist when full |
 | `rsvp_leave(event_id)` | SECURITY DEFINER | RSVP deletion |
 | `award_points(action_type, description)` | SECURITY DEFINER | Points + rank calc + voucher issuance with row lock |
 | `has_role(user_id, role)` / `is_admin(user_id)` | SECURITY DEFINER | Role checks (used in RLS policies) |
@@ -268,6 +288,9 @@ Every edge function:
 | Order reserve | Edge Function (`orders-reserve`) | Inventory check, expiry management |
 | Payment intent | Edge Function (`payments-intent`) | Stripe secret key required |
 | Ticket issuance | Edge Function (`stripe-webhook`) | Webhook-driven, service role |
+| Organiser refund | Edge Function (`refunds-create`) | Host/team authorisation; shared `processRefund` |
+| Buyer self-service refund | Edge Function (`refunds-request-self`) | Order owner + `events.refunds_enabled` + deadline rules |
+| Host order/refund ledger | Edge Function (`orders-list`) | Service role; attaches `refunds[]` per order (RLS blocks organiser client reads on `orders`/`refunds`) |
 | Points award | Edge Function → RPC (`award_points`) | Race condition prevention |
 | Report creation | Edge Function (`report-create`) | Validation, rate limiting |
 | User blocking | Edge Function (`moderation-block`) | Service-role insert, prevents bypass |
@@ -289,7 +312,7 @@ Every edge function:
 | File | Purpose |
 |------|---------|
 | `supabase.ts` | Canonical Supabase client re-export — all app code imports from here |
-| `api-client.ts` | `callEdgeFunction()` — auth, `X-Request-ID` generation, structured logging, `captureApiError` on failure |
+| `api-client.ts` | `callEdgeFunction()` — attaches Bearer from session; **throws if no access token** (avoids 401 spam before auth hydrates); structured logging, `captureApiError` on failure |
 | `config.ts` | Vite env config: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`, `functionsUrl` |
 | `logger.ts` | `createLogger(context)` — structured JSON logging (prod) / readable (dev) with debug/info/warn/error |
 | `errors.ts` | `AppError`, `ValidationError`, `AuthError`, `ApiError`, `parseApiError()` (extracts `request_id` from edge responses) |
@@ -343,7 +366,7 @@ Every edge function:
 |-----------|--------|:---:|:---:|---|
 | `identityRepository` | identity | 1 | 0 | — |
 | `eventsRepository` | events | 12 | 2 | — |
-| `eventManagementRepository` | events | 10 | 9 | `insertMedia`→`event-media-manage`, `deleteMedia`→`event-media-manage` |
+| `eventManagementRepository` | events | 10 | 9 | `joinWaitlist`/`leaveWaitlist`→`waitlist-promote`, `deleteMedia`→`event-media-manage` |
 | `postsRepository` | social | 1 | 5 | `reportPost`→`report-create`, `blockUser`→`moderation-block` |
 | `connectionsRepository` | social | 7 | 10 | — |
 | `profilesRepository` | social | 8 | 0 | — |
@@ -455,7 +478,7 @@ Within each bucket: newest-first. Final sort: weight DESC → recency DESC.
 - Hook: `useNearbyEvents()` in `useFeedQuery.ts`, stale time 2 minutes.
 
 ### Known Gaps / Bugs
-1. **Duplicate feed systems**: `useFeedPosts()` in `usePostsQuery.ts` (legacy, non-paginated, limit 50) coexists with `usePaginatedFeed()` in `useFeedQuery.ts`. The Index page uses the new one; profile pages use the old one. Both subscribe to the same realtime channel, causing double invalidations.
+1. **Dual feed hooks**: `useFeedPosts()` (deprecated, non-paginated) coexists with `usePaginatedFeed()`; Index uses the latter. `useFeedPosts` no longer registers Realtime — home feed uses debounced `home-feed-realtime` invalidation only (`useFeedQuery.ts`).
 2. **Repost deduplication is imperfect**: Same post can appear as both original and repost if the repost timestamp falls in a different cursor window than the original.
 3. **No blocked user filtering in feed**: `blocked_users` table exists but feed queries don't filter out posts from blocked users.
 4. **No muted connection filtering**: `connections.muted` column exists but isn't used in feed scoring.
@@ -503,6 +526,11 @@ Event
 ├── ticket_tiers (pricing structure)
 │   └── orders (reservation → payment → confirmation)
 │       └── tickets (issued post-payment via webhook)
+├── vip_table_tiers (VIP table offerings)
+│   └── vip_table_reservations (reservation → payment → confirmation)
+├── event_views (per-event view tracking)
+├── event_link_clicks (share + click tracking)
+│   └── event_link_conversions (confirmed purchase attribution)
 ├── saved_events (bookmarks)
 ├── waitlist (capacity overflow)
 └── event_messages (attendee chat — realtime)
@@ -511,13 +539,20 @@ Event
 - Free events: RSVP directly, no order/ticket.
 - Paid events: Order → Payment → Ticket + auto-RSVP (going).
 - Guest counts: RSVP supports +1 to +5, clamped server-side.
+- Waitlist: `rsvp_join` enqueues at capacity and returns `{ status: 'waitlisted', position }`.
+- Promotions: `waitlist-promote` edge function promotes earliest entries on RSVP leave, order cancellations, and expiry cleanup; notifications inserted for promoted users.
+
+### Media Gallery Upload Flow
+1. `ManageEvent` requests `event-media-upload` action `init` with file metadata.
+2. Edge function validates host/organiser access, returns signed upload URL + storage path.
+3. Client uploads file to signed URL (no direct storage client upload).
+4. Client calls `event-media-upload` action `complete` to insert `event_media` row.
+5. Public reads use `event_media` + `event-media` bucket (public read policy).
+6. Deletes go through `event-media-manage` which removes storage object + DB row (host/organiser only).
 
 ### Remaining Logic Problems
-1. **Waitlist is schema-only**: Table exists, but no code actually enqueues users to waitlist when events reach capacity. `rsvp_join` raises an exception at capacity — it doesn't redirect to waitlist.
-2. **`event_reminders` has no processing logic**: Reminders can be created/managed by hosts, but there's no scheduled job that actually sends them.
-3. **Guestlist approval workflow incomplete**: `guestlist_require_approval` and `guestlist_deadline` columns exist, but the approval UI and enforcement logic aren't fully wired.
-4. **`publish_at` scheduling is not enforced**: Events with future `publish_at` are still queryable — no filter excludes unpublished events from public listings.
-5. **Event `status` field** defaults to `'published'` but draft/cancelled statuses aren't consistently filtered in queries.
+1. **`publish_at` scheduling is not enforced**: Events with future `publish_at` are still queryable — no filter excludes unpublished events from public listings.
+2. **Event `status` field** defaults to `'published'` but draft/cancelled statuses aren't consistently filtered in queries.
 
 ---
 
@@ -531,6 +566,20 @@ Event
    - `payment_intent.succeeded` → confirms order, issues tickets, auto-RSVPs going, awards loyalty points.
    - `payment_intent.payment_failed` → marks order failed.
    - `charge.refunded` → processes refund.
+   - Conversion attribution → inserts `event_link_conversions` when a confirmed order exists.
+
+### Standard tickets vs VIP (scope)
+
+- **Standard tickets** — Full app flow is treated as **complete**: reserve, pay (7% fee on top via `application_fee_amount`), webhook issuance, Connect onboarding, refunds policy + self-service + organiser ledger. See [PAYMENT_FLOW.md](PAYMENT_FLOW.md).
+- **Guestlist** — RSVP / approval / free-entry semantics; not VIP minimum spend.
+- **VIP tables** — Higher-AOV table bookings; **separate** product track. Backend exists for reserve/pay/cancel/UI; **finish later** items (e.g. VIP `charge.refunded` sync, reconciliation, optional lower fee %) are in [PLATFORM_TODOS.md](PLATFORM_TODOS.md).
+
+### VIP Table Flow
+1. **Reserve**: `vip-reserve` edge function → creates `vip_table_reservations` with 15‑minute expiry.
+2. **Payment Intent**: `vip-payments-intent` edge function → Stripe PaymentIntent with destination charge (organiser connected account).
+3. **Webhook Processing**: `stripe-webhook` confirms reservation, upserts RSVP with `guest_count`, sends notification.
+4. **Cancellation/Refunds**: `vip-cancel` cancels reserved holds or creates Stripe refunds for confirmed reservations and records `vip_refunds`.
+5. **Availability**: `get_vip_table_tiers_public` RPC exposes remaining availability for public events.
 
 ### Stripe Connect Model
 - Express accounts with destination charges.
@@ -559,13 +608,15 @@ Event
 | Ticket issuance (QR) | ✅ Implemented (via webhook queue) |
 | Auto-RSVP on purchase | ✅ Implemented (via webhook queue) |
 | Loyalty points on purchase | ✅ Implemented (via webhook queue) |
-| Refund processing | ✅ Schema + webhook handler |
+| Refund processing | ✅ Organiser + self-service + webhook `charge.refunded` (standard tickets) |
+| Refund policy + ledger | ✅ `events.refunds_*`, `refunds-request-self`, Manage Event via `orders-list` |
 | Discount code validation | ✅ Implemented |
 | Ticket transfer | ✅ Edge function exists |
 | Expired order cleanup | ⚠️ Job type defined but **no scheduled trigger** |
 | Multi-currency | ⚠️ `currency` column exists (default 'zar') but no UI for selection |
-| Stripe publishable key | ⚠️ **Hardcoded in `src/lib/stripe.ts`** — should be env var |
+| Stripe publishable key | ✅ `VITE_STRIPE_PUBLISHABLE_KEY` in `src/lib/stripe.ts` (must be set per env) |
 | Order listing for hosts | ✅ `orders-list` edge function with host authorization |
+| VIP `charge.refunded` sync | ⚠️ Deferred — see [PLATFORM_TODOS.md](PLATFORM_TODOS.md) |
 
 ---
 
@@ -699,7 +750,7 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 ### Architectural Mismatches
 
 5. **Dual feed systems**
-   - `usePostsQuery.ts` → `useFeedPosts()` (legacy, limit 50, no pagination, no scoring)
+   - `usePostsQuery.ts` → `useFeedPosts()` (deprecated; prefer `usePaginatedFeed`)
    - `useFeedQuery.ts` → `usePaginatedFeed()` (v1 personalized, paginated, scored)
    - Both subscribe to same realtime channel. Index page uses new system; profile pages use old system. Should consolidate.
 
@@ -720,19 +771,10 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 
 ### Incomplete Flows
 
-11. **Waitlist is schema-only**
-    - `waitlist` table exists with `position` and `notified_at` columns, but `rsvp_join` raises an exception at capacity instead of enqueuing to waitlist. No notification flow when spots open.
-
-12. **Event reminders have no processing**
-    - `event_reminders` table allows hosts to configure reminders, but no scheduled job actually sends them.
-
-13. **Guestlist approval is partial**
-    - `guestlist_require_approval` and `guestlist_deadline` exist on events, but no approval/rejection UI or enforcement logic.
-
-14. **Admin UI doesn't exist**
+11. **Admin UI doesn't exist**
     - Reports, moderation actions, support requests have full schema but no admin pages, no admin routes, no admin dashboard.
 
-15. **`get_friends_and_following_count` is misleading**
+12. **`get_friends_and_following_count` is misleading**
     - Function name implies it counts friends AND organiser follows, but implementation is identical to `get_friend_count` — only counts accepted connections.
 
 ### Frontend/Backend Inconsistencies
@@ -754,4 +796,4 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 
 ---
 
-*Last updated: 16 March 2026*
+*Last updated: 20 March 2026*

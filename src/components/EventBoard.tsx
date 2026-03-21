@@ -1,18 +1,27 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
+import { messagingApi } from "@/api";
 import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, MessageSquare } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Send, MessageSquare, MoreHorizontal, Trash2, Flag } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 interface EventBoardProps {
   eventId: string;
+  /** When true, host/collaborators see 3-dot menu with Delete, Report */
+  canModerate?: boolean;
 }
 
 interface BoardMessage {
@@ -24,7 +33,7 @@ interface BoardMessage {
   avatarUrl: string | null;
 }
 
-const EventBoard = ({ eventId }: EventBoardProps) => {
+const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -63,7 +72,7 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "event_messages",
           filter: `event_id=eq.${eventId}`,
@@ -90,11 +99,7 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
     if (!message.trim() || !user) return;
     setSending(true);
     try {
-      await messagingRepository.sendEventMessage({
-        eventId,
-        userId: user.id,
-        content: message.trim(),
-      });
+      await messagingApi.sendEventMessage(eventId, message.trim());
       setMessage("");
     } catch {
       toast({ title: "Failed to send", variant: "destructive" });
@@ -108,6 +113,20 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await messagingRepository.deleteEventMessage(messageId);
+      queryClient.invalidateQueries({ queryKey: ["event-board", eventId] });
+      toast({ title: "Message deleted" });
+    } catch {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    }
+  };
+
+  const handleReportMessage = () => {
+    toast({ title: "Report", description: "Report feature coming soon" });
   };
 
   return (
@@ -129,14 +148,14 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
           </p>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className="flex gap-2">
+            <div key={msg.id} className="flex gap-2 group">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={msg.avatarUrl || undefined} />
                 <AvatarFallback className="text-xs">
                   {(msg.displayName || "?")[0]}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-medium text-foreground">
                     {msg.displayName}
@@ -147,6 +166,26 @@ const EventBoard = ({ eventId }: EventBoardProps) => {
                 </div>
                 <p className="text-sm text-foreground break-words">{msg.content}</p>
               </div>
+              {canModerate && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100">
+                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleDeleteMessage(msg.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />Delete
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleReportMessage}>
+                      <Flag className="h-4 w-4 mr-2" />Report
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           ))
         )}

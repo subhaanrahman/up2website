@@ -1,20 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { renderWithProviders } from '@/test/test-utils';
 import TicketEventCard from './TicketEventCard';
 
 vi.mock('@/lib/eventFlyerUtils', () => ({
   getEventFlyer: (id: string) => `https://example.com/flyer/${id}.jpg`,
 }));
 
-function renderWithRouter(ui: React.ReactElement) {
-  return render(<BrowserRouter>{ui}</BrowserRouter>);
-}
-
 describe('TicketEventCard', () => {
   it('renders title and date', () => {
-    renderWithRouter(
+    renderWithProviders(
       <TicketEventCard
         rsvpId="r1"
         eventId="e1"
@@ -29,7 +25,7 @@ describe('TicketEventCard', () => {
   });
 
   it('renders venue when provided', () => {
-    renderWithRouter(
+    renderWithProviders(
       <TicketEventCard
         rsvpId="r1"
         eventId="e1"
@@ -40,11 +36,12 @@ describe('TicketEventCard', () => {
         ticketStatus="purchased"
       />,
     );
-    expect(screen.getByText(/Mon Jun 15 • 8pm • The Ritz/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mon Jun 15 • 8pm/i)).toBeInTheDocument();
+    expect(screen.getByText(/The Ritz/i)).toBeInTheDocument();
   });
 
   it('shows TBD when no eventDate', () => {
-    renderWithRouter(
+    renderWithProviders(
       <TicketEventCard rsvpId="r1" eventId="e1" isPast={false} ticketStatus="going" />,
     );
     expect(screen.getByText('TBD')).toBeInTheDocument();
@@ -52,7 +49,7 @@ describe('TicketEventCard', () => {
 
   it('calls onTransferClick when transfer button clicked', async () => {
     const onTransferClick = vi.fn();
-    renderWithRouter(
+    renderWithProviders(
       <TicketEventCard
         rsvpId="r1"
         eventId="e1"
@@ -68,7 +65,7 @@ describe('TicketEventCard', () => {
   });
 
   it('shows transfer pending badge when hasPendingTransfer', () => {
-    renderWithRouter(
+    renderWithProviders(
       <TicketEventCard
         rsvpId="r1"
         eventId="e1"

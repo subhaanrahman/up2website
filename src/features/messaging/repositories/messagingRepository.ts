@@ -233,4 +233,10 @@ export const messagingRepository = {
     });
     if (error) throw error;
   },
+
+  async deleteEventMessage(messageId: string) {
+    log.info('deleteEventMessage', { messageId });
+    const { error } = await supabase.from('event_messages').delete().eq('id', messageId);
+    if (error) throw error;
+  },
 };

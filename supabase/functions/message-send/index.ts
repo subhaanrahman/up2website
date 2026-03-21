@@ -139,6 +139,19 @@ Deno.serve(async (req) => {
     }
 
     if (data.type === 'event-board') {
+      // Verify caller is an attendee: host, RSVP going, or ticket holder
+      const [eventRow, rsvpRow, ticketRow] = await Promise.all([
+        serviceClient.from('events').select('host_id').eq('id', data.event_id).maybeSingle(),
+        serviceClient.from('rsvps').select('id').eq('event_id', data.event_id).eq('user_id', user.id).eq('status', 'going').maybeSingle(),
+        serviceClient.from('tickets').select('id').eq('event_id', data.event_id).eq('user_id', user.id).maybeSingle(),
+      ]);
+      const isHost = eventRow.data?.host_id === user.id;
+      const isGoing = !!rsvpRow.data;
+      const hasTicket = !!ticketRow.data;
+      if (!isHost && !isGoing && !hasTicket) {
+        return errorResponse(403, 'Not an attendee of this event', { requestId });
+      }
+
       const { error: insertErr } = await serviceClient.from('event_messages').insert({
         event_id: data.event_id,
         user_id: user.id,

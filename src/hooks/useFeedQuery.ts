@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfileQuery';
@@ -49,19 +49,29 @@ export function usePaginatedFeed() {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
 
-  // Realtime invalidation
+  /** Debounce Realtime bursts so any `posts` / `post_reposts` write does not refetch the full infinite feed immediately. */
+  const feedInvalidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const FEED_REALTIME_DEBOUNCE_MS = 2500;
+
   useEffect(() => {
+    const scheduleFeedInvalidate = () => {
+      if (feedInvalidateTimerRef.current) clearTimeout(feedInvalidateTimerRef.current);
+      feedInvalidateTimerRef.current = setTimeout(() => {
+        feedInvalidateTimerRef.current = null;
+        queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+      }, FEED_REALTIME_DEBOUNCE_MS);
+    };
+
     const channel = supabase
-      .channel('feed-posts-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reposts' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
-      })
+      .channel('home-feed-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, scheduleFeedInvalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reposts' }, scheduleFeedInvalidate)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (feedInvalidateTimerRef.current) clearTimeout(feedInvalidateTimerRef.current);
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // Flatten pages into a single array

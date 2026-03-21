@@ -1,28 +1,34 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck, Minus, Plus
+  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck, Minus, Plus, QrCode
 } from "lucide-react";
 import { downloadIcsFile } from "@/lib/calendarUtils";
 import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
+import VipPurchaseModal from "@/components/VipPurchaseModal";
 import ShareEventSheet from "@/components/ShareEventSheet";
 import EventBoard from "@/components/EventBoard";
+import TicketDetailModal from "@/components/TicketDetailModal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEvent } from "@/hooks/useEventsQuery";
+import { useEvent, eventKeys } from "@/hooks/useEventsQuery";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useTicketTiers } from "@/hooks/useTicketTiers";
+import { useVipTableTiers } from "@/hooks/useVipTableTiers";
 import { useOrderFlow } from "@/hooks/useOrderFlow";
 import { format, isPast } from "date-fns";
 import { events as mockEvents } from "@/data/events";
-import { rsvpApi } from "@/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { referralsApi, rsvpApi, refundsApi } from "@/api";
+import { supabase } from "@/infrastructure/supabase";
+import { ticketSelfRefundAllowed } from "@/utils/refundEligibility";
+import { getTrackingSessionId, storeReferralClick } from "@/utils/tracking";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { eventsRepository } from "@/features/events/repositories/eventsRepository";
 import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
@@ -35,16 +41,41 @@ const EventDetail = () => {
   const queryClient = useQueryClient();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showVipPurchaseModal, setShowVipPurchaseModal] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [autoWaitlisted, setAutoWaitlisted] = useState(false);
 
   const { reserving } = useOrderFlow();
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
   const isMock = !!foundMockEvent;
+
+  useEffect(() => {
+    if (!id || isMock) return;
+    const sessionId = getTrackingSessionId();
+    referralsApi.trackView(id, sessionId).catch(() => {});
+
+    const params = new URLSearchParams(window.location.search);
+    const channel = params.get('ref');
+    if (channel) {
+      referralsApi.trackClick(id, channel, sessionId)
+        .then((res) => {
+          if (res?.click_id) storeReferralClick(id, res.click_id);
+        })
+        .catch(() => {});
+    }
+  }, [id, isMock]);
+
+  useEffect(() => {
+    if (!id) return;
+    const stored = localStorage.getItem(`auto-waitlist:${id}`);
+    setAutoWaitlisted(stored === 'true');
+  }, [id]);
 
   // Only fetch from DB if not a mock event (numeric IDs are mock)
   const isUuid = id && id.length > 5;
@@ -53,11 +84,17 @@ const EventDetail = () => {
   // Fetch host profile for DB events
   const { data: host } = useProfile(dbEvent?.hostId);
 
+  // Current user profile for Digital ID / View Ticket QR
+  const { data: myProfile } = useProfile(user?.id);
+
   // Fetch real ticket tiers from DB
   const { data: ticketTiers = [] } = useTicketTiers(dbEvent?.id);
+  const { data: vipTableTiers = [] } = useVipTableTiers(dbEvent?.id);
 
   // Determine if this is a paid event based on DB ticket tiers
   const hasPaidTiers = ticketTiers.length > 0 && ticketTiers.some(t => t.priceCents > 0);
+  const hasVipTables = !!dbEvent?.vipTablesEnabled && vipTableTiers.length > 0;
+  const vipHasAvailability = vipTableTiers.some((t) => !t.soldOut && t.availableRemaining > 0);
 
   // Fetch organiser profile if event has one
   const { data: organiserHost } = useQuery({
@@ -136,6 +173,42 @@ const EventDetail = () => {
       return eventManagementRepository.hasValidTicket(id, user.id);
     },
     enabled: !!id && !!user && !isMock,
+  });
+
+  const { data: myConfirmedOrder } = useQuery({
+    queryKey: ["my-confirmed-order-event", id, user?.id],
+    queryFn: async () => {
+      if (!id || !user) return null;
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("event_id", id)
+        .eq("user_id", user.id)
+        .eq("status", "confirmed")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user && !isMock && !!dbEvent && hasPaidTiers,
+  });
+
+  const refundMutation = useMutation({
+    mutationFn: (orderId: string) => refundsApi.requestSelf(orderId),
+    onSuccess: () => {
+      toast({ title: "Refund processed", description: "Your purchase was refunded." });
+      queryClient.invalidateQueries({ queryKey: ["my-confirmed-order-event", id, user?.id] });
+      if (id) queryClient.invalidateQueries({ queryKey: eventKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: ["user-ticket", id, user?.id] });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Refund failed",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // P-10: Waitlist & capacity check
@@ -223,12 +296,32 @@ const EventDetail = () => {
 
     setRsvpLoading(true);
     try {
-      await rsvpApi.join(id, 'going', guestCount);
+      const result: any = await rsvpApi.join(id, 'going', guestCount);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       queryClient.invalidateQueries({ queryKey: ["event-capacity", id] });
-      toast({ title: "RSVP Submitted!", description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ''}!` });
+      if (result?.status === 'waitlisted') {
+        setAutoWaitlisted(true);
+        localStorage.setItem(`auto-waitlist:${id}`, 'true');
+        refetchWaitlist();
+        toast({
+          title: "Auto-waitlisted",
+          description: `Event is full — you're #${result.position} on the waitlist.`,
+        });
+      } else if (result?.status === 'pending') {
+        setAutoWaitlisted(false);
+        localStorage.removeItem(`auto-waitlist:${id}`);
+        toast({ title: "Request Submitted", description: "Awaiting host approval." });
+      } else {
+        setAutoWaitlisted(false);
+        localStorage.removeItem(`auto-waitlist:${id}`);
+        toast({ title: "RSVP Submitted!", description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ''}!` });
+      }
     } catch (err: any) {
-      const msg = err?.message?.includes('capacity') ? 'Event is at capacity' : 'Something went wrong, please try again.';
+      const msg = err?.message?.includes('capacity')
+        ? 'Event is at capacity'
+        : err?.message?.includes('Guestlist is closed')
+          ? 'Guestlist is closed'
+          : 'Something went wrong, please try again.';
       toast({ title: "RSVP Failed", description: msg, variant: "destructive" });
     } finally {
       setRsvpLoading(false);
@@ -253,6 +346,8 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
+      setAutoWaitlisted(false);
+      localStorage.removeItem(`auto-waitlist:${id}`);
       const position = await eventManagementRepository.joinWaitlist(id, user.id);
       refetchWaitlist();
       toast({ title: "Joined Waitlist", description: `You're #${position} on the waitlist` });
@@ -267,6 +362,8 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
+      setAutoWaitlisted(false);
+      localStorage.removeItem(`auto-waitlist:${id}`);
       await eventManagementRepository.leaveWaitlist(id, user.id);
       refetchWaitlist();
       toast({ title: "Left Waitlist" });
@@ -281,6 +378,8 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
+      setAutoWaitlisted(false);
+      localStorage.removeItem(`auto-waitlist:${id}`);
       await rsvpApi.leave(id);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       toast({ title: "RSVP Cancelled", description: "You've been removed from the guest list." });
@@ -371,6 +470,16 @@ const EventDetail = () => {
     ? Math.min(...ticketTiers.filter(t => t.priceCents > 0).map(t => t.priceCents))
     : 0;
 
+  const selfRefundCheck =
+    dbEvent && startDate
+      ? ticketSelfRefundAllowed({
+          now: new Date(),
+          eventDate: startDate,
+          refundsEnabled: dbEvent.refundsEnabled ?? false,
+          refundDeadlineHoursBeforeEvent: dbEvent.refundDeadlineHoursBeforeEvent,
+        })
+      : { ok: false as const, reason: "" };
+
   return (
     <div className="min-h-screen bg-background pb-40">
       {/* Top bar */}
@@ -444,6 +553,44 @@ const EventDetail = () => {
         <div>
           <p className="text-muted-foreground text-sm leading-relaxed">{eventDescription}</p>
         </div>
+
+        {dbEvent && hasPaidTiers && (
+          <div className="rounded-tile border border-border/60 bg-muted/20 px-3 py-2.5 text-sm space-y-2">
+            <p className="font-medium text-foreground">
+              {dbEvent.refundsEnabled ? "Refunds available" : "No refunds for this event"}
+            </p>
+            {dbEvent.refundPolicyText ? (
+              <p className="text-muted-foreground text-xs leading-relaxed">{dbEvent.refundPolicyText}</p>
+            ) : dbEvent.refundsEnabled ? (
+              <p className="text-muted-foreground text-xs">
+                You may request a refund from My Tickets or here before the cutoff (if any) set by the organiser.
+              </p>
+            ) : null}
+            {!dbEvent.refundsEnabled && (
+              <p className="text-xs text-muted-foreground">
+                The organiser has not enabled self-service refunds. Contact them if you need help.
+              </p>
+            )}
+            {user && myConfirmedOrder && selfRefundCheck.ok && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full border-destructive/40 text-destructive hover:bg-destructive/10"
+                disabled={refundMutation.isPending}
+                onClick={() => {
+                  if (!window.confirm("Request a refund? Your tickets will be cancelled.")) return;
+                  refundMutation.mutate(myConfirmedOrder.id);
+                }}
+              >
+                {refundMutation.isPending ? "Processing…" : "Request refund"}
+              </Button>
+            )}
+            {user && myConfirmedOrder && !selfRefundCheck.ok && dbEvent.refundsEnabled && (
+              <p className="text-xs text-muted-foreground">{selfRefundCheck.reason}</p>
+            )}
+          </div>
+        )}
 
         {/* Hosted by */}
         <div>
@@ -527,7 +674,10 @@ const EventDetail = () => {
 
         {/* Event Board — visible to attendees, ticket holders, and host */}
         {dbEvent && user && (userRsvp || isHost || hasTicket) && (
-          <EventBoard eventId={dbEvent.id} />
+          <EventBoard
+            eventId={dbEvent.id}
+            canModerate={isHost || eventCohosts.some((c) => c.id === user.id)}
+          />
         )}
 
         {/* P-05: Add to Calendar */}
@@ -535,6 +685,14 @@ const EventDetail = () => {
           <Button variant="secondary" className="w-full" onClick={handleAddToCalendar}>
             <CalendarPlus className="h-4 w-4 mr-2" />
             Add to Calendar
+          </Button>
+        )}
+
+        {/* View Ticket — show Digital ID for check-in when going or has ticket */}
+        {dbEvent && user && (userRsvp || hasTicket) && myProfile?.qrCode && !isPastEvent && (
+          <Button variant="secondary" className="w-full" onClick={() => setShowTicketModal(true)}>
+            <QrCode className="h-4 w-4 mr-2" />
+            View Ticket
           </Button>
         )}
 
@@ -581,11 +739,19 @@ const EventDetail = () => {
           ) : userRsvp ? (
             <>
               <div>
-                <p className="font-semibold text-foreground">You're {userRsvp.status === 'going' ? 'Going' : 'Interested'}! 🎉</p>
-                <p className="text-sm text-muted-foreground">You're on the guest list</p>
+                <p className="font-semibold text-foreground">
+                  {userRsvp.status === 'pending'
+                    ? 'Pending Approval'
+                    : userRsvp.status === 'going'
+                      ? "You're Going"
+                      : "You're Interested"}{userRsvp.status === 'pending' ? '' : '! 🎉'}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {userRsvp.status === 'pending' ? 'Awaiting host approval' : "You're on the guest list"}
+                </p>
               </div>
               <Button variant="secondary" size="lg" onClick={handleLeaveRSVP} disabled={rsvpLoading}>
-                {rsvpLoading ? "..." : "Cancel RSVP"}
+                {rsvpLoading ? "..." : userRsvp.status === 'pending' ? "Cancel Request" : "Cancel RSVP"}
               </Button>
             </>
           ) : isMock ? (
@@ -608,7 +774,14 @@ const EventDetail = () => {
             waitlistStatus ? (
               <>
                 <div>
-                  <p className="font-semibold text-foreground">On Waitlist #{waitlistStatus.position}</p>
+                  <p className="font-semibold text-foreground">
+                    On Waitlist #{waitlistStatus.position}
+                    {autoWaitlisted ? (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
+                        Auto-waitlisted
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="text-sm text-muted-foreground">We'll notify you if a spot opens</p>
                 </div>
                 <Button variant="secondary" size="lg" onClick={handleLeaveWaitlist} disabled={rsvpLoading}>
@@ -663,6 +836,18 @@ const EventDetail = () => {
             </>
           )}
         </div>
+        {hasVipTables ? (
+          <div className="mt-3">
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => { if (!user) navigate("/auth"); else setShowVipPurchaseModal(true); }}
+              disabled={!vipHasAvailability}
+            >
+              {vipHasAvailability ? "Reserve VIP Table" : "VIP Tables Sold Out"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       {dbEvent && (
@@ -679,6 +864,34 @@ const EventDetail = () => {
         />
       )}
 
+      {dbEvent && (
+        <VipPurchaseModal
+          open={showVipPurchaseModal}
+          onOpenChange={setShowVipPurchaseModal}
+          eventTitle={eventTitle}
+          eventDate={`${eventDate} • ${eventTime}`}
+          eventLocation={eventAddress || eventLocation}
+          vipTiers={vipTableTiers}
+          loading={false}
+          onCheckout={(tierId, guestCount, specialRequests) => {
+            setShowVipPurchaseModal(false);
+            navigate("/vip-checkout", {
+              state: {
+                eventId: dbEvent.id,
+                eventTitle,
+                eventDate: `${eventDate} • ${eventTime}`,
+                eventLocation: eventAddress || eventLocation,
+                tierId,
+                tierName: vipTableTiers.find((t) => t.id === tierId)?.name || "VIP Table",
+                minSpendCents: vipTableTiers.find((t) => t.id === tierId)?.minSpendCents || 0,
+                guestCount,
+                specialRequests,
+              },
+            });
+          }}
+        />
+      )}
+
       <ShareEventSheet
         open={showShareSheet}
         onOpenChange={setShowShareSheet}
@@ -688,6 +901,21 @@ const EventDetail = () => {
         eventLocation={eventAddress || eventLocation}
         eventImage={eventImage}
         eventId={dbEvent?.id}
+      />
+
+      <TicketDetailModal
+        open={showTicketModal}
+        onOpenChange={setShowTicketModal}
+        ticket={
+          dbEvent && myProfile?.qrCode
+            ? {
+                qrCode: myProfile.qrCode,
+                eventTitle: dbEvent.title,
+                eventDate: startDate ? format(startDate, "EEE MMM d, yyyy · h:mm a") : undefined,
+                tierName: "Digital ID",
+              }
+            : null
+        }
       />
 
       <BottomNav />

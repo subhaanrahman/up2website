@@ -22,10 +22,22 @@ import EventDetailsForm, { type CohostEntry } from "@/components/create-event/Ev
 import TicketingPanel from "@/components/create-event/TicketingPanel";
 import type { TicketTier } from "@/components/create-event/TicketTierModal";
 import type { DiscountCode } from "@/components/create-event/DiscountCodeModal";
+import type { VipTableTier } from "@/components/create-event/VipTableTierModal";
 import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
+import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
+import { supabase } from "@/infrastructure/supabase";
+import { AppError } from "@/infrastructure/errors";
 
 type EditTab = "details" | "ticketing";
+
+function parseRefundDeadlineHoursInput(s: string): number | null | undefined {
+  const t = s.trim();
+  if (!t) return undefined;
+  const n = parseInt(t, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 168) return undefined;
+  return n;
+}
 
 const EditEvent = () => {
   const { id } = useParams<{ id: string }>();
@@ -59,14 +71,20 @@ const EditEvent = () => {
   const [discountsEnabled, setDiscountsEnabled] = useState(false);
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [ticketTiers, setTicketTiers] = useState<TicketTier[]>([]);
+  const [vipTableTiers, setVipTableTiers] = useState<VipTableTier[]>([]);
   const [ticketsAvailableFrom, setTicketsAvailableFrom] = useState("");
   const [ticketsAvailableUntil, setTicketsAvailableUntil] = useState("");
   const [soldOutMessageEnabled, setSoldOutMessageEnabled] = useState(false);
   const [soldOutMessage, setSoldOutMessage] = useState("");
+  const [vipTablesEnabled, setVipTablesEnabled] = useState(false);
+  const [refundsEnabled, setRefundsEnabled] = useState(false);
+  const [refundDeadlineHours, setRefundDeadlineHours] = useState("");
+  const [refundPolicyText, setRefundPolicyText] = useState("");
 
   const activeOrgId = isOrganiser ? activeProfile?.id : undefined;
   const { data: connectStatus } = useStripeConnectStatus(activeOrgId);
   const payoutsReady = connectStatus?.charges_enabled ?? false;
+  const { startOnboarding: onStartOnboarding } = useStripeConnectOnboard(activeOrgId);
 
   // Populate form when event loads
   useEffect(() => {
@@ -82,6 +100,11 @@ const EditEvent = () => {
       setCoverImage(event.coverImage || null);
       setTicketsAvailableFrom(event.ticketsAvailableFrom || "");
       setTicketsAvailableUntil(event.ticketsAvailableUntil || "");
+      setVipTablesEnabled(event.vipTablesEnabled ?? false);
+      setRefundsEnabled(event.refundsEnabled ?? false);
+      setRefundPolicyText(event.refundPolicyText || "");
+      const h = event.refundDeadlineHoursBeforeEvent;
+      setRefundDeadlineHours(h != null && h > 0 ? String(h) : "");
     }
   }, [event]);
 
@@ -179,6 +202,30 @@ const EditEvent = () => {
     }
   }, [existingTiers]);
 
+  const { data: existingVipTiers } = useQuery({
+    queryKey: ["vip-table-tiers-edit", id],
+    queryFn: async () => {
+      if (!id) return [];
+      const data = await eventManagementRepository.getVipTableTiers(id);
+      return data.map((t) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        minSpend: t.min_spend_cents / 100,
+        availableQuantity: t.available_quantity,
+        maxGuests: t.max_guests,
+        includedItems: t.included_items || [],
+      } as VipTableTier));
+    },
+    enabled: !!id,
+  });
+
+  useEffect(() => {
+    if (existingVipTiers?.length) {
+      setVipTableTiers(existingVipTiers);
+    }
+  }, [existingVipTiers]);
+
   // Authorization check
   const { data: isOrganiserOwner } = useQuery({
     queryKey: ["event-organiser-check", id, user?.id],
@@ -211,6 +258,22 @@ const EditEvent = () => {
     }
     setFormErrors({});
 
+    const { data: { user: freshUser }, error: authErr } = await supabase.auth.getUser();
+    if (authErr || !freshUser) {
+      toast({ title: "Session expired", description: "Please sign in again.", variant: "destructive" });
+      navigate("/auth");
+      return;
+    }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      toast({
+        title: "Session not ready",
+        description: "No access token. Sign out and sign in again, or check VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY match this project.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const eventDateTime = time ? `${date}T${time}:00` : `${date}T00:00:00`;
 
     try {
@@ -225,6 +288,10 @@ const EditEvent = () => {
         coverImage: coverImage || undefined,
         ticketsAvailableFrom: ticketsAvailableFrom ? new Date(ticketsAvailableFrom).toISOString() : null,
         ticketsAvailableUntil: ticketsAvailableUntil ? new Date(ticketsAvailableUntil).toISOString() : null,
+        vipTablesEnabled,
+        refundsEnabled,
+        refundPolicyText: refundPolicyText.trim() || null,
+        refundDeadlineHoursBeforeEvent: parseRefundDeadlineHoursInput(refundDeadlineHours) ?? null,
       });
 
       // Sync co-hosts: remove old, add new
@@ -258,10 +325,34 @@ const EditEvent = () => {
         }
       }
 
+      if (vipTablesEnabled && vipTableTiers.length > 0) {
+        await eventManagementRepository.upsertVipTableTiers(
+          id,
+          vipTableTiers.map((t) => ({
+            id: t.id,
+            name: t.name,
+            description: t.description ?? null,
+            minSpendCents: Math.round(t.minSpend * 100),
+            availableQuantity: t.availableQuantity,
+            maxGuests: t.maxGuests,
+            includedItems: t.includedItems,
+          }))
+        );
+        const existingVipIds = existingVipTiers?.map((t) => t.id) || [];
+        const currentVipIds = vipTableTiers.map((t) => t.id);
+        const toDeleteVipTiers = existingVipIds.filter((eid) => !currentVipIds.includes(eid));
+        if (toDeleteVipTiers.length > 0) {
+          await eventManagementRepository.deleteVipTableTiers(toDeleteVipTiers);
+        }
+      }
+
       toast({ title: "Event updated!", description: "Your changes have been saved." });
       navigate(`/events/${id}`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update event.";
+      let msg = err instanceof Error ? err.message : "Failed to update event.";
+      if (err instanceof AppError && err.statusCode === 401) {
+        msg += " If you changed .env, sign out and sign in again.";
+      }
       toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
@@ -369,11 +460,18 @@ const EditEvent = () => {
                   discountsEnabled={discountsEnabled} setDiscountsEnabled={setDiscountsEnabled}
                   discountCodes={discountCodes} setDiscountCodes={setDiscountCodes}
                   ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
+                  vipTableTiers={vipTableTiers} setVipTableTiers={setVipTableTiers}
                   ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
                   ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
                   soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
                   soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
+                  vipTablesEnabled={vipTablesEnabled} setVipTablesEnabled={setVipTablesEnabled}
+                  refundsEnabled={refundsEnabled} setRefundsEnabled={setRefundsEnabled}
+                  refundDeadlineHours={refundDeadlineHours} setRefundDeadlineHours={setRefundDeadlineHours}
+                  refundPolicyText={refundPolicyText} setRefundPolicyText={setRefundPolicyText}
                   payoutsReady={payoutsReady}
+                  organiserProfileId={activeOrgId}
+                  onStartOnboarding={onStartOnboarding}
                 />
                 <div className="mt-4">
                   <Button type="submit" size="lg" className="w-full h-12 rounded-tile font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>

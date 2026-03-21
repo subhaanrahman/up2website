@@ -9,6 +9,9 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'settings-upsert':    { max: 10, windowSec: 60 },
   'orders-reserve':     { max: 10, windowSec: 60 },
   'payments-intent':    { max: 10, windowSec: 60 },
+  'vip-reserve':        { max: 10, windowSec: 60 },
+  'vip-payments-intent': { max: 10, windowSec: 60 },
+  'vip-cancel':         { max: 10, windowSec: 60 },
   'send-otp':           { max: 5,  windowSec: 60 },
   'verify-otp':         { max: 5,  windowSec: 60 },
   'check-phone':        { max: 10, windowSec: 60 },
@@ -16,10 +19,15 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'register':           { max: 5,  windowSec: 60 },
   'login':              { max: 10, windowSec: 60 },
   'refunds-create':     { max: 10, windowSec: 60 },
+  'refunds-request-self': { max: 5, windowSec: 60 },
   'orders-cancel':      { max: 20, windowSec: 60 },
+  'rsvp-approve':       { max: 30, windowSec: 60 },
   'event-message-send': { max: 30, windowSec: 60 },
+  'event-media-upload': { max: 10, windowSec: 60 },
   'forgot-password-check': { max: 5, windowSec: 60 },
   'forgot-password-reset': { max: 5, windowSec: 60 },
+  'profile-qr-regenerate': { max: 3, windowSec: 300 },
+  'waitlist-promote':   { max: 20, windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };

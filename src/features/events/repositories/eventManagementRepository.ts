@@ -1,5 +1,6 @@
 import { supabase } from '@/infrastructure/supabase';
 import { createLogger } from '@/infrastructure/logger';
+import { callEdgeFunction } from '@/infrastructure/api-client';
 
 const log = createLogger('event-management.repository');
 
@@ -8,28 +9,17 @@ export const eventManagementRepository = {
 
   async joinWaitlist(eventId: string, userId: string) {
     log.info('joinWaitlist', { eventId, userId });
-    const { count } = await supabase
-      .from('waitlist')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_id', eventId);
-    const position = (count || 0) + 1;
-    const { error } = await supabase.from('waitlist').insert({
-      event_id: eventId,
-      user_id: userId,
-      position,
+    const result = await callEdgeFunction<{ status: string; position: number }>('waitlist-promote', {
+      body: { action: 'join', event_id: eventId },
     });
-    if (error) throw error;
-    return position;
+    return result.position;
   },
 
   async leaveWaitlist(eventId: string, userId: string) {
     log.info('leaveWaitlist', { eventId, userId });
-    const { error } = await supabase
-      .from('waitlist')
-      .delete()
-      .eq('event_id', eventId)
-      .eq('user_id', userId);
-    if (error) throw error;
+    await callEdgeFunction('waitlist-promote', {
+      body: { action: 'leave', event_id: eventId },
+    });
   },
 
   async getWaitlistEntry(eventId: string, userId: string) {
@@ -116,8 +106,9 @@ export const eventManagementRepository = {
 
   async deleteMedia(mediaId: string) {
     log.info('deleteMedia', { mediaId });
-    const { error } = await supabase.from('event_media').delete().eq('id', mediaId);
-    if (error) throw error;
+    await callEdgeFunction('event-media-manage', {
+      body: { action: 'delete', media_id: mediaId },
+    });
   },
 
   // ─── Ticket Tiers ───
@@ -156,6 +147,48 @@ export const eventManagementRepository = {
     if (tierIds.length === 0) return;
     log.info('deleteTicketTiers', { count: tierIds.length });
     const { error } = await supabase.from('ticket_tiers').delete().in('id', tierIds);
+    if (error) throw error;
+  },
+
+  // ─── VIP Table Tiers ───
+
+  async getVipTableTiers(eventId: string) {
+    const { data, error } = await supabase
+      .from('vip_table_tiers')
+      .select('*')
+      .eq('event_id', eventId)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async upsertVipTableTiers(
+    eventId: string,
+    tiers: { id?: string; name: string; description?: string | null; minSpendCents: number; availableQuantity: number; maxGuests: number; includedItems: string[] }[],
+  ) {
+    if (tiers.length === 0) return;
+    log.info('upsertVipTableTiers', { eventId, count: tiers.length });
+    const { error } = await supabase.from('vip_table_tiers').upsert(
+      tiers.map((t, idx) => ({
+        id: t.id,
+        event_id: eventId,
+        name: t.name,
+        description: t.description ?? null,
+        min_spend_cents: t.minSpendCents,
+        available_quantity: t.availableQuantity,
+        max_guests: t.maxGuests,
+        included_items: t.includedItems,
+        sort_order: idx,
+      })),
+      { onConflict: 'id' },
+    );
+    if (error) throw error;
+  },
+
+  async deleteVipTableTiers(tierIds: string[]) {
+    if (tierIds.length === 0) return;
+    log.info('deleteVipTableTiers', { count: tierIds.length });
+    const { error } = await supabase.from('vip_table_tiers').delete().in('id', tierIds);
     if (error) throw error;
   },
 
