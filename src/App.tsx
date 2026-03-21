@@ -2,54 +2,57 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
-import Events from "./pages/Events";
-import EventDetail from "./pages/EventDetail";
-import CreateEvent from "./pages/CreateEvent";
-import OnboardingRequired from "./pages/OnboardingRequired";
-import EditEvent from "./pages/EditEvent";
-import EventGuests from "./pages/EventGuests";
-import Tickets from "./pages/Tickets";
-import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
-import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
-import EditProfile from "./pages/EditProfile";
-import Settings from "./pages/Settings";
-import NotificationsSettings from "./pages/NotificationsSettings";
-import PrivacySettings from "./pages/PrivacySettings";
-import HelpCenter from "./pages/HelpCenter";
-import About from "./pages/About";
-import ManageAccount from "./pages/ManageAccount";
-import ConnectMusic from "./pages/ConnectMusic";
-import ContactUs from "./pages/ContactUs";
-import Notifications from "./pages/Notifications";
-import Checkout from "./pages/Checkout";
-import MessageThread from "./pages/MessageThread";
-import DmThread from "./pages/DmThread";
-import UserProfile from "./pages/UserProfile";
-import NotFound from "./pages/NotFound";
-import CreateOrganiserProfile from "./pages/CreateOrganiserProfile";
-import EditOrganiserProfile from "./pages/EditOrganiserProfile";
-import OrganiserTeam from "./pages/OrganiserTeam";
-import FriendsFollowing from "./pages/FriendsFollowing";
-import ManageEvent from "./pages/ManageEvent";
-import EventCheckIn from "./pages/EventCheckIn";
-import TermsOfService from "./pages/TermsOfService";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import EmailVerification from "./pages/EmailVerification";
-import EventAnalytics from "./pages/EventAnalytics";
-import CheckoutSuccess from "./pages/CheckoutSuccess";
-import PaymentMethods from "./pages/PaymentMethods";
-import EventEmbed from "./pages/EventEmbed";
-import BlockedUsers from "./pages/BlockedUsers";
-import MusicCallback from "./pages/MusicCallback";
+import BottomNav from "@/components/BottomNav";
+
+const Index = lazy(() => import("./pages/Index"));
+const Events = lazy(() => import("./pages/Events"));
+const EventDetail = lazy(() => import("./pages/EventDetail"));
+const CreateEvent = lazy(() => import("./pages/CreateEvent"));
+const OnboardingRequired = lazy(() => import("./pages/OnboardingRequired"));
+const EditEvent = lazy(() => import("./pages/EditEvent"));
+const EventGuests = lazy(() => import("./pages/EventGuests"));
+const Tickets = lazy(() => import("./pages/Tickets"));
+const Auth = lazy(() => import("./pages/Auth"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Profile = lazy(() => import("./pages/Profile"));
+const EditProfile = lazy(() => import("./pages/EditProfile"));
+const Settings = lazy(() => import("./pages/Settings"));
+const NotificationsSettings = lazy(() => import("./pages/NotificationsSettings"));
+const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
+const HelpCenter = lazy(() => import("./pages/HelpCenter"));
+const About = lazy(() => import("./pages/About"));
+const ManageAccount = lazy(() => import("./pages/ManageAccount"));
+const ConnectMusic = lazy(() => import("./pages/ConnectMusic"));
+const ContactUs = lazy(() => import("./pages/ContactUs"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const MessageThread = lazy(() => import("./pages/MessageThread"));
+const DmThread = lazy(() => import("./pages/DmThread"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const CreateOrganiserProfile = lazy(() => import("./pages/CreateOrganiserProfile"));
+const EditOrganiserProfile = lazy(() => import("./pages/EditOrganiserProfile"));
+const OrganiserTeam = lazy(() => import("./pages/OrganiserTeam"));
+const FriendsFollowing = lazy(() => import("./pages/FriendsFollowing"));
+const ManageEvent = lazy(() => import("./pages/ManageEvent"));
+const EventCheckIn = lazy(() => import("./pages/EventCheckIn"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const EmailVerification = lazy(() => import("./pages/EmailVerification"));
+const EventAnalytics = lazy(() => import("./pages/EventAnalytics"));
+const CheckoutSuccess = lazy(() => import("./pages/CheckoutSuccess"));
+const PaymentMethods = lazy(() => import("./pages/PaymentMethods"));
+const EventEmbed = lazy(() => import("./pages/EventEmbed"));
+const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
+const MusicCallback = lazy(() => import("./pages/MusicCallback"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +66,20 @@ const queryClient = new QueryClient({
   },
 });
 
+const RouteFallback = () => {
+  const { pathname } = useLocation();
+  const hideBottomNav =
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/embed/");
+
+  return (
+    <div className={`min-h-screen bg-background flex items-center justify-center ${hideBottomNav ? "" : "pb-20"}`}>
+      <div className="text-sm text-muted-foreground animate-pulse">Loading...</div>
+      {!hideBottomNav ? <BottomNav /> : null}
+    </div>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -73,6 +90,7 @@ const App = () => (
           <Sonner />
         <BrowserRouter>
           <PhoneFrame>
+            <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
@@ -123,6 +141,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </PhoneFrame>
         </BrowserRouter>
         </TooltipProvider>

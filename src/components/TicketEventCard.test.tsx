@@ -40,7 +40,8 @@ describe('TicketEventCard', () => {
         ticketStatus="purchased"
       />,
     );
-    expect(screen.getByText(/Mon Jun 15 • 8pm • The Ritz/i)).toBeInTheDocument();
+    expect(screen.getByText(/Mon Jun 15 • 8pm/i)).toBeInTheDocument();
+    expect(screen.getByText(/The Ritz/i)).toBeInTheDocument();
   });
 
   it('shows TBD when no eventDate', () => {

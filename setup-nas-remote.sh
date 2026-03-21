@@ -5,8 +5,8 @@
 NAS_USER="Haan"
 NAS_HOST="192.168.1.126"
 REPO_NAME="up2"
-NAS_GIT_DIR="/volume 2/git/${REPO_NAME}.git"
-NAS_GIT_DIR_URL="/volume%202/git/${REPO_NAME}.git"
+NAS_GIT_DIR="/volume2/git/${REPO_NAME}.git"
+NAS_GIT_DIR_URL="/volume2/git/${REPO_NAME}.git"
 
 echo "=== Setting up git repo on NAS ==="
 echo ""

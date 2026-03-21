@@ -5,11 +5,12 @@ import { createLogger } from '@/infrastructure/logger';
 
 const log = createLogger('events.repository');
 import { startOfToday, endOfToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
-import type { EventEntity, Rsvp } from '../domain/types';
+import type { EventEntity, Rsvp, DiscoveryRailsResponse } from '../domain/types';
 
 export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
 function mapEventRow(row: Record<string, unknown>): EventEntity {
+  const ticketPriceCents = row.ticket_price_cents as number | undefined;
   return {
     id: row.id as string,
     hostId: row.host_id as string,
@@ -28,6 +29,7 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     ticketsAvailableUntil: (row.tickets_available_until as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
+    ticketPriceCents: ticketPriceCents != null ? ticketPriceCents : undefined,
   };
 }
 
@@ -342,5 +344,31 @@ export const eventsRepository = {
       .maybeSingle();
     if (error) throw error;
     return data;
+  },
+
+  async getDiscoveryRails(params: {
+    city?: string | null;
+    friendIds?: string[];
+    limit?: number;
+  }): Promise<DiscoveryRailsResponse> {
+    const limit = params.limit ?? 12;
+    const [nearby, trending] = await Promise.all([
+      this.search({ city: params.city ?? undefined, limit: Math.min(limit, 8) }),
+      this.search({ limit }).then((rows) => rows.slice(0, limit)),
+    ]);
+
+    let friendsGoing: EventEntity[] = [];
+    if (params.friendIds && params.friendIds.length > 0) {
+      const ids = await this.getEventIdsByGoingUserIds(params.friendIds.slice(0, 25));
+      if (ids.length > 0) {
+        friendsGoing = await this.getUpcomingEventsByIds(ids.slice(0, limit));
+      }
+    }
+
+    const soon = [...trending]
+      .sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime())
+      .slice(0, limit);
+
+    return { nearby, trending, friendsGoing, soon };
   },
 };

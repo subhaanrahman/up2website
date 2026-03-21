@@ -161,16 +161,27 @@ All colors MUST be HSL.
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-bold uppercase;
-    letter-spacing: 0.05em;
+    @apply font-bold;
+    letter-spacing: 0.02em;
   }
 
   h1 {
     font-family: 'Akira Expanded', 'Montserrat', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 }
 
 @layer utilities {
+  .surface-card {
+    @apply rounded-tile-sm border border-border/70 bg-card shadow-sm;
+  }
+
   .text-label {
     @apply text-xs font-semibold uppercase;
     letter-spacing: 0.08em;
@@ -219,6 +230,27 @@ All colors MUST be HSL.
     position: relative;
     overflow: hidden;
     isolation: isolate;
+  }
+
+  .status-success {
+    @apply text-emerald-500;
+  }
+
+  .status-warning {
+    @apply text-amber-500;
+  }
+
+  .status-error {
+    @apply text-destructive;
+  }
+
+  .status-info {
+    @apply text-sky-500;
+  }
+
+  .text-dense-meta {
+    @apply text-[12px] text-muted-foreground;
+    color: hsl(var(--muted-foreground) / 0.92);
   }
 
   .pill-shimmer::after {
@@ -270,6 +302,17 @@ All colors MUST be HSL.
   /* Tap-highlight removal */
   button, a {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (pointer: coarse) {
+    button,
+    [role="button"],
+    a[role="button"],
+    input[type="checkbox"],
+    input[type="radio"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   /* Press scale for all interactive elements */

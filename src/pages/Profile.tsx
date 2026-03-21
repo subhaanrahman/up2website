@@ -28,6 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
 import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import OrganiserSetupTasksSection from "@/components/OrganiserSetupTasksSection";
 
 interface EventItem {
   id: string;
@@ -203,8 +204,9 @@ const Profile = () => {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <BottomNav />
       </div>
     );
   }
@@ -333,6 +335,9 @@ const Profile = () => {
             </Badge>
           )}
 
+          {isOrganiser && activeOrg && activeOrg.ownerId === user.id && (
+            <OrganiserSetupTasksSection organiserProfileId={activeOrg.id} activeOrg={activeOrg} />
+          )}
         </div>
 
         {/* Tabs */}

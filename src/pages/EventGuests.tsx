@@ -2,9 +2,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
+import AppHeader from "@/components/AppHeader";
+import VirtualizedStack from "@/components/VirtualizedStack";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEvent } from "@/hooks/useEventsQuery";
 import { useQuery } from "@tanstack/react-query";
@@ -63,17 +65,13 @@ const EventGuests = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border md:hidden">
-        <div className="flex items-center gap-3 px-4 h-14">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Guest List</h1>
-            <p className="text-xs text-muted-foreground">{goingCount} going</p>
-          </div>
-        </div>
-      </header>
+      <div className="md:hidden">
+        <AppHeader
+          title="Guest List"
+          subtitle={`${goingCount} going`}
+          onBack={() => navigate(-1)}
+        />
+      </div>
 
       <main className="pt-4 md:pt-24 pb-12">
         <div className="container mx-auto px-4 max-w-lg">
@@ -97,37 +95,77 @@ const EventGuests = () => {
           ) : guests.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No guests yet</p>
+              <p className="text-foreground font-medium">No guests yet</p>
+              <p className="text-sm mt-1">Invite friends to get the list started.</p>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <Button size="sm" onClick={() => navigate(`/events/${id}`)}>Back to event</Button>
+                <Button size="sm" variant="secondary" onClick={() => navigate("/search")}>Find events</Button>
+              </div>
             </div>
           ) : (
-            <div className="space-y-1">
-              {guests.map(guest => (
-                <div
-                  key={guest.id}
-                  className={`flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer ${friendIds.has(guest.userId) ? 'bg-primary/5 border border-primary/10' : ''}`}
-                  onClick={() => navigate(`/user/${guest.userId}`)}
-                >
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={guest.avatarUrl || ""} />
-                    <AvatarFallback className="bg-card text-foreground font-semibold text-sm">
-                      {(guest.displayName || guest.username || "?").slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-foreground truncate">{guest.displayName || guest.username || "User"}</p>
-                      {friendIds.has(guest.userId) && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Friend</Badge>
-                      )}
+            guests.length > 40 ? (
+              <VirtualizedStack
+                items={guests}
+                itemHeight={74}
+                viewportHeight={560}
+                className="space-y-1"
+                renderItem={(guest) => (
+                  <div
+                    key={guest.id}
+                    className={`flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer ${friendIds.has(guest.userId) ? 'bg-primary/5 border border-primary/10' : ''}`}
+                    onClick={() => navigate(`/user/${guest.userId}`)}
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={guest.avatarUrl || ""} />
+                      <AvatarFallback className="bg-card text-foreground font-semibold text-sm">
+                        {(guest.displayName || guest.username || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">{guest.displayName || guest.username || "User"}</p>
+                        {friendIds.has(guest.userId) && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Friend</Badge>
+                        )}
+                      </div>
+                      {guest.username && <p className="text-sm text-muted-foreground">@{guest.username}</p>}
                     </div>
-                    {guest.username && <p className="text-sm text-muted-foreground">@{guest.username}</p>}
+                    <Badge variant="outline" className={statusColors[guest.status] || statusColors.pending}>
+                      {guest.status}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className={statusColors[guest.status] || statusColors.pending}>
-                    {guest.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                )}
+              />
+            ) : (
+              <div className="space-y-1">
+                {guests.map(guest => (
+                  <div
+                    key={guest.id}
+                    className={`flex items-center gap-3 py-3 px-2 rounded-lg hover:bg-secondary/30 transition-colors cursor-pointer ${friendIds.has(guest.userId) ? 'bg-primary/5 border border-primary/10' : ''}`}
+                    onClick={() => navigate(`/user/${guest.userId}`)}
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={guest.avatarUrl || ""} />
+                      <AvatarFallback className="bg-card text-foreground font-semibold text-sm">
+                        {(guest.displayName || guest.username || "?").slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-foreground truncate">{guest.displayName || guest.username || "User"}</p>
+                        {friendIds.has(guest.userId) && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Friend</Badge>
+                        )}
+                      </div>
+                      {guest.username && <p className="text-sm text-muted-foreground">@{guest.username}</p>}
+                    </div>
+                    <Badge variant="outline" className={statusColors[guest.status] || statusColors.pending}>
+                      {guest.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )
           )}
         </div>
       </main>

@@ -18,6 +18,8 @@ export interface EventEntity {
   ticketsAvailableUntil: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Lowest ticket price in cents (from events.ticket_price_cents or ticket_tiers) */
+  ticketPriceCents?: number;
 }
 
 export interface CreateEventInput {
@@ -47,4 +49,19 @@ export interface Rsvp {
   userId: string;
   status: string;
   createdAt: string;
+}
+
+export interface EventInvite {
+  id: string;
+  eventId: string;
+  recipientUserId: string;
+  inviteStatus: "pending" | "accepted" | "declined";
+  sentAt: string;
+}
+
+export interface DiscoveryRailsResponse {
+  nearby: EventEntity[];
+  trending: EventEntity[];
+  friendsGoing: EventEntity[];
+  soon: EventEntity[];
 }

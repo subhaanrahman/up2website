@@ -2,7 +2,9 @@ import { Link } from "react-router-dom";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
+import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /** Normalized event shape for EventTile — accepts various API shapes */
@@ -34,10 +36,26 @@ export interface EventTileProps {
   isPast?: boolean;
   /** Additional class names for the container */
   className?: string;
+  /** Primary quick action rendered below metadata */
+  primaryAction?: {
+    label: string;
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    disabled?: boolean;
+  };
+  /** Secondary quick actions rendered next to primary action */
+  secondaryActions?: {
+    label: string;
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    disabled?: boolean;
+    icon?: React.ReactNode;
+    ariaLabel?: string;
+  }[];
+  /** Prefetch callback for hover/touch/focus navigation intent */
+  onNavigateIntent?: () => void;
 }
 
 const baseClasses =
-  "flex items-center bg-card rounded-tile-sm overflow-hidden hover:bg-card/80 transition-colors min-h-[7rem]";
+  "flex items-center bg-card rounded-tile-sm border border-border/70 shadow-sm overflow-hidden hover:bg-card/80 transition-colors min-h-[7rem]";
 
 function formatDateBadge(event: EventTileEvent): string {
   const date = event.event_date ?? event.eventDate;
@@ -59,20 +77,31 @@ const TileContent = ({
   event,
   dateRightBadge,
   extraBadges,
+  primaryAction,
+  secondaryActions,
 }: {
   event: EventTileEvent;
   dateRightBadge?: React.ReactNode;
   extraBadges?: React.ReactNode;
+  primaryAction?: EventTileProps["primaryAction"];
+  secondaryActions?: EventTileProps["secondaryActions"];
 }) => {
   const venue = getVenue(event);
+  const coverImage = getCoverImage(event);
+  const coverSmall = getOptimizedUrl(coverImage, { width: 220, quality: 65 }) || coverImage;
+  const coverMedium = getOptimizedUrl(coverImage, { width: 420, quality: 75 }) || coverImage;
+  const coverLarge = getOptimizedUrl(coverImage, { width: 720, quality: 80 }) || coverImage;
   return (
     <>
       <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
         <img
-          src={getCoverImage(event)}
+          src={coverMedium}
+          srcSet={`${coverSmall} 220w, ${coverMedium} 420w, ${coverLarge} 720w`}
+          sizes="(max-width: 768px) 28vw, 140px"
           alt={event.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover bg-secondary/50"
           loading="lazy"
+          decoding="async"
         />
       </div>
       <div className="flex-1 pl-4 pr-2 py-2 min-w-0 flex flex-col justify-center">
@@ -105,6 +134,42 @@ const TileContent = ({
               {extraBadges}
             </div>
           )}
+          {(primaryAction || (secondaryActions && secondaryActions.length > 0)) && (
+            <div className="flex items-center gap-1.5 mt-1.5">
+              {primaryAction && (
+                <Button
+                  size="sm"
+                  className="h-7 rounded-full px-3 text-[11px] font-semibold tracking-wide"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    primaryAction.onClick(e);
+                  }}
+                  disabled={primaryAction.disabled}
+                >
+                  {primaryAction.label}
+                </Button>
+              )}
+              {(secondaryActions || []).map((action) => (
+                <Button
+                  key={action.label}
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 rounded-full px-2.5 text-[11px] font-semibold tracking-wide"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    action.onClick(e);
+                  }}
+                  disabled={action.disabled}
+                  aria-label={action.ariaLabel || action.label}
+                >
+                  {action.icon ? <span className="mr-1">{action.icon}</span> : null}
+                  {action.label}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -120,17 +185,34 @@ export function EventTile({
   wrapper = "link",
   isPast = false,
   className,
+  primaryAction,
+  secondaryActions,
+  onNavigateIntent,
 }: EventTileProps) {
   const href = to ?? `/events/${event.id}`;
   const containerClass = cn(baseClasses, isPast && "opacity-60", className);
+  const hasQuickActions = !!primaryAction || !!(secondaryActions && secondaryActions.length > 0);
+  const effectiveWrapper = hasQuickActions ? "div" : wrapper;
 
   const trailingContent = trailing;
 
-  if (wrapper === "div") {
+  if (effectiveWrapper === "div") {
     return (
       <div className={containerClass}>
-        <Link to={href} className="flex flex-1 items-center min-w-0">
-          <TileContent event={event} dateRightBadge={dateRightBadge} extraBadges={extraBadges} />
+        <Link
+          to={href}
+          className="flex flex-1 items-center min-w-0"
+          onMouseEnter={onNavigateIntent}
+          onTouchStart={onNavigateIntent}
+          onFocus={onNavigateIntent}
+        >
+          <TileContent
+            event={event}
+            dateRightBadge={dateRightBadge}
+            extraBadges={extraBadges}
+            primaryAction={primaryAction}
+            secondaryActions={secondaryActions}
+          />
         </Link>
         {trailingContent != null && (
           <div className="flex items-center gap-0.5 pl-2 pr-3 flex-shrink-0">
@@ -142,8 +224,20 @@ export function EventTile({
   }
 
   return (
-    <Link to={href} className={containerClass}>
-      <TileContent event={event} dateRightBadge={dateRightBadge} extraBadges={extraBadges} />
+    <Link
+      to={href}
+      className={containerClass}
+      onMouseEnter={onNavigateIntent}
+      onTouchStart={onNavigateIntent}
+      onFocus={onNavigateIntent}
+    >
+      <TileContent
+        event={event}
+        dateRightBadge={dateRightBadge}
+        extraBadges={extraBadges}
+        primaryAction={primaryAction}
+        secondaryActions={secondaryActions}
+      />
       {trailingContent}
     </Link>
   );
