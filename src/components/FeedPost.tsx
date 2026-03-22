@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { prefetchEventDetail } from "@/lib/prefetch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +63,9 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
     handleUnreact,
     toggleRepost,
   } = usePostInteractions(postId);
+  const imageSmall = getOptimizedUrl(imageUrl, { width: 360, quality: 70 }) || imageUrl || undefined;
+  const imageMedium = getOptimizedUrl(imageUrl, { width: 640, quality: 80 }) || imageUrl || undefined;
+  const imageLarge = getOptimizedUrl(imageUrl, { width: 1024, quality: 85 }) || imageUrl || undefined;
 
   const handleDelete = async () => {
     try {
@@ -157,12 +161,24 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {/* Event card */}
           {eventData && (
-            <EventTile event={eventData} className="mt-2.5 w-full" />
+            <EventTile
+              event={eventData}
+              className="mt-2.5 w-full"
+              onNavigateIntent={() => prefetchEventDetail(queryClient, eventData.id)}
+            />
           )}
 
           {!eventData && imageUrl && (
             <div className="mt-2.5 rounded-tile overflow-hidden border border-border">
-              <img src={getOptimizedUrl(imageUrl, 'FEED_IMAGE') || imageUrl} alt="Post image" className="w-full max-h-[512px] object-cover" loading="lazy" />
+              <img
+                src={imageMedium}
+                srcSet={imageSmall && imageMedium && imageLarge ? `${imageSmall} 360w, ${imageMedium} 640w, ${imageLarge} 1024w` : undefined}
+                sizes="(max-width: 768px) 100vw, 640px"
+                alt="Post image"
+                className="w-full max-h-[512px] object-cover bg-secondary/50"
+                loading="lazy"
+                decoding="async"
+              />
             </div>
           )}
           {gifUrl && (

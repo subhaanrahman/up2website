@@ -4,15 +4,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users, Plus, MessageSquare, Radio } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import AppHeader from "@/components/AppHeader";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { supabase } from '@/infrastructure/supabase';
 import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { prefetchDmThread, prefetchGroupThread } from "@/lib/prefetch";
+import { ThreadRowSkeleton } from "@/components/ui/skeletons";
 
 /* ── Types ── */
 
@@ -155,9 +158,20 @@ const useDmThreads = (mode: "user" | "organiser", organiserProfileIds?: string[]
 
 /* ── Components ── */
 
-const GroupChatTile = ({ chat, unreadCount }: { chat: GroupChat; unreadCount: number }) => (
+const GroupChatTile = ({
+  chat,
+  unreadCount,
+  onNavigateIntent,
+}: {
+  chat: GroupChat;
+  unreadCount: number;
+  onNavigateIntent?: () => void;
+}) => (
   <Link
     to={`/messages/${chat.id}`}
+    onMouseEnter={onNavigateIntent}
+    onTouchStart={onNavigateIntent}
+    onFocus={onNavigateIntent}
     className="group relative flex flex-col rounded-tile bg-card border border-border/60 p-4 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 min-h-[168px] overflow-hidden"
   >
     <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent rounded-tile pointer-events-none" />
@@ -216,28 +230,32 @@ const GroupChatTile = ({ chat, unreadCount }: { chat: GroupChat; unreadCount: nu
   </Link>
 );
 
-const DmThreadTile = ({ thread, isOrganiserView, unreadCount = 0 }: { thread: DmThread; isOrganiserView: boolean; unreadCount?: number }) => {
+const DmThreadTile = ({
+  thread,
+  isOrganiserView,
+  onNavigateIntent,
+}: {
+  thread: DmThread;
+  isOrganiserView: boolean;
+  onNavigateIntent?: () => void;
+}) => {
   const name = isOrganiserView ? thread.user_name : thread.organiser_name;
   const avatar = isOrganiserView ? thread.user_avatar : thread.organiser_avatar;
 
   return (
     <Link
       to={`/messages/dm/${thread.id}`}
-      className="relative flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
+      onMouseEnter={onNavigateIntent}
+      onTouchStart={onNavigateIntent}
+      onFocus={onNavigateIntent}
+      className="flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
     >
-      <Avatar className="h-12 w-12 shrink-0">
+      <Avatar className="h-12 w-12">
         <AvatarImage src={getOptimizedUrl(avatar, 'AVATAR_SM') || undefined} />
         <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
           {(name || "?")[0]?.toUpperCase()}
         </AvatarFallback>
       </Avatar>
-      {unreadCount > 0 && (
-        <div className="absolute top-2 left-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5">
-          <span className="text-[10px] font-bold text-primary-foreground leading-none">
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        </div>
-      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-sm text-foreground truncate capitalize">{name}</h3>
@@ -246,9 +264,7 @@ const DmThreadTile = ({ thread, isOrganiserView, unreadCount = 0 }: { thread: Dm
           )}
         </div>
         {thread.last_message && (
-          <p className={cn("text-xs truncate", unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
-            {thread.last_message}
-          </p>
+          <p className="text-xs text-muted-foreground truncate">{thread.last_message}</p>
         )}
       </div>
     </Link>
@@ -270,6 +286,7 @@ function SectionDivider({ label }: { label: string }) {
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const { isOrganiser, organiserProfiles } = useActiveProfile();
+  const queryClient = useQueryClient();
   const { data: chats, isLoading: chatsLoading } = useGroupChats();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { perChat } = useUnreadMessages();
@@ -291,8 +308,9 @@ const Dashboard = () => {
   // While auth state is resolving, keep a simple full-screen loader.
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <BottomNav />
       </div>
     );
   }
@@ -303,9 +321,7 @@ const Dashboard = () => {
 
     return (
       <div className="min-h-screen bg-background pb-20">
-        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight text-center">MESSAGES</h1>
-        </header>
+        <AppHeader title="Messages" />
 
         <main className="px-4">
           {/* Inbox section */}
@@ -313,20 +329,25 @@ const Dashboard = () => {
           {orgDmsLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 rounded-tile-sm bg-card animate-pulse" />
+                <ThreadRowSkeleton key={i} />
               ))}
             </div>
           ) : inboxThreads.length > 0 ? (
             <div className="space-y-1">
               {inboxThreads.map((thread) => (
-                <DmThreadTile key={thread.id} thread={thread} isOrganiserView />
+                <DmThreadTile
+                  key={thread.id}
+                  thread={thread}
+                  isOrganiserView
+                  onNavigateIntent={() => prefetchDmThread(queryClient, thread.id)}
+                />
               ))}
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No messages yet</p>
-              <p className="text-xs mt-1">When users message you, they'll appear here</p>
+              <p className="text-sm font-medium text-foreground">No messages yet</p>
+              <p className="text-xs mt-1">When users message you, they appear here.</p>
             </div>
           )}
 
@@ -350,9 +371,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight text-center">GROUP CHATS</h1>
-      </header>
+      <AppHeader title="Group Chats" />
 
       <main className="px-4">
         {/* Group chats grid */}
@@ -365,14 +384,25 @@ const Dashboard = () => {
         ) : groupChats.length > 0 ? (
           <div className="grid grid-cols-2 gap-3">
             {groupChats.map((chat) => (
-              <GroupChatTile key={chat.id} chat={chat} unreadCount={perChat[chat.id] || 0} />
+              <GroupChatTile
+                key={chat.id}
+                chat={chat}
+                unreadCount={perChat[chat.id] || 0}
+                onNavigateIntent={() => prefetchGroupThread(queryClient, chat.id)}
+              />
             ))}
           </div>
         ) : (
           <div className="text-center py-10 text-muted-foreground">
             <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">No group chats yet</p>
+            <p className="text-sm font-medium text-foreground">No group chats yet</p>
             <p className="text-xs mt-1">Create one with 3+ friends</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="h-9 px-3 rounded-full bg-primary text-primary-foreground text-xs font-semibold mt-3"
+            >
+              Start a group
+            </button>
           </div>
         )}
 
@@ -381,19 +411,24 @@ const Dashboard = () => {
         {userDmsLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-14 rounded-tile-sm bg-card animate-pulse" />
+              <ThreadRowSkeleton key={i} />
             ))}
           </div>
         ) : dmThreads.length > 0 ? (
           <div className="space-y-1">
             {dmThreads.map((thread) => (
-              <DmThreadTile key={thread.id} thread={thread} isOrganiserView={false} unreadCount={perChat[thread.id] || 0} />
+              <DmThreadTile
+                key={thread.id}
+                thread={thread}
+                isOrganiserView={false}
+                onNavigateIntent={() => prefetchDmThread(queryClient, thread.id)}
+              />
             ))}
           </div>
         ) : (
           <div className="text-center py-6 text-muted-foreground">
             <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">Message organisers from their profile page</p>
+            <p className="text-xs">Message organisers from profile pages</p>
           </div>
         )}
 

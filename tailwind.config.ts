@@ -67,8 +67,8 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)',
-  			tile: '0.8rem',      /* 20% less than rounded-2xl (1rem) */
-  			'tile-sm': '0.6rem'  /* 20% less than rounded-xl (0.75rem) */
+  			tile: '0.75rem',      /* 25% less than rounded-2xl (1rem) */
+  			'tile-sm': '0.5625rem'  /* 25% less than rounded-xl (0.75rem) */
   		},
   		keyframes: {
   			'accordion-down': {

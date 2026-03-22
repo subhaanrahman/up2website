@@ -28,7 +28,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from '@/infrastructure/supabase';
 import { useUserFeedWithReposts, useOrganiserPosts } from "@/hooks/usePostsQuery";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { getOptimizedUrl, normalizeSupabaseStorageUrlToProject } from "@/lib/imageUtils";
+import OrganiserSetupTasksSection from "@/components/OrganiserSetupTasksSection";
 
 interface EventItem {
   id: string;
@@ -166,16 +166,14 @@ const Profile = () => {
       : ["friend-count", user?.id],
     queryFn: async () => {
       if (isOrganiser && activeOrg) {
-        const { data, error } = await supabase.rpc("get_organiser_follower_count", {
+        const { data } = await supabase.rpc("get_organiser_follower_count", {
           p_organiser_profile_id: activeOrg.id,
         });
-        if (error) throw error;
-        return data ?? 0;
+        return data || 0;
       }
       // Friends only (not following count)
-      const { data, error } = await supabase.rpc("get_friend_count", { p_user_id: user!.id });
-      if (error) throw error;
-      return data ?? 0;
+      const { data } = await supabase.rpc("get_friend_count", { p_user_id: user!.id });
+      return data || 0;
     },
     enabled: !!user,
   });
@@ -187,17 +185,15 @@ const Profile = () => {
       : ["personal-combined-events", user?.id],
     queryFn: async () => {
       if (isOrganiser && activeOrg) {
-        const { data, error } = await supabase.rpc("get_organiser_past_event_count", {
+        const { data } = await supabase.rpc("get_organiser_past_event_count", {
           p_organiser_profile_id: activeOrg.id,
         });
-        if (error) throw error;
-        return data ?? 0;
+        return data || 0;
       }
-      const { data, error } = await supabase.rpc("get_personal_combined_event_count", {
+      const { data } = await supabase.rpc("get_personal_combined_event_count", {
         p_user_id: user!.id,
       });
-      if (error) throw error;
-      return data ?? 0;
+      return data || 0;
     },
     enabled: !!user,
   });
@@ -208,26 +204,19 @@ const Profile = () => {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background pb-20 flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
+        <BottomNav />
       </div>
     );
   }
 
   const displayName = isOrganiser && activeOrg ? activeOrg.displayName : profile?.displayName || "";
-  const rawAvatarUrl = isOrganiser && activeOrg ? activeOrg.avatarUrl || "" : profile?.avatarUrl || "";
-  const avatarUrl =
-    getOptimizedUrl(normalizeSupabaseStorageUrlToProject(rawAvatarUrl), "AVATAR_MD") || "";
-  // Prefer profile.username for @ handle; use auth metadata before phone (digits look wrong as @handle)
-  const meta = user.user_metadata as { username?: string; display_name?: string } | undefined;
+  const avatarUrl = isOrganiser && activeOrg ? activeOrg.avatarUrl || "" : profile?.avatarUrl || "";
+  // Prefer profile.username for @ handle; avoid phone/email fallback until profile has loaded or explicitly failed
   const username = isOrganiser && activeOrg
     ? activeOrg.username
-    : profile?.username ||
-      profile?.displayName ||
-      displayName ||
-      (!profileLoading
-        ? meta?.username || meta?.display_name || user.email?.split("@")[0] || "User"
-        : "…");
+    : profile?.username || profile?.displayName || displayName || (!profileLoading ? (user.phone || user.email?.split("@")[0] || "User") : "…");
   const bio = isOrganiser && activeOrg ? activeOrg.bio || "" : profile?.bio || "";
   const city = isOrganiser && activeOrg ? activeOrg.city || "" : profile?.city || "";
   const classification = isOrganiser && activeOrg ? activeOrg.category : profile?.pageClassification || null;
@@ -346,6 +335,9 @@ const Profile = () => {
             </Badge>
           )}
 
+          {isOrganiser && activeOrg && activeOrg.ownerId === user.id && (
+            <OrganiserSetupTasksSection organiserProfileId={activeOrg.id} activeOrg={activeOrg} />
+          )}
         </div>
 
         {/* Tabs */}

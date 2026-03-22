@@ -1,12 +1,15 @@
 import { useEffect, useCallback, useState } from "react";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Mail } from "lucide-react";
 import { EventTile, type EventTileEvent } from "@/components/EventTile";
 import { Badge } from "@/components/ui/badge";
+import { getEventPricePillLabel, eventHasPaidTickets } from "@/lib/utils";
 import useEmblaCarousel from "embla-carousel-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchEventDetail } from "@/lib/prefetch";
 
 interface NearbyEvent extends EventTileEvent {
   address?: string | null;
-  ticket_price_cents: number;
+  ticket_price_cents?: number;
 }
 
 interface NearbyEventsCarouselProps {
@@ -14,11 +17,9 @@ interface NearbyEventsCarouselProps {
 }
 
 const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
+  const queryClient = useQueryClient();
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: "start" });
   const [activeIndex, setActiveIndex] = useState(0);
-
-  const formatPricePill = (priceCents: number) =>
-    priceCents === 0 ? "Free" : `R${(priceCents / 100).toFixed(2)}`;
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -55,13 +56,23 @@ const NearbyEventsCarousel = ({ events }: NearbyEventsCarouselProps) => {
               <div key={event.id} className="min-w-0 shrink-0 grow-0 basis-full">
                 <EventTile
                   event={event}
+                  onNavigateIntent={() => prefetchEventDetail(queryClient, event.id)}
                   dateRightBadge={(
                     <Badge
                       variant="primary"
                       className="text-[11px] py-1 px-2 gap-1"
                     >
-                      <DollarSign className="h-3 w-3 shrink-0" />
-                      {formatPricePill(event.ticket_price_cents)}
+                      {eventHasPaidTickets(event.ticket_price_cents) ? (
+                        <>
+                          <DollarSign className="h-3 w-3 shrink-0" />
+                          {getEventPricePillLabel(event.ticket_price_cents)}
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="h-3 w-3 shrink-0" />
+                          {getEventPricePillLabel(event.ticket_price_cents)}
+                        </>
+                      )}
                     </Badge>
                   )}
                   className="w-full"

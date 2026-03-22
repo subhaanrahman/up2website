@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, ChevronDown } from "lucide-react";
 import { supabase } from '@/infrastructure/supabase';
 import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
@@ -13,6 +13,8 @@ import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { useToast } from "@/hooks/use-toast";
+import { trackInteraction } from "@/lib/interactionAnalytics";
+import BottomNav from "@/components/BottomNav";
 
 interface DmMessage {
   id: string;
@@ -28,7 +30,13 @@ const DmThread = () => {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const [message, setMessage] = useState("");
+  const [isOtherTyping, setIsOtherTyping] = useState(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const { markChatRead } = useUnreadMessages();
+  const typingTimeoutRef = useRef<number | undefined>(undefined);
+  const lastTypingBroadcastRef = useRef(0);
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const typingChannelRef = useRef<any>(null);
 
   // Mark thread as read on mount
   useEffect(() => {
@@ -68,7 +76,7 @@ const DmThread = () => {
     : organiser?.avatar_url;
 
   // Fetch messages
-  const { data: messages } = useQuery({
+  const { data: messages = [] } = useQuery({
     queryKey: ["dm-messages", id],
     queryFn: async (): Promise<DmMessage[]> =>
       id ? (messagingRepository.getDmMessages(id) as Promise<DmMessage[]>) : [],
@@ -83,9 +91,21 @@ const DmThread = () => {
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "dm_messages", filter: `thread_id=eq.${id}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["dm-messages", id] });
       })
+      .on("broadcast", { event: "typing" }, (payload: any) => {
+        if (!user?.id) return;
+        if (payload?.payload?.senderId === user.id) return;
+        setIsOtherTyping(true);
+        if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = window.setTimeout(() => setIsOtherTyping(false), 2200);
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [id, queryClient]);
+    typingChannelRef.current = channel;
+    return () => {
+      if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+      typingChannelRef.current = null;
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient, user?.id]);
 
   const senderDisplayName = profile?.displayName || profile?.username || "You";
   const { toast } = useToast();
@@ -113,6 +133,7 @@ const DmThread = () => {
         senderId: user.id,
         content,
       });
+      trackInteraction({ action: "dm_send", source: "dm_thread", metadata: { threadId: thread.id } });
 
       queryClient.invalidateQueries({ queryKey: ["dm-messages", id] });
       queryClient.invalidateQueries({ queryKey: ["dm-threads"] });
@@ -154,13 +175,53 @@ const DmThread = () => {
     }
   };
 
+  const broadcastTyping = () => {
+    if (!id || !message.trim()) return;
+    const now = Date.now();
+    if (now - lastTypingBroadcastRef.current < 1200) return;
+    lastTypingBroadcastRef.current = now;
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { senderId: user?.id },
+    }).catch(() => {});
+  };
+
   const formatTime = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 56;
+      setShowJumpToLatest(!nearBottom);
+      if (nearBottom && id) markChatRead(id);
+    };
+    onScroll();
+    el.addEventListener("scroll", onScroll);
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [id, markChatRead]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 56;
+    if (nearBottom) {
+      el.scrollTop = el.scrollHeight;
+      setShowJumpToLatest(false);
+    }
+  }, [messages.length]);
+
+  const lastOwnIndex = [...messages].map((m) => m.sender_id).lastIndexOf(user?.id || "");
+  const hasReplyAfterLastOwn =
+    lastOwnIndex !== -1 &&
+    messages.slice(lastOwnIndex + 1).some((m) => m.sender_id && m.sender_id !== user?.id);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
+    <div className="min-h-screen bg-background flex flex-col pb-20 animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="p-1 text-foreground">
@@ -174,14 +235,16 @@ const DmThread = () => {
         </Avatar>
         <div className="flex-1">
           <p className="font-semibold text-foreground text-sm capitalize">{otherName}</p>
-          <p className="text-xs text-muted-foreground">Direct Message</p>
+          <p className="text-xs text-muted-foreground">{isOtherTyping ? "Typing..." : "Direct Message"}</p>
         </div>
       </header>
 
       {/* Messages */}
-      <main className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {(messages ?? []).map((msg) => {
+      <main ref={scrollRef as any} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 pb-24">
+        {messages.map((msg, index) => {
           const own = msg.sender_id === user?.id;
+          const isLatestOwn = own && index === lastOwnIndex;
+          const pending = msg.id.startsWith("optimistic-");
           return (
             <div key={msg.id} className={`flex ${own ? "justify-end" : "justify-start"}`}>
               <div
@@ -195,18 +258,41 @@ const DmThread = () => {
                 <p className={`text-[10px] mt-1 ${own ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                   {formatTime(msg.created_at)}
                 </p>
+                {isLatestOwn && (
+                  <p className={`text-[10px] mt-0.5 ${own ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                    {pending ? "Sending..." : hasReplyAfterLastOwn ? "Seen" : "Delivered"}
+                  </p>
+                )}
               </div>
             </div>
           );
         })}
       </main>
 
+      {showJumpToLatest && (
+        <button
+          onClick={() => {
+            const el = scrollRef.current;
+            if (!el) return;
+            el.scrollTop = el.scrollHeight;
+            setShowJumpToLatest(false);
+          }}
+          className="absolute bottom-20 right-4 h-9 px-3 rounded-full bg-card border border-border shadow-md inline-flex items-center gap-1 text-xs text-foreground"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+          Latest
+        </button>
+      )}
+
       {/* Input */}
-      <div className="sticky bottom-0 bg-background border-t border-border px-4 py-3 flex items-center gap-2">
+      <div className="sticky bottom-16 bg-background border-t border-border px-4 py-3 flex items-center gap-2">
         <Input
           placeholder="Message..."
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            setMessage(e.target.value);
+            broadcastTyping();
+          }}
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           className="flex-1 bg-secondary border-0 h-10 rounded-full"
         />
@@ -214,6 +300,8 @@ const DmThread = () => {
           <Send className="h-4 w-4" />
         </Button>
       </div>
+
+      <BottomNav />
     </div>
   );
 };

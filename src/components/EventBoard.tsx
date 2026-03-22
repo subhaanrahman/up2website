@@ -1,27 +1,22 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
-import { messagingApi } from "@/api";
 import { messagingRepository } from "@/features/messaging/repositories/messagingRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
+import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Send, MessageSquare, MoreHorizontal, Trash2, Flag } from "lucide-react";
+import { Send, MessageSquare, Megaphone } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { trackInteraction } from "@/lib/interactionAnalytics";
 
 interface EventBoardProps {
   eventId: string;
-  /** When true, host/collaborators see 3-dot menu with Delete, Report */
-  canModerate?: boolean;
+  canBroadcast?: boolean;
+  organiserProfileId?: string | null;
 }
 
 interface BoardMessage {
@@ -31,14 +26,22 @@ interface BoardMessage {
   userId: string;
   displayName: string;
   avatarUrl: string | null;
+  isBroadcast: boolean;
 }
 
-const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
+const HOST_TEMPLATES = [
+  "Doors open in 30 minutes. See you soon.",
+  "Venue update: check the pinned location before heading over.",
+  "Final call: ticket sales close in 1 hour.",
+];
+
+const EventBoard = ({ eventId, canBroadcast = false, organiserProfileId = null }: EventBoardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [broadcastMode, setBroadcastMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: messages = [], isLoading } = useQuery({
@@ -55,11 +58,12 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
         const profile = profileMap.get(m.user_id);
         return {
           id: m.id,
-          content: m.content,
+          content: String(m.content).replace(/^\[Broadcast\]\s*/i, ""),
           createdAt: m.created_at,
           userId: m.user_id,
           displayName: profile?.display_name || "User",
           avatarUrl: profile?.avatar_url || null,
+          isBroadcast: /^\[Broadcast\]\s*/i.test(m.content || ""),
         };
       });
     },
@@ -72,7 +76,7 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "event_messages",
           filter: `event_id=eq.${eventId}`,
@@ -99,8 +103,23 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
     if (!message.trim() || !user) return;
     setSending(true);
     try {
-      await messagingApi.sendEventMessage(eventId, message.trim());
+      const outgoing = broadcastMode ? `[Broadcast] ${message.trim()}` : message.trim();
+      await messagingRepository.sendEventMessage({
+        eventId,
+        userId: user.id,
+        content: outgoing,
+      });
+      if (broadcastMode) {
+        await postsRepository.createPost({
+          authorId: user.id,
+          content: message.trim(),
+          organiserProfileId,
+          eventId,
+        });
+        trackInteraction({ action: "event_broadcast_publish", eventId, source: "event_board" });
+      }
       setMessage("");
+      setBroadcastMode(false);
     } catch {
       toast({ title: "Failed to send", variant: "destructive" });
     } finally {
@@ -115,26 +134,40 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
     }
   };
 
-  const handleDeleteMessage = async (messageId: string) => {
-    try {
-      await messagingRepository.deleteEventMessage(messageId);
-      queryClient.invalidateQueries({ queryKey: ["event-board", eventId] });
-      toast({ title: "Message deleted" });
-    } catch {
-      toast({ title: "Failed to delete", variant: "destructive" });
-    }
-  };
-
-  const handleReportMessage = () => {
-    toast({ title: "Report", description: "Report feature coming soon" });
-  };
-
   return (
     <div className="bg-card rounded-tile-sm p-4">
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare className="h-5 w-5 text-primary" />
         <h3 className="font-semibold text-foreground">Event Board</h3>
       </div>
+
+      {canBroadcast && (
+        <div className="mb-3 space-y-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            {HOST_TEMPLATES.map((template) => (
+              <button
+                key={template}
+                onClick={() => {
+                  setMessage(template);
+                  setBroadcastMode(true);
+                }}
+                className="px-3 py-1.5 rounded-full bg-secondary text-xs text-foreground whitespace-nowrap"
+              >
+                {template.split(":")[0]}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setBroadcastMode((v) => !v)}
+            className={`h-8 px-3 rounded-full text-xs font-semibold inline-flex items-center gap-1.5 ${
+              broadcastMode ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
+            }`}
+          >
+            <Megaphone className="h-3.5 w-3.5" />
+            {broadcastMode ? "Broadcast mode" : "Post update to feed"}
+          </button>
+        </div>
+      )}
 
       <div
         ref={scrollRef}
@@ -148,44 +181,29 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
           </p>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className="flex gap-2 group">
+            <div key={msg.id} className="flex gap-2">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={msg.avatarUrl || undefined} />
                 <AvatarFallback className="text-xs">
                   {(msg.displayName || "?")[0]}
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="text-sm font-medium text-foreground">
                     {msg.displayName}
                   </span>
+                  {msg.isBroadcast && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">
+                      Update
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                   </span>
                 </div>
                 <p className="text-sm text-foreground break-words">{msg.content}</p>
               </div>
-              {canModerate && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100">
-                      <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => handleDeleteMessage(msg.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />Delete
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleReportMessage}>
-                      <Flag className="h-4 w-4 mr-2" />Report
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
           ))
         )}
@@ -194,7 +212,7 @@ const EventBoard = ({ eventId, canModerate = false }: EventBoardProps) => {
       {/* Composer */}
       <div className="flex gap-2">
         <Input
-          placeholder="Write a message..."
+          placeholder={broadcastMode ? "Share an update with everyone..." : "Write a message..."}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}

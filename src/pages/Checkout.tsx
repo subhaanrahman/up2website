@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Info, Loader2 } from "lucide-react";
+import { Info, Loader2, ShieldCheck, RotateCcw, LifeBuoy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import BottomNav from "@/components/BottomNav";
+import AppHeader from "@/components/AppHeader";
 import { useToast } from "@/hooks/use-toast";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { stripePromise } from "@/lib/stripe";
@@ -103,6 +104,22 @@ const CheckoutForm = ({
       {/* Stripe Payment Element */}
       <div className="bg-card rounded-tile-sm p-4 mb-6">
         <h3 className="font-semibold text-foreground mb-3">Payment</h3>
+        <div className="mb-3 rounded-tile-sm border border-border bg-secondary/40 p-2.5">
+          <div className="grid grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+              Secure
+            </div>
+            <div className="flex items-center gap-1.5">
+              <RotateCcw className="h-3.5 w-3.5 text-primary" />
+              Refund policy
+            </div>
+            <div className="flex items-center gap-1.5">
+              <LifeBuoy className="h-3.5 w-3.5 text-primary" />
+              24/7 support
+            </div>
+          </div>
+        </div>
         <PaymentElement />
       </div>
 
@@ -194,15 +211,7 @@ const Checkout = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="flex items-center px-4 py-4">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2">
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground">Checkout</h1>
-        </div>
-      </header>
+      <AppHeader title="Checkout" onBack={() => navigate(-1)} />
 
       {loading && !clientSecret ? (
         <div className="flex items-center justify-center py-20">

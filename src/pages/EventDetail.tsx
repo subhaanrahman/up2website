@@ -1,37 +1,36 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
-  X, Share2, Send, Heart, MapPin, CheckCircle2, Users, Tag, Calendar, HelpCircle, CalendarPlus, Pencil, BadgeCheck, Minus, Plus, QrCode
+  X, Send, MapPin, Users, CalendarPlus, BadgeCheck, Minus, Plus, ShieldCheck
 } from "lucide-react";
 import { downloadIcsFile } from "@/lib/calendarUtils";
 import { useFriendsGoing } from "@/hooks/useFriendsGoing";
 import BottomNav from "@/components/BottomNav";
 import PurchaseModal from "@/components/PurchaseModal";
-import VipPurchaseModal from "@/components/VipPurchaseModal";
 import ShareEventSheet from "@/components/ShareEventSheet";
 import EventBoard from "@/components/EventBoard";
-import TicketDetailModal from "@/components/TicketDetailModal";
+import RsvpConfirmationSheet from "@/components/RsvpConfirmationSheet";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEvent, eventKeys } from "@/hooks/useEventsQuery";
+import { useEvent } from "@/hooks/useEventsQuery";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { useTicketTiers } from "@/hooks/useTicketTiers";
-import { useVipTableTiers } from "@/hooks/useVipTableTiers";
 import { useOrderFlow } from "@/hooks/useOrderFlow";
 import { format, isPast } from "date-fns";
 import { events as mockEvents } from "@/data/events";
-import { referralsApi, rsvpApi, refundsApi } from "@/api";
-import { supabase } from "@/infrastructure/supabase";
-import { ticketSelfRefundAllowed } from "@/utils/refundEligibility";
-import { getTrackingSessionId, storeReferralClick } from "@/utils/tracking";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { rsvpApi } from "@/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ToastAction } from "@/components/ui/toast";
 import { eventsRepository } from "@/features/events/repositories/eventsRepository";
 import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
+import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
+import { callEdgeFunction } from "@/infrastructure/api-client";
+import { trackInteraction } from "@/lib/interactionAnalytics";
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -41,41 +40,18 @@ const EventDetail = () => {
   const queryClient = useQueryClient();
   
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [showVipPurchaseModal, setShowVipPurchaseModal] = useState(false);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [showShareSheet, setShowShareSheet] = useState(false);
+  const [showRsvpConfirmation, setShowRsvpConfirmation] = useState(false);
   const [savingEvent, setSavingEvent] = useState(false);
   const [guestCount, setGuestCount] = useState(1);
-  const [showTicketModal, setShowTicketModal] = useState(false);
-  const [autoWaitlisted, setAutoWaitlisted] = useState(false);
+  const [invitingFriendId, setInvitingFriendId] = useState<string | null>(null);
 
   const { reserving } = useOrderFlow();
 
   // Check mock first
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
   const isMock = !!foundMockEvent;
-
-  useEffect(() => {
-    if (!id || isMock) return;
-    const sessionId = getTrackingSessionId();
-    referralsApi.trackView(id, sessionId).catch(() => {});
-
-    const params = new URLSearchParams(window.location.search);
-    const channel = params.get('ref');
-    if (channel) {
-      referralsApi.trackClick(id, channel, sessionId)
-        .then((res) => {
-          if (res?.click_id) storeReferralClick(id, res.click_id);
-        })
-        .catch(() => {});
-    }
-  }, [id, isMock]);
-
-  useEffect(() => {
-    if (!id) return;
-    const stored = localStorage.getItem(`auto-waitlist:${id}`);
-    setAutoWaitlisted(stored === 'true');
-  }, [id]);
 
   // Only fetch from DB if not a mock event (numeric IDs are mock)
   const isUuid = id && id.length > 5;
@@ -84,17 +60,11 @@ const EventDetail = () => {
   // Fetch host profile for DB events
   const { data: host } = useProfile(dbEvent?.hostId);
 
-  // Current user profile for Digital ID / View Ticket QR
-  const { data: myProfile } = useProfile(user?.id);
-
   // Fetch real ticket tiers from DB
   const { data: ticketTiers = [] } = useTicketTiers(dbEvent?.id);
-  const { data: vipTableTiers = [] } = useVipTableTiers(dbEvent?.id);
 
   // Determine if this is a paid event based on DB ticket tiers
   const hasPaidTiers = ticketTiers.length > 0 && ticketTiers.some(t => t.priceCents > 0);
-  const hasVipTables = !!dbEvent?.vipTablesEnabled && vipTableTiers.length > 0;
-  const vipHasAvailability = vipTableTiers.some((t) => !t.soldOut && t.availableRemaining > 0);
 
   // Fetch organiser profile if event has one
   const { data: organiserHost } = useQuery({
@@ -175,42 +145,6 @@ const EventDetail = () => {
     enabled: !!id && !!user && !isMock,
   });
 
-  const { data: myConfirmedOrder } = useQuery({
-    queryKey: ["my-confirmed-order-event", id, user?.id],
-    queryFn: async () => {
-      if (!id || !user) return null;
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("event_id", id)
-        .eq("user_id", user.id)
-        .eq("status", "confirmed")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id && !!user && !isMock && !!dbEvent && hasPaidTiers,
-  });
-
-  const refundMutation = useMutation({
-    mutationFn: (orderId: string) => refundsApi.requestSelf(orderId),
-    onSuccess: () => {
-      toast({ title: "Refund processed", description: "Your purchase was refunded." });
-      queryClient.invalidateQueries({ queryKey: ["my-confirmed-order-event", id, user?.id] });
-      if (id) queryClient.invalidateQueries({ queryKey: eventKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: ["user-ticket", id, user?.id] });
-    },
-    onError: (err: unknown) => {
-      toast({
-        title: "Refund failed",
-        description: err instanceof Error ? err.message : "Try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // P-10: Waitlist & capacity check
   const { data: capacityInfo } = useQuery({
     queryKey: ["event-capacity", id],
@@ -232,10 +166,37 @@ const EventDetail = () => {
     enabled: !!id && !!user && !isMock,
   });
 
+  const { data: hostEventCount = 0 } = useQuery({
+    queryKey: ["host-event-count", dbEvent?.hostId],
+    queryFn: async () => {
+      if (!dbEvent?.hostId) return 0;
+      const items = await eventsRepository.getByHost(dbEvent.hostId);
+      return items.length;
+    },
+    enabled: !!dbEvent?.hostId,
+  });
+
+  const { data: inviteFriends = [] } = useQuery({
+    queryKey: ["event-invite-friends", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const ids = [...(await connectionsRepository.getFriendIds(user.id))];
+      if (ids.length === 0) return [];
+      const profiles = await profilesRepository.getProfileDisplayInfo(ids.slice(0, 30));
+      return profiles.map((p) => ({
+        id: p.user_id,
+        displayName: p.display_name || "Friend",
+        avatarUrl: p.avatar_url,
+      }));
+    },
+    enabled: !!user,
+  });
+
   const loading = !isMock && isLoading;
 
   const handleShare = () => {
     setShowShareSheet(true);
+    if (id) trackInteraction({ action: "event_share_open", eventId: id, source: "event_detail" });
   };
 
   // F-07: Saved events query
@@ -252,17 +213,37 @@ const EventDetail = () => {
 
   const handleInterested = async () => {
     if (!user || !id) return;
+    const wasInterested = isInterested;
     setSavingEvent(true);
     try {
-      if (isInterested) {
+      queryClient.setQueryData(["saved-event", id, user.id], wasInterested ? null : { id: "optimistic" });
+
+      if (wasInterested) {
         await eventsRepository.unsaveEvent(user.id, id);
+        trackInteraction({ action: "unsave_event", eventId: id, source: "event_detail" });
         toast({ title: "Removed from saved", description: "Event removed from your saved list" });
       } else {
         await eventsRepository.saveEvent(user.id, id);
-        toast({ title: "Saved!", description: "Event added to your saved list" });
+        trackInteraction({ action: "save_event", eventId: id, source: "event_detail" });
+        toast({
+          title: "Saved!",
+          description: "Event added to your saved list",
+          action: (
+            <ToastAction
+              altText="Undo"
+              onClick={async () => {
+                await eventsRepository.unsaveEvent(user.id, id);
+                queryClient.invalidateQueries({ queryKey: ["saved-event", id, user.id] });
+              }}
+            >
+              Undo
+            </ToastAction>
+          ),
+        });
       }
       refetchSaved();
     } catch {
+      queryClient.setQueryData(["saved-event", id, user.id], wasInterested ? { id: "rollback" } : null);
       toast({ title: "Failed to update", variant: "destructive" });
     } finally {
       setSavingEvent(false);
@@ -296,32 +277,29 @@ const EventDetail = () => {
 
     setRsvpLoading(true);
     try {
-      const result: any = await rsvpApi.join(id, 'going', guestCount);
+      await rsvpApi.join(id, 'going', guestCount);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       queryClient.invalidateQueries({ queryKey: ["event-capacity", id] });
-      if (result?.status === 'waitlisted') {
-        setAutoWaitlisted(true);
-        localStorage.setItem(`auto-waitlist:${id}`, 'true');
-        refetchWaitlist();
-        toast({
-          title: "Auto-waitlisted",
-          description: `Event is full — you're #${result.position} on the waitlist.`,
-        });
-      } else if (result?.status === 'pending') {
-        setAutoWaitlisted(false);
-        localStorage.removeItem(`auto-waitlist:${id}`);
-        toast({ title: "Request Submitted", description: "Awaiting host approval." });
-      } else {
-        setAutoWaitlisted(false);
-        localStorage.removeItem(`auto-waitlist:${id}`);
-        toast({ title: "RSVP Submitted!", description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ''}!` });
-      }
+      trackInteraction({ action: "rsvp_join", eventId: id, source: "event_detail" });
+      setShowRsvpConfirmation(true);
+      toast({
+        title: "RSVP Submitted!",
+        description: `You're going${guestCount > 1 ? ` +${guestCount - 1}` : ""}!`,
+        action: (
+          <ToastAction
+            altText="Undo"
+            onClick={async () => {
+              await rsvpApi.leave(id);
+              queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
+              queryClient.invalidateQueries({ queryKey: ["event-capacity", id] });
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
     } catch (err: any) {
-      const msg = err?.message?.includes('capacity')
-        ? 'Event is at capacity'
-        : err?.message?.includes('Guestlist is closed')
-          ? 'Guestlist is closed'
-          : 'Something went wrong, please try again.';
+      const msg = err?.message?.includes('capacity') ? 'Event is at capacity' : 'Something went wrong, please try again.';
       toast({ title: "RSVP Failed", description: msg, variant: "destructive" });
     } finally {
       setRsvpLoading(false);
@@ -346,8 +324,6 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
-      setAutoWaitlisted(false);
-      localStorage.removeItem(`auto-waitlist:${id}`);
       const position = await eventManagementRepository.joinWaitlist(id, user.id);
       refetchWaitlist();
       toast({ title: "Joined Waitlist", description: `You're #${position} on the waitlist` });
@@ -362,8 +338,6 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
-      setAutoWaitlisted(false);
-      localStorage.removeItem(`auto-waitlist:${id}`);
       await eventManagementRepository.leaveWaitlist(id, user.id);
       refetchWaitlist();
       toast({ title: "Left Waitlist" });
@@ -378,8 +352,6 @@ const EventDetail = () => {
     if (!user || !id) return;
     setRsvpLoading(true);
     try {
-      setAutoWaitlisted(false);
-      localStorage.removeItem(`auto-waitlist:${id}`);
       await rsvpApi.leave(id);
       queryClient.invalidateQueries({ queryKey: ["user-rsvp", id, user.id] });
       toast({ title: "RSVP Cancelled", description: "You've been removed from the guest list." });
@@ -470,15 +442,122 @@ const EventDetail = () => {
     ? Math.min(...ticketTiers.filter(t => t.priceCents > 0).map(t => t.priceCents))
     : 0;
 
-  const selfRefundCheck =
-    dbEvent && startDate
-      ? ticketSelfRefundAllowed({
-          now: new Date(),
-          eventDate: startDate,
-          refundsEnabled: dbEvent.refundsEnabled ?? false,
-          refundDeadlineHoursBeforeEvent: dbEvent.refundDeadlineHoursBeforeEvent,
-        })
-      : { ok: false as const, reason: "" };
+  const inviteShareText = `Join me at ${eventTitle} on ${eventDate}`;
+
+  const handleShareInviteLink = async () => {
+    const eventUrl = `${window.location.origin}/events/${id}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: eventTitle, text: inviteShareText, url: eventUrl });
+      } else {
+        await navigator.clipboard.writeText(eventUrl);
+        toast({ title: "Event link copied" });
+      }
+      if (id) trackInteraction({ action: "invite_share", eventId: id, source: "event_detail" });
+    } catch {
+      // dismissed by user
+    }
+  };
+
+  const handleInviteFriend = async (friendId: string) => {
+    if (!id || !user) return;
+    setInvitingFriendId(friendId);
+    try {
+      await callEdgeFunction("notifications-send", {
+        body: {
+          type: "upcoming_event",
+          recipient_user_id: friendId,
+          title: `${displayHostName} invited you`,
+          message: `${eventTitle} • ${eventDate}`,
+          link: `/events/${id}`,
+          event_image: eventImage || null,
+          organiser_profile_id: organiserHost?.id ?? null,
+        },
+      });
+      toast({ title: "Invite sent" });
+      trackInteraction({ action: "invite_friend", eventId: id, source: "event_detail" });
+    } catch {
+      toast({ title: "Invite failed", variant: "destructive" });
+    } finally {
+      setInvitingFriendId(null);
+    }
+  };
+
+  const ctaState = (() => {
+    if (isPastEvent) {
+      return {
+        label: "Ended",
+        sublabel: "This event has ended",
+        primaryLabel: "Event Ended",
+        onPrimary: () => undefined,
+        primaryDisabled: true,
+        primaryVariant: "secondary" as const,
+      };
+    }
+    if (isHost) {
+      return {
+        label: "Host",
+        sublabel: "You're hosting this event",
+        primaryLabel: "Manage",
+        onPrimary: () => navigate(`/events/${id}/manage`),
+        secondaryLabel: "Edit",
+        onSecondary: () => navigate(`/events/${id}/edit`),
+      };
+    }
+    if (userRsvp) {
+      return {
+        label: "Going",
+        sublabel: "You're on the guest list",
+        primaryLabel: "Going",
+        onPrimary: () => undefined,
+        primaryDisabled: true,
+        primaryVariant: "secondary" as const,
+        secondaryLabel: "Cancel RSVP",
+        onSecondary: handleLeaveRSVP,
+      };
+    }
+    if (isMock) {
+      return {
+        label: "Demo",
+        sublabel: "Static preview event",
+        primaryLabel: "Demo Event",
+        onPrimary: () => undefined,
+        primaryDisabled: true,
+        primaryVariant: "secondary" as const,
+      };
+    }
+    if (hasPaidTiers) {
+      return {
+        label: "Buy",
+        sublabel: `From R${(lowestPriceCents / 100).toFixed(2)}`,
+        primaryLabel: "Buy Tickets",
+        onPrimary: () => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); },
+      };
+    }
+    if (capacityInfo?.isFull) {
+      if (waitlistStatus) {
+        return {
+          label: "Waitlist",
+          sublabel: `You're #${waitlistStatus.position}`,
+          primaryLabel: "Leave Waitlist",
+          onPrimary: handleLeaveWaitlist,
+          primaryVariant: "secondary" as const,
+        };
+      }
+      return {
+        label: "Waitlist",
+        sublabel: "Event is full",
+        primaryLabel: "Join Waitlist",
+        onPrimary: () => { if (!user) navigate("/auth"); else handleJoinWaitlist(); },
+      };
+    }
+    return {
+      label: "Free",
+      sublabel: "RSVP in one tap",
+      primaryLabel: "RSVP",
+      onPrimary: handleRSVP,
+    };
+  })();
 
   return (
     <div className="min-h-screen bg-background pb-40">
@@ -487,9 +566,21 @@ const EventDetail = () => {
         <button onClick={() => navigate(-1)} className="h-10 w-10 rounded-full flex items-center justify-center">
           <X className="h-5 w-5 text-foreground" />
         </button>
-        <button onClick={handleShare} className="h-10 w-10 rounded-full flex items-center justify-center">
-          <Send className="h-5 w-5 text-foreground" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleInterested}
+            disabled={savingEvent}
+            className="h-10 px-3 rounded-full bg-secondary text-xs font-semibold"
+          >
+            {isInterested ? "Saved" : "Save"}
+          </button>
+          <button onClick={() => setShowRsvpConfirmation(true)} className="h-10 px-3 rounded-full bg-secondary text-xs font-semibold">
+            Invite
+          </button>
+          <button onClick={handleShare} className="h-10 w-10 rounded-full flex items-center justify-center">
+            <Send className="h-5 w-5 text-foreground" />
+          </button>
+        </div>
       </div>
 
       {/* Title */}
@@ -501,7 +592,22 @@ const EventDetail = () => {
       <div className="px-4 pb-4">
         <div className="rounded-tile overflow-hidden">
           {eventImage ? (
-            <img src={getOptimizedUrl(eventImage, 'EVENT_HERO') || eventImage} alt={eventTitle} className="w-full aspect-[4/5] object-cover" />
+            <img
+              src={getOptimizedUrl(eventImage, { width: 900, quality: 82 }) || eventImage}
+              srcSet={[
+                getOptimizedUrl(eventImage, { width: 420, quality: 68 }),
+                getOptimizedUrl(eventImage, { width: 900, quality: 82 }),
+                getOptimizedUrl(eventImage, { width: 1280, quality: 86 }),
+              ]
+                .filter(Boolean)
+                .map((url, idx) => `${url} ${[420, 900, 1280][idx]}w`)
+                .join(", ")}
+              sizes="(max-width: 768px) 100vw, 680px"
+              alt={eventTitle}
+              className="w-full aspect-[4/5] object-cover bg-secondary/50"
+              loading="eager"
+              decoding="async"
+            />
           ) : (
             <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-tile">
               <span className="text-6xl">🎉</span>
@@ -523,74 +629,24 @@ const EventDetail = () => {
       )}
 
       <div className="px-4 space-y-4">
-        {/* Date & Venue row */}
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-bold text-foreground text-lg">{eventDate}</p>
-            <p className="text-foreground font-medium">{eventVenueName || "Venue"}</p>
-            <p className="text-sm text-muted-foreground">{eventAddress || "Address"}</p>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <Link to={displayHostLink} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
-              <span className="font-bold text-foreground text-lg">{displayHostName}</span>
-              {(organiserHost || host?.isVerified) && (
-                <BadgeCheck className="h-5 w-5 text-primary fill-primary stroke-primary-foreground" />
-              )}
-            </Link>
-            <button
-              className="h-10 w-10 rounded-full flex items-center justify-center"
-              onClick={() => eventAddress && window.open(
-                `https://maps.google.com/maps?q=${encodeURIComponent(eventAddress)}`,
-                "_blank"
-              )}
-            >
-              <MapPin className="h-5 w-5 text-foreground" />
-            </button>
-          </div>
+        {/* Organiser, Date & Venue */}
+        <div>
+          <Link to={displayHostLink} className="inline-flex items-start gap-1.5 hover:opacity-80 transition-opacity">
+            <span className="text-lg font-black tracking-[0.05em] text-foreground uppercase font-display leading-tight break-words" style={{ fontStretch: "expanded" }} title={displayHostName}>
+              {displayHostName}
+            </span>
+            {(organiserHost || host?.isVerified) && (
+              <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0 mt-0.5" />
+            )}
+          </Link>
+          <p className="text-foreground font-medium mt-1">{eventDate}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{eventVenueName || "Venue"}</p>
         </div>
 
         {/* Description */}
         <div>
           <p className="text-muted-foreground text-sm leading-relaxed">{eventDescription}</p>
         </div>
-
-        {dbEvent && hasPaidTiers && (
-          <div className="rounded-tile border border-border/60 bg-muted/20 px-3 py-2.5 text-sm space-y-2">
-            <p className="font-medium text-foreground">
-              {dbEvent.refundsEnabled ? "Refunds available" : "No refunds for this event"}
-            </p>
-            {dbEvent.refundPolicyText ? (
-              <p className="text-muted-foreground text-xs leading-relaxed">{dbEvent.refundPolicyText}</p>
-            ) : dbEvent.refundsEnabled ? (
-              <p className="text-muted-foreground text-xs">
-                You may request a refund from My Tickets or here before the cutoff (if any) set by the organiser.
-              </p>
-            ) : null}
-            {!dbEvent.refundsEnabled && (
-              <p className="text-xs text-muted-foreground">
-                The organiser has not enabled self-service refunds. Contact them if you need help.
-              </p>
-            )}
-            {user && myConfirmedOrder && selfRefundCheck.ok && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full border-destructive/40 text-destructive hover:bg-destructive/10"
-                disabled={refundMutation.isPending}
-                onClick={() => {
-                  if (!window.confirm("Request a refund? Your tickets will be cancelled.")) return;
-                  refundMutation.mutate(myConfirmedOrder.id);
-                }}
-              >
-                {refundMutation.isPending ? "Processing…" : "Request refund"}
-              </Button>
-            )}
-            {user && myConfirmedOrder && !selfRefundCheck.ok && dbEvent.refundsEnabled && (
-              <p className="text-xs text-muted-foreground">{selfRefundCheck.reason}</p>
-            )}
-          </div>
-        )}
 
         {/* Hosted by */}
         <div>
@@ -653,30 +709,62 @@ const EventDetail = () => {
           </Link>
         )}
 
-        {/* P-06: Friends going highlight */}
-        {friendsGoing.length > 0 && (
-          <div className="flex items-center gap-2 py-1">
-            <div className="flex -space-x-2">
-              {friendsGoing.slice(0, 4).map((f) => (
-                <Avatar key={f.userId} className="h-7 w-7 border-2 border-background">
-                  <AvatarImage src={f.avatarUrl || undefined} />
-                  <AvatarFallback className="text-xs">{(f.displayName || "?")[0]}</AvatarFallback>
-                </Avatar>
-              ))}
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {friendsGoing.length === 1
-                ? `${friendsGoing[0].displayName || 'A friend'} is going`
-                : `${friendsGoing.length} friends going`}
-            </span>
+        {/* Guest confidence + host credibility */}
+        {!userRsvp && (
+          <div className="surface-card p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guest Context</p>
+            {friendsGoing.length > 0 ? (
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-2">
+                  {friendsGoing.slice(0, 4).map((f) => (
+                    <Avatar key={f.userId} className="h-7 w-7 border-2 border-background">
+                      <AvatarImage src={f.avatarUrl || undefined} />
+                      <AvatarFallback className="text-xs">{(f.displayName || "?")[0]}</AvatarFallback>
+                    </Avatar>
+                  ))}
+                </div>
+                <span className="text-sm text-foreground">
+                  {friendsGoing.length === 1
+                    ? `${friendsGoing[0].displayName || "A friend"} is going`
+                    : `${friendsGoing.length} friends are going`}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No friend overlap yet. Share this event with your crew.</p>
+            )}
+            <Link to={`/events/${id}/guests`} className="text-xs text-primary hover:underline">
+              View guest list
+            </Link>
           </div>
         )}
+
+        <div className="surface-card p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Host Credibility</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <p className="text-[11px] text-muted-foreground">Friends Going</p>
+              <p className="text-sm font-semibold text-foreground">{friendsGoing.length}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Past Events</p>
+              <p className="text-sm font-semibold text-foreground">{hostEventCount}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-muted-foreground">Guestlist</p>
+              <p className="text-sm font-semibold text-foreground">{capacityInfo?.currentCount ?? attendeeProfiles?.length ?? 0}</p>
+            </div>
+          </div>
+        </div>
 
         {/* Event Board — visible to attendees, ticket holders, and host */}
         {dbEvent && user && (userRsvp || isHost || hasTicket) && (
           <EventBoard
             eventId={dbEvent.id}
-            canModerate={isHost || eventCohosts.some((c) => c.id === user.id)}
+            canBroadcast={!!isHost}
+            organiserProfileId={organiserHost?.id ?? null}
           />
         )}
 
@@ -688,14 +776,6 @@ const EventDetail = () => {
           </Button>
         )}
 
-        {/* View Ticket — show Digital ID for check-in when going or has ticket */}
-        {dbEvent && user && (userRsvp || hasTicket) && myProfile?.qrCode && !isPastEvent && (
-          <Button variant="secondary" className="w-full" onClick={() => setShowTicketModal(true)}>
-            <QrCode className="h-4 w-4 mr-2" />
-            View Ticket
-          </Button>
-        )}
-
         {/* Venue / Map */}
         <div className="bg-card rounded-tile-sm p-4">
           <h3 className="font-semibold text-foreground mb-3">Venue</h3>
@@ -703,7 +783,7 @@ const EventDetail = () => {
             {eventAddress ? (
               <iframe
                 src={`https://maps.google.com/maps?q=${encodeURIComponent(eventAddress)}&output=embed&z=15`}
-                className="w-full h-full border-0"
+                className="w-full h-full border-0 dark:[filter:grayscale(100%)_invert(98%)_contrast(95%)]"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 title="Event location map"
@@ -715,96 +795,20 @@ const EventDetail = () => {
               </div>
             )}
           </div>
-          <p className="text-foreground font-medium">{eventAddress.split(',')[0] || eventLocation}</p>
+          <p className="text-foreground font-medium">{eventAddress ? eventAddress.split(',')[0] : eventVenueName || "Address"}</p>
           <p className="text-sm text-muted-foreground">{eventAddress || "Full address"}</p>
         </div>
       </div>
 
       <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background border-t border-border p-4 z-40">
-        <div className="max-w-lg mx-auto flex items-center justify-between">
-          {isPastEvent ? (
-            <div className="w-full text-center py-2">
-              <p className="font-semibold text-muted-foreground">This event has ended</p>
-            </div>
-          ) : isHost ? (
-            <>
-              <div>
-                <p className="font-semibold text-foreground">Your Event</p>
-                <p className="text-sm text-muted-foreground">You're hosting this event</p>
-              </div>
-              <Button size="lg" onClick={() => navigate(`/events/${id}/edit`)}>
-                <Pencil className="h-4 w-4 mr-2" />Edit Event
-              </Button>
-            </>
-          ) : userRsvp ? (
-            <>
-              <div>
-                <p className="font-semibold text-foreground">
-                  {userRsvp.status === 'pending'
-                    ? 'Pending Approval'
-                    : userRsvp.status === 'going'
-                      ? "You're Going"
-                      : "You're Interested"}{userRsvp.status === 'pending' ? '' : '! 🎉'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {userRsvp.status === 'pending' ? 'Awaiting host approval' : "You're on the guest list"}
-                </p>
-              </div>
-              <Button variant="secondary" size="lg" onClick={handleLeaveRSVP} disabled={rsvpLoading}>
-                {rsvpLoading ? "..." : userRsvp.status === 'pending' ? "Cancel Request" : "Cancel RSVP"}
-              </Button>
-            </>
-          ) : isMock ? (
-            // Mock events — static display only
-            <div className="w-full text-center py-2">
-              <p className="font-semibold text-muted-foreground">Demo event</p>
-            </div>
-          ) : hasPaidTiers ? (
-            <>
-              <div>
-                <p className="font-semibold text-foreground">From R{(lowestPriceCents / 100).toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">+ fees</p>
-              </div>
-              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>
-                Buy Tickets
-              </Button>
-            </>
-          ) : capacityInfo?.isFull && !hasPaidTiers ? (
-            // P-10: Waitlist when at capacity
-            waitlistStatus ? (
-              <>
-                <div>
-                  <p className="font-semibold text-foreground">
-                    On Waitlist #{waitlistStatus.position}
-                    {autoWaitlisted ? (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground">
-                        Auto-waitlisted
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className="text-sm text-muted-foreground">We'll notify you if a spot opens</p>
-                </div>
-                <Button variant="secondary" size="lg" onClick={handleLeaveWaitlist} disabled={rsvpLoading}>
-                  {rsvpLoading ? "..." : "Leave Waitlist"}
-                </Button>
-              </>
-            ) : (
-              <>
-                <div>
-                  <p className="font-semibold text-foreground">Event Full</p>
-                  <p className="text-sm text-muted-foreground">Join the waitlist</p>
-                </div>
-                <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else handleJoinWaitlist(); }} disabled={rsvpLoading}>
-                  {rsvpLoading ? "..." : "Join Waitlist"}
-                </Button>
-              </>
-            )
-          ) : !hasPaidTiers ? (
-            <>
-              <div>
-                <p className="font-semibold text-foreground">Free Event</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-muted-foreground">Guests:</span>
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">{ctaState.label}</p>
+              <p className="text-sm text-foreground font-medium">{ctaState.sublabel}</p>
+              {ctaState.label === "Free" && !userRsvp && !isPastEvent && !capacityInfo?.isFull && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-muted-foreground">Guests</span>
                   <button
                     onClick={() => setGuestCount(Math.max(1, guestCount - 1))}
                     className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center"
@@ -821,33 +825,30 @@ const EventDetail = () => {
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
-              </div>
-              <Button size="lg" onClick={handleRSVP} disabled={rsvpLoading}>{rsvpLoading ? "Submitting..." : "RSVP"}</Button>
-            </>
-          ) : (
-            <>
-              <div>
-                <p className="font-semibold text-foreground">From R{(lowestPriceCents / 100).toFixed(2)}</p>
-                <p className="text-sm text-muted-foreground">+ fees</p>
-              </div>
-              <Button size="lg" onClick={() => { if (!user) navigate("/auth"); else setShowPurchaseModal(true); }}>
-                Buy Tickets
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {ctaState.secondaryLabel && ctaState.onSecondary && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={ctaState.onSecondary}
+                  disabled={rsvpLoading}
+                >
+                  {ctaState.secondaryLabel}
+                </Button>
+              )}
+              <Button
+                variant={ctaState.primaryVariant ?? "default"}
+                size="lg"
+                onClick={ctaState.onPrimary}
+                disabled={ctaState.primaryDisabled || rsvpLoading}
+              >
+                {rsvpLoading ? "..." : ctaState.primaryLabel}
               </Button>
-            </>
-          )}
-        </div>
-        {hasVipTables ? (
-          <div className="mt-3">
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => { if (!user) navigate("/auth"); else setShowVipPurchaseModal(true); }}
-              disabled={!vipHasAvailability}
-            >
-              {vipHasAvailability ? "Reserve VIP Table" : "VIP Tables Sold Out"}
-            </Button>
+            </div>
           </div>
-        ) : null}
+        </div>
       </div>
 
       {dbEvent && (
@@ -856,39 +857,11 @@ const EventDetail = () => {
           onOpenChange={setShowPurchaseModal}
           eventTitle={eventTitle}
           eventDate={`${eventDate} • ${eventTime}`}
-          eventLocation={eventAddress || eventLocation}
+          eventLocation={eventAddress || eventVenueName}
           eventId={dbEvent.id}
           ticketTiers={ticketTiers}
           loading={reserving}
           onCheckout={handleCheckout}
-        />
-      )}
-
-      {dbEvent && (
-        <VipPurchaseModal
-          open={showVipPurchaseModal}
-          onOpenChange={setShowVipPurchaseModal}
-          eventTitle={eventTitle}
-          eventDate={`${eventDate} • ${eventTime}`}
-          eventLocation={eventAddress || eventLocation}
-          vipTiers={vipTableTiers}
-          loading={false}
-          onCheckout={(tierId, guestCount, specialRequests) => {
-            setShowVipPurchaseModal(false);
-            navigate("/vip-checkout", {
-              state: {
-                eventId: dbEvent.id,
-                eventTitle,
-                eventDate: `${eventDate} • ${eventTime}`,
-                eventLocation: eventAddress || eventLocation,
-                tierId,
-                tierName: vipTableTiers.find((t) => t.id === tierId)?.name || "VIP Table",
-                minSpendCents: vipTableTiers.find((t) => t.id === tierId)?.minSpendCents || 0,
-                guestCount,
-                specialRequests,
-              },
-            });
-          }}
         />
       )}
 
@@ -898,24 +871,22 @@ const EventDetail = () => {
         eventUrl={window.location.href}
         eventTitle={eventTitle}
         eventDate={`${eventDate} • ${eventTime}`}
-        eventLocation={eventAddress || eventLocation}
+        eventLocation={eventAddress || eventVenueName}
         eventImage={eventImage}
         eventId={dbEvent?.id}
       />
 
-      <TicketDetailModal
-        open={showTicketModal}
-        onOpenChange={setShowTicketModal}
-        ticket={
-          dbEvent && myProfile?.qrCode
-            ? {
-                qrCode: myProfile.qrCode,
-                eventTitle: dbEvent.title,
-                eventDate: startDate ? format(startDate, "EEE MMM d, yyyy · h:mm a") : undefined,
-                tierName: "Digital ID",
-              }
-            : null
-        }
+      <RsvpConfirmationSheet
+        open={showRsvpConfirmation}
+        onOpenChange={setShowRsvpConfirmation}
+        eventTitle={eventTitle}
+        onAddToCalendar={handleAddToCalendar}
+        onInviteFriends={() => trackInteraction({ action: "invite_open", eventId: id || "", source: "rsvp_confirmation" })}
+        onMessageHost={() => navigate(displayHostLink)}
+        inviteFriends={inviteFriends}
+        onInviteFriend={handleInviteFriend}
+        invitingFriendId={invitingFriendId}
+        onShareLink={handleShareInviteLink}
       />
 
       <BottomNav />

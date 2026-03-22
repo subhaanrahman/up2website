@@ -4,13 +4,10 @@
 WITH parsed_prices AS (
   SELECT
     e.id AS event_id,
-    COALESCE(
-      CASE
-        WHEN m[2] IS NOT NULL THEN 0
-        ELSE ROUND((m[1])::numeric * 100)::integer
-      END,
-      0
-    ) AS parsed_price_cents
+    CASE
+      WHEN m[2] IS NOT NULL THEN 0
+      ELSE ROUND((m[1])::numeric * 100)::integer
+    END AS parsed_price_cents
   FROM public.events e
   CROSS JOIN LATERAL regexp_match(
     lower(COALESCE(e.description, '')),
@@ -26,13 +23,10 @@ WHERE e.id = p.event_id
 WITH parsed_prices AS (
   SELECT
     e.id AS event_id,
-    COALESCE(
-      CASE
-        WHEN m[2] IS NOT NULL THEN 0
-        ELSE ROUND((m[1])::numeric * 100)::integer
-      END,
-      0
-    ) AS parsed_price_cents
+    CASE
+      WHEN m[2] IS NOT NULL THEN 0
+      ELSE ROUND((m[1])::numeric * 100)::integer
+    END AS parsed_price_cents
   FROM public.events e
   CROSS JOIN LATERAL regexp_match(
     lower(COALESCE(e.description, '')),
@@ -52,3 +46,13 @@ WHERE NOT EXISTS (
   FROM public.ticket_tiers t
   WHERE t.event_id = p.event_id
 );
+
+-- Verify
+SELECT count(*) AS parsed_events
+FROM public.events
+WHERE description ~* 'cheapest\s*t+icket\s*:'
+  AND ticket_price_cents >= 0;
+
+SELECT count(*) AS seeded_general_admission_tiers
+FROM public.ticket_tiers
+WHERE name = 'General Admission' AND sort_order = 0;

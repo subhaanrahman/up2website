@@ -32,6 +32,19 @@ const iconMap: Record<string, typeof Bell> = {
   general: Bell,
 };
 
+const iconColorMap: Record<string, string> = {
+  ticket_transfer_declined: "status-error",
+  ticket_transfer_request: "status-warning",
+  ticket_transfer_accepted: "status-success",
+  upcoming_event: "status-info",
+  friend_request: "status-info",
+  post_reaction: "status-success",
+  post_repost: "status-info",
+  shared_event: "status-info",
+  shared_post: "status-info",
+  shared_account: "status-info",
+};
+
 const DISMISS_THRESHOLD = 80;
 
 /** Extract transfer_id from a notification link like /tickets?transfer_id=xxx */
@@ -62,6 +75,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id, activeOrgId] }),
   });
   const Icon = iconMap[notification.type] || Bell;
+  const iconColor = iconColorMap[notification.type] || "text-muted-foreground";
 
   const startXRef = useRef(0);
   const [translateX, setTranslateX] = useState(0);
@@ -179,7 +193,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
         {notification.avatar_url ? (
           <Avatar className="h-12 w-12 flex-shrink-0">
             <AvatarImage src={notification.avatar_url} />
-            <AvatarFallback><Icon className="h-5 w-5" /></AvatarFallback>
+            <AvatarFallback><Icon className={`h-5 w-5 ${iconColor}`} /></AvatarFallback>
           </Avatar>
         ) : notification.event_image ? (
           <div className="h-12 w-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
@@ -187,7 +201,7 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
           </div>
         ) : (
           <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-            <Icon className="h-5 w-5 text-muted-foreground" />
+            <Icon className={`h-5 w-5 ${iconColor}`} />
           </div>
         )}
 
