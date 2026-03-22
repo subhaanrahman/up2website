@@ -1,0 +1,7 @@
+services:
+  up2:
+    build: .
+    container_name: up2
+    restart: unless-stopped
+    ports:
+      - "8080:8080"

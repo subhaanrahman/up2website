@@ -1,0 +1,21 @@
+# Copy to env.local (ignored by git) or export these in your shell.
+
+# Supabase project refs
+OLD_PROJECT_REF=your-old-project-ref
+NEW_PROJECT_REF=your-new-project-ref
+
+# Postgres connection strings (from Supabase Dashboard → Settings → Database)
+OLD_DB_URL=postgresql://postgres:password@db.old-ref.supabase.co:5432/postgres
+NEW_DB_URL=postgresql://postgres:password@db.new-ref.supabase.co:5432/postgres
+
+# Output directory for dumps
+DUMP_DIR=./tmp/region-migration
+
+# Comma-separated list of storage buckets to copy (no spaces)
+STORAGE_BUCKETS=avatars,post-images,event-flyers,event-media
+
+# Optional: schemas to dump (comma-separated, default public)
+DUMP_SCHEMAS=public
+
+# Optional: parallel restore jobs for pg_restore (default 1)
+PG_RESTORE_JOBS=1
