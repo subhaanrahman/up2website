@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
+import { RouterErrorBoundary } from "@/components/RouterErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import BottomNav from "@/components/BottomNav";
 
@@ -53,6 +54,10 @@ const PaymentMethods = lazy(() => import("./pages/PaymentMethods"));
 const EventEmbed = lazy(() => import("./pages/EventEmbed"));
 const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 const MusicCallback = lazy(() => import("./pages/MusicCallback"));
+const VipCheckout = lazy(() => import("./pages/VipCheckout"));
+const VipCheckoutSuccess = lazy(() => import("./pages/VipCheckoutSuccess"));
+const Followers = lazy(() => import("./pages/Followers"));
+const DigitalIdSettings = lazy(() => import("./pages/DigitalIdSettings"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,6 +95,7 @@ const App = () => (
           <Sonner />
         <BrowserRouter>
           <PhoneFrame>
+            <RouterErrorBoundary>
             <Suspense fallback={<RouteFallback />}>
             <Routes>
               {/* Public routes */}
@@ -119,6 +125,7 @@ const App = () => (
               <Route path="/profile/edit-organiser" element={<ProtectedRoute><EditOrganiserProfile /></ProtectedRoute>} />
               <Route path="/profile/organiser-team" element={<ProtectedRoute><OrganiserTeam /></ProtectedRoute>} />
               <Route path="/profile/friends" element={<ProtectedRoute><FriendsFollowing /></ProtectedRoute>} />
+              <Route path="/profile/followers" element={<ProtectedRoute><Followers /></ProtectedRoute>} />
               <Route path="/create" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
               <Route path="/create/onboarding-required" element={<ProtectedRoute><OnboardingRequired /></ProtectedRoute>} />
               <Route path="/events" element={<ProtectedRoute><Tickets /></ProtectedRoute>} />
@@ -135,13 +142,17 @@ const App = () => (
               <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
               <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
               <Route path="/checkout/success" element={<ProtectedRoute><CheckoutSuccess /></ProtectedRoute>} />
+              <Route path="/vip-checkout" element={<ProtectedRoute><VipCheckout /></ProtectedRoute>} />
+              <Route path="/vip-checkout/success" element={<ProtectedRoute><VipCheckoutSuccess /></ProtectedRoute>} />
               <Route path="/settings/payment-methods" element={<ProtectedRoute><PaymentMethods /></ProtectedRoute>} />
               <Route path="/settings/blocked-users" element={<ProtectedRoute><BlockedUsers /></ProtectedRoute>} />
+              <Route path="/settings/digital-id" element={<ProtectedRoute><DigitalIdSettings /></ProtectedRoute>} />
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
             </Suspense>
+            </RouterErrorBoundary>
           </PhoneFrame>
         </BrowserRouter>
         </TooltipProvider>

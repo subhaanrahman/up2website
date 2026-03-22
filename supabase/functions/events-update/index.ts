@@ -9,10 +9,15 @@ import { processRefund } from "../_shared/refund.ts";
 
 const updateSchema = z.object({
   action: z.enum(['update', 'delete']),
-  event_id: z.string().uuid(),
+  event_id: z.preprocess(
+    (v) => (typeof v === 'string' ? v.trim() : v),
+    z.string().uuid(),
+  ),
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(2000).nullable().optional(),
   location: z.string().max(500).nullable().optional(),
+  venue_name: z.string().max(500).nullable().optional(),
+  address: z.string().max(500).nullable().optional(),
   event_date: z.string().optional(),
   end_date: z.string().nullable().optional(),
   category: z.string().max(50).nullable().optional(),
@@ -76,7 +81,15 @@ Deno.serve(async (req) => {
       .eq('id', event_id)
       .maybeSingle();
 
-    if (fetchErr || !event) {
+    if (fetchErr) {
+      edgeLog('error', 'events-update: event fetch failed', {
+        requestId,
+        code: fetchErr.code,
+        message: fetchErr.message,
+      });
+      return errorResponse(400, fetchErr.message || 'Database error loading event', { requestId });
+    }
+    if (!event) {
       return errorResponse(404, 'Event not found', { requestId });
     }
 
@@ -142,6 +155,8 @@ Deno.serve(async (req) => {
     if (fields.title !== undefined) updateData.title = fields.title;
     if (fields.description !== undefined) updateData.description = fields.description;
     if (fields.location !== undefined) updateData.location = fields.location;
+    if (fields.venue_name !== undefined) updateData.venue_name = fields.venue_name;
+    if (fields.address !== undefined) updateData.address = fields.address;
     if (fields.event_date !== undefined) updateData.event_date = fields.event_date;
     if (fields.end_date !== undefined) updateData.end_date = fields.end_date;
     if (fields.category !== undefined) updateData.category = fields.category;

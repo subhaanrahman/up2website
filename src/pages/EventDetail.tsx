@@ -53,8 +53,10 @@ const EventDetail = () => {
   const foundMockEvent = id ? mockEvents.find(e => e.id === id) : undefined;
   const isMock = !!foundMockEvent;
 
-  // Only fetch from DB if not a mock event (numeric IDs are mock)
-  const isUuid = id && id.length > 5;
+  // Only fetch from DB for real UUID route params (avoids PostgREST errors on garbage like "undefined")
+  const isUuid =
+    !!id &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
   const { data: dbEvent, isLoading } = useEvent(isUuid && !isMock ? id : undefined);
 
   // Fetch host profile for DB events

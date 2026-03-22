@@ -367,8 +367,9 @@ const EditEvent = () => {
       await deleteMutation.mutateAsync(id);
       toast({ title: "Event deleted", description: "Your event has been removed." });
       navigate("/events");
-    } catch {
-      toast({ title: "Error", description: "Failed to delete event.", variant: "destructive" });
+    } catch (e) {
+      const msg = e instanceof AppError ? e.message : "Failed to delete event.";
+      toast({ title: "Error", description: msg, variant: "destructive" });
     }
   };
 

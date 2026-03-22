@@ -37,6 +37,9 @@ Deno.serve(async (req) => {
       title,
       description,
       location,
+      venue_name,
+      address,
+      cover_image,
       event_date,
       end_date,
       category,
@@ -103,6 +106,12 @@ Deno.serve(async (req) => {
         title: title.trim().slice(0, 200),
         description: description?.slice(0, 5000) || null,
         location: location?.slice(0, 500) || null,
+        venue_name: typeof venue_name === 'string' ? venue_name.trim().slice(0, 500) || null : null,
+        address: typeof address === 'string' ? address.trim().slice(0, 500) || null : null,
+        cover_image:
+          typeof cover_image === 'string' && cover_image.trim().length > 0
+            ? cover_image.trim().slice(0, 2000)
+            : null,
         event_date,
         end_date: end_date || null,
         category: category || 'party',

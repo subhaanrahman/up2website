@@ -118,7 +118,7 @@ export const eventManagementRepository = {
       .from('ticket_tiers')
       .select('*')
       .eq('event_id', eventId)
-      .order('position', { ascending: true });
+      .order('sort_order', { ascending: true });
     if (error) throw error;
     return data || [];
   },
@@ -136,7 +136,7 @@ export const eventManagementRepository = {
         name: t.name,
         price_cents: t.priceCents,
         available_quantity: t.availableQuantity,
-        position: idx,
+        sort_order: idx,
       })),
       { onConflict: 'id' },
     );

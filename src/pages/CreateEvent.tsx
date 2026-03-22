@@ -52,6 +52,16 @@ function parseRefundDeadlineHoursInput(s: string): number | null | undefined {
   return n;
 }
 
+/** Edge returns the inserted row; ensure we never navigate with a bad/missing id (avoids ErrorBoundary + bad queries). */
+function extractCreatedEventId(payload: unknown): string | undefined {
+  if (!payload || typeof payload !== "object") return undefined;
+  const id = (payload as Record<string, unknown>).id;
+  if (typeof id !== "string") return undefined;
+  const t = id.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) return t;
+  return undefined;
+}
+
 const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -267,7 +277,15 @@ const CreateEvent = () => {
         refundDeadlineHoursBeforeEvent: parseRefundDeadlineHoursInput(refundDeadlineHours),
       });
 
-      const eventId = (data as any).id;
+      const eventId = extractCreatedEventId(data);
+      if (!eventId) {
+        toast({
+          title: publishAt ? "Event scheduled!" : "Event created!",
+          description: "Your event was saved. Open Tickets or Profile to view it.",
+        });
+        navigate("/events");
+        return;
+      }
 
       // Save cohosts to event_cohosts table
       if (cohosts.length > 0 && eventId) {
