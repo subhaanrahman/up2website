@@ -1,4 +1,4 @@
-project_id = "ydyocznljcsimqbkfaip"
+project_id = "fxcosnsbaaktblmnvycv"
 
 # Auth entrypoints — callable without session (phone check, OTP, login, register)
 [functions.check-phone]
@@ -24,8 +24,102 @@ verify_jwt = false
 [functions.events-update]
 verify_jwt = false
 
+# Gateway JWT check fails with sb_publishable_* before the function runs; auth is enforced inside via getUser().
+[functions.events-create]
+verify_jwt = false
+
+[functions.message-send]
+verify_jwt = false
+
 [functions.stripe-webhook]
 verify_jwt = false
 
 [functions.orders-expire-cleanup]
+verify_jwt = false
+
+[functions.queue-worker]
+verify_jwt = false
+
+# Client-invoked authenticated flows — gateway may reject sb_publishable_* before Deno; auth stays in getUser() inside each function.
+[functions.referrals-track]
+verify_jwt = false
+[functions.notifications-send]
+verify_jwt = false
+[functions.loyalty-award-points]
+verify_jwt = false
+[functions.rsvp]
+verify_jwt = false
+[functions.rsvp-approve]
+verify_jwt = false
+[functions.settings-upsert]
+verify_jwt = false
+[functions.profile-update]
+verify_jwt = false
+[functions.profile-qr-regenerate]
+verify_jwt = false
+[functions.refunds-request-self]
+verify_jwt = false
+[functions.organiser-profile-create]
+verify_jwt = false
+[functions.organiser-profile-update]
+verify_jwt = false
+[functions.orders-reserve]
+verify_jwt = false
+[functions.orders-cancel]
+verify_jwt = false
+[functions.orders-list]
+verify_jwt = false
+[functions.payments-intent]
+verify_jwt = false
+[functions.vip-reserve]
+verify_jwt = false
+[functions.vip-payments-intent]
+verify_jwt = false
+[functions.vip-cancel]
+verify_jwt = false
+[functions.waitlist-promote]
+verify_jwt = false
+[functions.event-media-manage]
+verify_jwt = false
+[functions.event-media-upload]
+verify_jwt = false
+[functions.stripe-connect-status]
+verify_jwt = false
+[functions.stripe-connect-onboard]
+verify_jwt = false
+[functions.stripe-connect-dashboard]
+verify_jwt = false
+[functions.checkin-toggle]
+verify_jwt = false
+[functions.checkin-qr]
+verify_jwt = false
+[functions.refunds-create]
+verify_jwt = false
+[functions.validate-discount]
+verify_jwt = false
+[functions.avatar-upload]
+verify_jwt = false
+[functions.organiser-team-manage]
+verify_jwt = false
+[functions.group-chat-manage]
+verify_jwt = false
+[functions.account-delete]
+verify_jwt = false
+[functions.email-verify-send]
+verify_jwt = false
+[functions.email-verify-confirm]
+verify_jwt = false
+[functions.dashboard-analytics]
+verify_jwt = false
+[functions.ticket-transfer]
+verify_jwt = false
+[functions.attendee-broadcast]
+verify_jwt = false
+[functions.support-request-create]
+verify_jwt = false
+[functions.report-create]
+verify_jwt = false
+[functions.moderation-block]
+verify_jwt = false
+[functions.gif-search]
 verify_jwt = false

@@ -330,7 +330,8 @@ Every edge function:
 ### Queue Abstraction
 
 **Edge Functions** (`supabase/functions/_shared/queue.ts`):
-- In-process execution with 3-attempt retry.
+- Cloud Tasks dispatch for webhook follow-ups when enabled (`CLOUD_TASKS_ENABLED=true`).
+- In-process execution with 3-attempt retry as fallback.
 - `enqueue(type, payload, options)` — fire-and-forget by default.
 - `enqueueBatch(type, payloads[])` — parallel dispatch.
 - Creates service role client per job execution.
@@ -342,6 +343,10 @@ Every edge function:
 - **Currently unused** — no frontend code calls `queue.enqueue()`.
 
 **Where queue is used**: `stripe-webhook` dispatches ticket issuance, RSVP auto-join, and loyalty points via queue. `notifications-process` batches notification sends. Other edge functions dispatch notifications via queue.
+
+**Cloud Tasks worker** (`supabase/functions/queue-worker`):
+- Receives Cloud Tasks HTTP jobs and runs handlers from `_shared/job-handlers.ts`.
+- Validates OIDC token audience against `CLOUD_TASKS_WORKER_URL`.
 
 ---
 
@@ -456,14 +461,15 @@ Within each bucket: newest-first. Final sort: weight DESC → recency DESC.
 
 ### Feed Context
 `buildFeedContext(userId)` — called once per session, cached 5 minutes by React Query.
-- Fetches connections (accepted friends) and organiser follows in parallel.
-- Then fetches organisers that friends follow (capped at 50 friends).
-- Returns `FeedContext { userId, friendIds, followedOrgIds, friendFollowedOrgIds }`.
+- Fetches accepted connections, organiser follows, owned organiser ids, plus muted connections/organisers in parallel.
+- Filters out muted friends/organisers from scoring; friend-followed-org lookup batches (no 50-friend cap).
+- Returns `FeedContext { userId, friendIds, followedOrgIds, friendFollowedOrgIds, mutedFriendIds, mutedOrgIds }`.
 
 ### Authenticated vs Unauthenticated
 - **Authenticated**: `fetchFeedPage(ctx, cursor)` — weighted scoring with all 5 buckets.
 - **Unauthenticated**: `fetchPublicFeedPage(cursor)` — everything gets weight 10 (public fallback), sorted by recency.
 - Both use cursor-based pagination (20 posts per page).
+- **Self-visibility**: Home feed pins the newest self-authored post into the first page if it would otherwise be excluded.
 
 ### Pagination Strategy
 - Cursor = ISO timestamp of last post's `created_at`.
@@ -479,10 +485,7 @@ Within each bucket: newest-first. Final sort: weight DESC → recency DESC.
 
 ### Known Gaps / Bugs
 1. **Dual feed hooks**: `useFeedPosts()` (deprecated, non-paginated) coexists with `usePaginatedFeed()`; Index uses the latter. `useFeedPosts` no longer registers Realtime — home feed uses debounced `home-feed-realtime` invalidation only (`useFeedQuery.ts`).
-2. **Repost deduplication is imperfect**: Same post can appear as both original and repost if the repost timestamp falls in a different cursor window than the original.
-3. **No blocked user filtering in feed**: `blocked_users` table exists but feed queries don't filter out posts from blocked users.
-4. **No muted connection filtering**: `connections.muted` column exists but isn't used in feed scoring.
-5. **Friend-followed-org lookup is capped at 50 friends** — silently drops data for users with large friend networks.
+2. **Realtime invalidation can reshuffle posts**: Cross-page dedupe is handled in `useFeedQuery.ts`, but a full refetch can still move posts between pages.
 
 ---
 
@@ -551,8 +554,8 @@ Event
 6. Deletes go through `event-media-manage` which removes storage object + DB row (host/organiser only).
 
 ### Remaining Logic Problems
-1. **`publish_at` scheduling is not enforced**: Events with future `publish_at` are still queryable — no filter excludes unpublished events from public listings.
-2. **Event `status` field** defaults to `'published'` but draft/cancelled statuses aren't consistently filtered in queries.
+1. **`publish_at` scheduling only updates status on create**: Public listings filter `publish_at`, but `events-update` does not toggle `status` when `publish_at` changes.
+2. **Event `status` field** defaults to `'published'`; public listings filter by status, but `getById`/admin views do not enforce status by default.
 
 ---
 
@@ -744,8 +747,8 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 3. **No expired order cleanup**
    - Job type `cleanup.expired_orders` is defined but no cron or trigger invokes it. Reserved orders that expire after 15 minutes remain in `status = 'reserved'` indefinitely, potentially blocking inventory.
 
-4. **`publish_at` scheduling not enforced**
-   - Events with future `publish_at` timestamps appear in all public queries. No filter in `eventsRepository.list()` or `eventsRepository.search()` excludes them.
+4. **`publish_at` scheduling only updates status on create**
+   - Public listings already filter `publish_at`, but `events-update` does not toggle `status` when `publish_at` changes (e.g., clearing a publish time may leave an event stuck as `scheduled`).
 
 ### Architectural Mismatches
 
@@ -782,14 +785,14 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 16. **Profile update dual path**
     - `identityService.updateProfile()` checks for session: if present, calls `profile-update` edge function; if not, writes directly via Supabase client (for mock/dev login). This means dev path bypasses all server-side validation.
 
-17. **Blocked users not filtered in feed**
-    - `blocked_users` table has proper RLS, but `feedService.ts` and `usePostsQuery.ts` don't filter posts from blocked users.
+17. **Blocked users filtered only in feed contexts**
+    - `feedService.ts` and `usePostsQuery.ts` filter blocked users; ensure search/recommendations apply the same rules if needed.
 
-18. **Muted connections not used**
-    - `connections.muted` column exists but feed scoring ignores it entirely.
+18. **Muted connections only applied to home feed**
+    - `feedService.ts` filters `connections.muted` + `organiser_followers.muted`, but profile feeds (`usePostsQuery.ts`) do not yet.
 
-19. **Event status not filtered**
-    - Events have a `status` column (default 'published') but queries don't filter by status — draft or cancelled events could appear in listings.
+19. **Event status filtering depends on query**
+    - Public listings use `status = 'published'`, but `getById`/admin views do not enforce status; ensure routes guard drafts/cancellations.
 
 20. **Organiser verification is implicit vs explicit**
     - Feed enrichment hardcodes `author_is_verified = true` for all organiser profile posts, but personal profile verification is DB-driven (`is_verified` column). These are semantically different verification concepts treated identically in the UI.

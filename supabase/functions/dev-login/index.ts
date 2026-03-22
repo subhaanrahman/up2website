@@ -121,11 +121,16 @@ Deno.serve(async (req) => {
       return errorResponse(500, "Failed to generate session", { requestId });
     }
 
-    const { data: verifyData, error: verifyError } =
-      await supabaseAnon.auth.verifyOtp({
+    let { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: "email",
+    });
+    if (verifyError) {
+      ({ data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
         token_hash: linkData.properties.hashed_token,
         type: "magiclink",
-      });
+      }));
+    }
 
     if (verifyError || !verifyData?.session) {
       edgeLog("error", "Verify OTP failed, trying signInWithPassword", {

@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 import { toE164 } from "../_shared/phone.ts";
+import { TWILIO_NOT_CONFIGURED_MESSAGE } from "../_shared/twilio-config-message.ts";
 
 function maskEmail(email: string): string {
   if (!email || email.length < 5) return "***";
@@ -43,7 +44,7 @@ Deno.serve(async (req) => {
     const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
     const serviceSid = Deno.env.get("TWILIO_VERIFY_SERVICE_SID");
     if (!accountSid || !authToken || !serviceSid) {
-      return errorResponse(500, "SMS service not configured", { requestId });
+      return errorResponse(500, TWILIO_NOT_CONFIGURED_MESSAGE, { requestId });
     }
 
     const credentials = btoa(`${accountSid}:${authToken}`);

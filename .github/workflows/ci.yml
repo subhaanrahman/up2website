@@ -13,6 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Guard Supabase project ref (optional)
+        env:
+          SUPABASE_EXPECTED_PROJECT_ID: ${{ secrets.SUPABASE_EXPECTED_PROJECT_ID }}
+        run: bash scripts/region-migration/check-project-ref.sh
+
       - uses: actions/setup-node@v6
         with:
           node-version: 22
@@ -32,6 +37,8 @@ jobs:
         env:
           # Use repo secret VITE_STRIPE_PUBLISHABLE_KEY if set; else placeholder so build succeeds
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          # Optional: Sentry browser DSN for error reporting in built assets (see docs/TESTING_GUIDE.md)
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
   e2e:
     runs-on: ubuntu-latest
@@ -58,6 +65,7 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_PROJECT_ID: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
         run: |
           if [ -z "${VITE_SUPABASE_URL:-}" ] || [ -z "${VITE_SUPABASE_PUBLISHABLE_KEY:-}" ]; then
             echo "::notice::Skipping E2E — add repository secrets VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (same values as local .env)."

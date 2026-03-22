@@ -8,7 +8,7 @@ DO $$
 DECLARE
   v_seed_1 uuid := 'a1111111-1111-1111-1111-111111111111';
   v_seed_2 uuid := 'a2222222-2222-2222-2222-222222222222';
-  v_pw text := crypt('seedhost123', gen_salt('bf'));
+  v_pw text := extensions.crypt('seedhost123', extensions.gen_salt('bf'));
 BEGIN
   -- Seed host 1
   INSERT INTO auth.users (

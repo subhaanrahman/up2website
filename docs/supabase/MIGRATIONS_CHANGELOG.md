@@ -1,6 +1,8 @@
-# Migration Changelog
+# Migration Changelog (historical snapshot)
 
-Recent schema changes applied via `supabase db push`.
+> **2026-03-20:** This file is an **archive** of notable dates only. For the full migration history, use [`supabase/migrations/`](../../supabase/migrations/) and git — do not maintain a second changelog here.
+
+Recent schema changes applied via `supabase db push` (snapshot below).
 
 ## 2026-03-19
 

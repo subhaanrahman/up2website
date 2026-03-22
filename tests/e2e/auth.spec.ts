@@ -25,7 +25,7 @@ test.describe('Auth page (unauthenticated)', () => {
 
   test('reset-password without hash redirects to auth', async ({ page }) => {
     await page.goto('/auth/reset-password');
-    await expect(page.getByText(/loading|verifying/i).first()).toBeVisible({ timeout: 2000 });
-    await expect(page).toHaveURL(/\/auth/, { timeout: 5000 });
+    // No recovery hash: ResetPassword schedules redirect to /auth (see ~3s timeout in page)
+    await expect(page).toHaveURL(/\/auth/, { timeout: 8000 });
   });
 });

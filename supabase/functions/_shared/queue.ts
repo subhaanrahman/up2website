@@ -9,6 +9,7 @@
  */
 
 import { createClient, SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { enqueueCloudTask, isCloudTasksEnabled, shouldUseCloudTasks } from "./cloud-tasks.ts";
 
 // ── Job type registry ──────────────────────────────────────────────
 export type JobType =
@@ -20,7 +21,9 @@ export type JobType =
   | 'tickets.issue'
   | 'referral.track'
   | 'cleanup.expired_orders'
-  | 'cleanup.expired_notifications';
+  | 'cleanup.expired_notifications'
+  | 'auth.login'
+  | 'auth.signup';
 
 export interface Job<T = unknown> {
   id: string;
@@ -75,6 +78,12 @@ export interface ReferralTrackPayload {
   event_id?: string;
 }
 
+/** Observability-only jobs (GCP Cloud Tasks when enabled); handlers only log. */
+export interface AuthMomPayload {
+  user_id: string;
+  edge_request_id: string;
+}
+
 // ── Handler registry ───────────────────────────────────────────────
 
 type Handler = (payload: unknown, serviceClient: SupabaseClient) => Promise<void>;
@@ -100,9 +109,9 @@ let jobCounter = 0;
 export async function enqueue<T>(
   type: JobType,
   payload: T,
-  options: { fireAndForget?: boolean; maxAttempts?: number } = {},
+  options: { fireAndForget?: boolean; maxAttempts?: number; useCloudTasks?: boolean } = {},
 ): Promise<void> {
-  const { fireAndForget = true, maxAttempts = 3 } = options;
+  const { fireAndForget = true, maxAttempts = 3, useCloudTasks = true } = options;
 
   const job: Job<T> = {
     id: `job_${++jobCounter}_${Date.now()}`,
@@ -113,10 +122,45 @@ export async function enqueue<T>(
     maxAttempts,
   };
 
-  // ── In-process execution (stub adapter) ──────────────────────
-  const handler = handlers.get(type);
+  const cloudTasksEnabled = isCloudTasksEnabled();
+  const canUseCloudTasks = cloudTasksEnabled && useCloudTasks && fireAndForget && shouldUseCloudTasks(type);
+
+  if (canUseCloudTasks) {
+    await enqueueCloudTask({
+      id: job.id,
+      type: job.type,
+      payload: job.payload,
+      createdAt: job.createdAt,
+      maxAttempts: job.maxAttempts,
+    });
+    return;
+  }
+
+  await processJob(job, { fireAndForget });
+}
+
+/**
+ * Enqueue multiple jobs of the same type (batch helper).
+ */
+export async function enqueueBatch<T>(
+  type: JobType,
+  payloads: T[],
+  options: { fireAndForget?: boolean; maxAttempts?: number; useCloudTasks?: boolean } = {},
+): Promise<void> {
+  await Promise.allSettled(
+    payloads.map(p => enqueue(type, p, options)),
+  );
+}
+
+export async function processJob<T>(
+  job: Job<T>,
+  options: { fireAndForget?: boolean } = {},
+): Promise<void> {
+  const { fireAndForget = true } = options;
+
+  const handler = handlers.get(job.type);
   if (!handler) {
-    console.warn(`[queue] No handler registered for job type "${type}", skipping job ${job.id}`);
+    console.warn(`[queue] No handler registered for job type "${job.type}", skipping job ${job.id}`);
     return;
   }
 
@@ -128,27 +172,14 @@ export async function enqueue<T>(
   while (job.attempts < job.maxAttempts) {
     job.attempts++;
     try {
-      await handler(payload, serviceClient);
+      await handler(job.payload, serviceClient);
       return; // success
     } catch (err) {
-      console.error(`[queue] Job ${job.id} (${type}) attempt ${job.attempts}/${job.maxAttempts} failed:`, err);
+      console.error(`[queue] Job ${job.id} (${job.type}) attempt ${job.attempts}/${job.maxAttempts} failed:`, err);
       if (job.attempts >= job.maxAttempts) {
         if (!fireAndForget) throw err;
         console.error(`[queue] Job ${job.id} exhausted retries, discarding.`);
       }
     }
   }
-}
-
-/**
- * Enqueue multiple jobs of the same type (batch helper).
- */
-export async function enqueueBatch<T>(
-  type: JobType,
-  payloads: T[],
-  options: { fireAndForget?: boolean; maxAttempts?: number } = {},
-): Promise<void> {
-  await Promise.allSettled(
-    payloads.map(p => enqueue(type, p, options)),
-  );
 }

@@ -103,7 +103,12 @@ const Events = () => {
     limit: 30,
   });
 
-  const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
+  const {
+    data: forYouEvents = [],
+    isLoading: forYouLoading,
+    isError: forYouError,
+    error: forYouErrorObj,
+  } = useForYouEvents(15);
 
   const isSearching = !!searchQuery.trim();
   const showForYou = !isSearching && !selectedFilter;
@@ -208,6 +213,11 @@ const Events = () => {
                 </div>
               ))}
             </div>
+          ) : showForYou && forYouError ? (
+            <p className="text-center text-destructive py-12 text-sm px-2">
+              Could not load events. Check the browser console and that your Supabase project has published public upcoming events (RLS allows anon to read public events).
+              {forYouErrorObj instanceof Error ? ` ${forYouErrorObj.message}` : ''}
+            </p>
           ) : displayEvents.length === 0 ? (
             <p className="text-center text-muted-foreground py-12">No upcoming events found</p>
           ) : (
@@ -257,6 +267,11 @@ const Events = () => {
 
             {displayEventsLoading ? (
               <p className="text-muted-foreground">Loading...</p>
+            ) : showForYou && forYouError ? (
+              <p className="text-destructive py-12 text-center text-sm max-w-lg">
+                Could not load events. Check the console and that your project has published public upcoming events.
+                {forYouErrorObj instanceof Error ? ` ${forYouErrorObj.message}` : ''}
+              </p>
             ) : displayEvents.length === 0 ? (
               <p className="text-muted-foreground py-12 text-center">No upcoming events found</p>
             ) : (

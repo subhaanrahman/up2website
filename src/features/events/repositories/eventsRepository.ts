@@ -11,7 +11,7 @@ export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
 /** Columns required by `mapEventRow` — avoids `select('*')` on hot list/search paths (lower PostgREST egress). */
 const EVENT_LIST_COLUMNS =
-  'id,host_id,title,description,location,venue_name,address,event_date,end_date,cover_image,category,max_guests,is_public,vip_tables_enabled,refunds_enabled,refund_policy_text,refund_deadline_hours_before_event,tickets_available_from,tickets_available_until,created_at,updated_at';
+  'id,host_id,title,description,location,venue_name,address,event_date,end_date,cover_image,category,max_guests,is_public,publish_at,vip_tables_enabled,refunds_enabled,refund_policy_text,refund_deadline_hours_before_event,tickets_available_from,tickets_available_until,created_at,updated_at';
 
 /** Safety cap when callers omit `limit` (prevents unbounded published-event scans). */
 const DEFAULT_EVENTS_LIST_LIMIT = 200;
@@ -31,6 +31,7 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
     category: row.category as string | null,
     maxGuests: row.max_guests as number | null,
     isPublic: row.is_public as boolean,
+    publishAt: (row.publish_at as string | null) ?? null,
     vipTablesEnabled: (row.vip_tables_enabled as boolean) ?? false,
     refundsEnabled: (row.refunds_enabled as boolean) ?? false,
     refundPolicyText: (row.refund_policy_text as string | null) ?? null,
@@ -56,7 +57,9 @@ export const eventsRepository = {
       .limit(cap);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return (data || []).map(mapEventRow);
   },
 
@@ -286,7 +289,9 @@ export const eventsRepository = {
       query = query.eq('status', 'published').or(`publish_at.is.null,publish_at.lte.${now}`);
     }
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return data || [];
   },
 

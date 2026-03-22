@@ -5,12 +5,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfileQuery';
 import {
   buildFeedContext,
+  emptyFeedContextForUser,
   fetchFeedPage,
   fetchPublicFeedPage,
   fetchNearbyEvents,
-  type FeedContext,
   type FeedPage,
 } from '@/features/social';
+import { config } from '@/infrastructure/config';
 
 // ─── Feed context (social graph, cached per user) ───
 export function useFeedContext() {
@@ -29,22 +30,21 @@ export function useFeedContext() {
 export function usePaginatedFeed() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: ctx } = useFeedContext();
+  const { data: ctx, isPending: ctxPending, isError: ctxError } = useFeedContext();
+
+  const graphKey = !user ? 'anon' : ctxPending ? 'ctx-wait' : ctxError ? 'ctx-err' : 'ctx-ready';
 
   const query = useInfiniteQuery<FeedPage>({
-    queryKey: ['feed-posts', user?.id ?? 'anon'],
+    queryKey: ['feed-posts', user?.id ?? 'anon', graphKey],
     queryFn: ({ pageParam }) => {
       const cursor = pageParam as string | null;
       if (!user) return fetchPublicFeedPage(cursor);
-      if (!ctx) {
-        // Context not loaded yet — fetch public as fallback
-        return fetchPublicFeedPage(cursor);
-      }
-      return fetchFeedPage(ctx, cursor);
+      const effectiveCtx = ctx ?? emptyFeedContextForUser(user.id);
+      return fetchFeedPage(effectiveCtx, cursor);
     },
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
-    enabled: true, // works for both auth and anon
+    enabled: !user || !ctxPending,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
   });
@@ -77,12 +77,21 @@ export function usePaginatedFeed() {
   // Flatten pages into a single array
   const posts = useMemo(() => {
     if (!query.data) return [];
-    return query.data.pages.flatMap(p => p.posts);
+    const all = query.data.pages.flatMap(p => p.posts);
+    const seen = new Set<string>();
+    const deduped = [];
+    for (const post of all) {
+      const key = (post as any)._feedKey || post.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(post);
+    }
+    return deduped;
   }, [query.data]);
 
   return {
     posts,
-    isLoading: query.isLoading,
+    isLoading: (!!user && ctxPending) || query.isLoading,
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: query.fetchNextPage,
@@ -93,11 +102,14 @@ export function usePaginatedFeed() {
 
 // ─── Nearby events (DB-backed) ───
 export function useNearbyEvents(limit = 4) {
-  const { data: profile } = useProfile(useAuth().user?.id);
+  const { user } = useAuth();
+  const { data: profile } = useProfile(user?.id);
+  // Guests: optional VITE_DEFAULT_GUEST_CITY so carousel can scope to a region; else all public upcoming.
+  const city = user ? (profile?.city ?? null) : (config.defaultGuestCity ?? null);
 
   return useQuery({
-    queryKey: ['nearby-events', profile?.city ?? 'global'],
-    queryFn: () => fetchNearbyEvents(profile?.city ?? null, limit),
+    queryKey: ['nearby-events', user?.id ?? 'guest', city ?? ''],
+    queryFn: () => fetchNearbyEvents(city, limit),
     staleTime: 2 * 60 * 1000,
   });
 }

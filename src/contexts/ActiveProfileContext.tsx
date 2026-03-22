@@ -59,13 +59,19 @@ function mapOrgRow(r: any): OrganiserProfile {
 
 function personalProfileFromUserAndProfile(
   userId: string,
-  user: { user_metadata?: { display_name?: string }; email?: string },
+  user: { user_metadata?: { display_name?: string; username?: string }; email?: string },
   profile: { displayName?: string | null; avatarUrl?: string | null } | null | undefined
 ): ActiveProfile {
+  const meta = user.user_metadata;
   return {
     id: userId,
     type: "personal",
-    displayName: profile?.displayName || user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
+    displayName:
+      profile?.displayName ||
+      meta?.display_name ||
+      meta?.username ||
+      user.email?.split("@")[0] ||
+      "User",
     avatarUrl: profile?.avatarUrl ?? null,
   };
 }

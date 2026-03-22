@@ -119,7 +119,7 @@ More detail: [TESTING_GUIDE.md](TESTING_GUIDE.md) (Invalid JWT / env mismatch).
 
 ## Queue and Follow-Up Jobs
 
-Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the in-process queue.
+Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the queue abstraction. When `CLOUD_TASKS_ENABLED=true`, these jobs are sent to Cloud Tasks and processed by `queue-worker`; otherwise they run in-process.
 
 - **Job types:** `tickets.issue`, `rsvp.auto_mark_going`, `loyalty.award_points`
 - **Max attempts:** 3 per job (configurable via `enqueue` options)

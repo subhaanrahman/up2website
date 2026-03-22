@@ -190,6 +190,8 @@ Before committing any code change:
 |----------|---------|
 | `docs/ARCHITECTURE.md` | Full platform architecture (routes, DB, edge functions, risks) |
 | `docs/DATABASE_ARCHITECTURE.md` | Schema deep-dive (46 tables, RPCs, RLS, indexes) |
+| `docs/supabase/MIGRATION_AND_HOSTING.md` | Supabase hosting (Sydney), secrets, region migration, MCP |
+| `docs/supabase/AUTH_AND_SEEDING.md` | Dev login, seeds, OTP/Twilio |
 | `docs/PLATFORM_TODOS.md` | Consolidated todos (pre-launch, backend, Stripe, optimisation, API, cleanup) |
 | `docs/SECURITY_CHECKLIST.md` | Which tables are locked, which are edge-only, which are client-writable |
 | `docs/GAMIFICATION_OPTIONS.md` | Points, ranks, badges roadmap |

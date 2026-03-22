@@ -109,7 +109,7 @@ All edge functions use DB-backed `check_rate_limit` RPC:
 - [x] **Fix `is_profile_public()` function** — Migration applied; checks `profile_tier = 'professional'`.
 - [ ] Enable leaked password protection in auth settings
 - [ ] Add banned/blocked user checks to `rsvp_join` when moderation is implemented
-- [ ] Add blocked user filtering to feed queries (`feedService.ts`, `usePostsQuery.ts`)
+- [x] Add blocked user filtering to feed queries (`feedService.ts`, `usePostsQuery.ts`)
 - [ ] Restrict CORS to production domain (currently `*` wildcard)
 - [ ] Add rate limiting to `event_messages` INSERT (event board spam prevention)
 - [ ] Implement content moderation pipeline (report → review → action)

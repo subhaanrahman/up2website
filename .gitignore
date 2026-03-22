@@ -26,3 +26,7 @@ dist-ssr
 
 # Playwright auth state (contains session tokens)
 tests/.auth/
+
+# Region migration helpers (local-only)
+scripts/region-migration/env.local
+tmp/region-migration/

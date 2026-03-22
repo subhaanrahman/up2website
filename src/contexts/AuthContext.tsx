@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from '@/infrastructure/supabase';
-import { callEdgeFunction } from "@/infrastructure/api-client";
+import { assertSessionMatchesProjectEnv, callEdgeFunction } from "@/infrastructure/api-client";
 import { toE164 } from "@/utils/phone";
 
 interface ForgotPasswordCheckResult {
@@ -46,21 +46,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     authStateReceived.current = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        authStateReceived.current = true;
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+    const applySession = (session: Session | null, source: "onAuthStateChange" | "getSession") => {
+      if (session?.access_token) {
+        try {
+          assertSessionMatchesProjectEnv(session.access_token);
+        } catch (e) {
+          void supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
       }
-    );
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      authStateReceived.current = true;
+      applySession(session, "onAuthStateChange");
+    });
 
     // Cold boot / refresh recovery — only if onAuthStateChange hasn't fired yet
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!authStateReceived.current) {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        applySession(session, "getSession");
       }
     });
 

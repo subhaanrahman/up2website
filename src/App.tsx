@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { RouterErrorBoundary } from "@/components/RouterErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
@@ -78,7 +78,7 @@ const App = () => (
           <Sonner />
         <BrowserRouter>
           <PhoneFrame>
-            <ErrorBoundary>
+            <RouterErrorBoundary>
             <Routes>
               {/* Public routes */}
               <Route path="/" element={<Index />} />
@@ -133,7 +133,7 @@ const App = () => (
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-            </ErrorBoundary>
+            </RouterErrorBoundary>
           </PhoneFrame>
         </BrowserRouter>
         </TooltipProvider>

@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 DO $$
 DECLARE
-  v_pw text := crypt('seedplaceholder1', gen_salt('bf'));
+  v_pw text := extensions.crypt('seedplaceholder1', extensions.gen_salt('bf'));
   v_instance uuid := '00000000-0000-0000-0000-000000000000'::uuid;
   v_user record;
 BEGIN

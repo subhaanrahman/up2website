@@ -380,7 +380,6 @@ const CreateEvent = () => {
               ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
               vipTableTiers={vipTableTiers} setVipTableTiers={setVipTableTiers}
               ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
-              ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
               soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
               soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
               vipTablesEnabled={vipTablesEnabled} setVipTablesEnabled={setVipTablesEnabled}
@@ -414,6 +413,14 @@ const CreateEvent = () => {
                 helperText="Leave empty to publish immediately"
                 helperTextActive="Event will auto-publish at this time"
               />
+              {hasOrganiserProfile && (
+                <DateTimePicker
+                  value={ticketsAvailableUntil}
+                  onChange={setTicketsAvailableUntil}
+                  label="Ticket Sales End"
+                  helperText="Leave empty to close at event start"
+                />
+              )}
               <Button
                 type="button"
                 className="w-full h-12 rounded-tile font-bold tracking-widest text-sm"

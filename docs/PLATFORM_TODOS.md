@@ -2,7 +2,40 @@
 
 > Consolidated checklist of pending work across APIs, backend, Stripe, optimisation, and cleanup.  
 > Shipped items (e.g. standard ticket `charge.refunded`, organiser refund ledger via `orders-list`, buyer self-service refunds) are documented in `docs/PAYMENT_FLOW.md` and `docs/ARCHITECTURE.md` so this file stays short.  
-> Last updated: 2026-03-20
+> Last updated: 2026-03-21
+
+---
+
+## Testing
+
+Tracked here instead of [`TESTING_GUIDE.md`](TESTING_GUIDE.md) (that doc is **architecture + commands** only).
+
+| Item | Status | Notes |
+|------|--------|--------|
+| `VITE_SENTRY_DSN` in GitHub Actions secrets | ⏳ Optional | Enables Sentry in CI-built bundle; local uses `.env.local`. See [TESTING_GUIDE.md](TESTING_GUIDE.md#3-sentry-browser). |
+| E2E: seed data on hosted project for `dev-login` | ⏳ When needed | Run `auth_users_seed.sql` + `data_export.sql` on same project as `VITE_SUPABASE_URL`; set `SEED_USER_PASSWORD` Edge secret. |
+| Expand Playwright: create event, feed posts, full RSVP, paid checkout | ⏳ Future | Current E2E is smoke-level; see specs in `tests/e2e/`. |
+| Visual / snapshot regression tests | Future | Not used. |
+
+### Manual UAT matrix (post–region migration)
+
+Browser pass against the project in `supabase/config.toml` (e.g. Sydney). Seed: [`supabase/AUTH_AND_SEEDING.md`](supabase/AUTH_AND_SEEDING.md) (`seedplaceholder1` for seeded accounts). After switching Supabase projects, sign out and sign in ([`TESTING_GUIDE.md` — Invalid JWT](TESTING_GUIDE.md#5-end-to-end-playwright)).
+
+| Area | Check |
+|------|--------|
+| Auth | Phone OTP (if Twilio live) or dev-login seed user |
+| Auth | Sign out → sign in; session survives refresh |
+| Core | Home `/`, search `/search`, event `/events/:id` |
+| Core | Own `/profile`; other user `/user/:userId` |
+| Organiser | Create `/create`; edit `/events/:id/edit`; manage `/events/:id/manage` |
+| Tickets | `/events`; checkout `/checkout` → `/checkout/success` if Stripe test configured |
+| VIP | `/vip-checkout` → `/vip-checkout/success` if enabled |
+| Storage | Avatars / event images load |
+| Social | `/profile/friends`, `/profile/followers`; `/messages` and threads |
+| Settings | `/settings` and key subpages (incl. `/settings/digital-id` if used) |
+| Notifications | `/notifications` |
+| Edge-heavy | Check-in `/events/:id/checkin`; embed `/embed/:id` if used |
+| Payments (optional) | Stripe test checkout per [PAYMENT_FLOW.md](PAYMENT_FLOW.md) sandbox checklist |
 
 ---
 
@@ -154,6 +187,8 @@ Shipped indexes are in migrations (latest batch `20260324120000_performance_inde
 | 6 | Defer Pub/Sub until concrete need (document "Cloud Tasks first") |
 | 7 | Alternatives to Cloud Tasks on non-GCP stacks: **Upstash QStash**, **Cloudflare Queues**, or **Inngest** — same idea: HTTP worker + retries + persistence |
 
+**Status update:** Phase 1 implemented (webhook follow-ups only). See `docs/supabase/CLOUD_TASKS.md` for setup and `supabase/functions/queue-worker` for the worker.
+
 ---
 
 ## Platform hardening (external checklist)
@@ -188,7 +223,7 @@ Cross-cutting items from common “Lovable / early SaaS” advice, mapped to thi
 
 | Item | Status | Notes |
 |------|--------|--------|
-| Sentry (errors) | ✅ Done | `@sentry/react` init when `VITE_SENTRY_DSN` is set; `ErrorBoundary` + `captureApiError` report to Sentry. |
+| Sentry (errors) | ✅ Done | `@sentry/react` init when `VITE_SENTRY_DSN` is set; `ErrorBoundary` + `captureApiError`. Set DSN in `.env.local` locally; optional GitHub secret for CI builds — [TESTING_GUIDE.md](TESTING_GUIDE.md#3-sentry-browser). |
 | PostHog (funnels / product analytics) | ⏳ Pending | Not integrated; add when funnel work starts. |
 
 ### CI / E2E
@@ -196,9 +231,10 @@ Cross-cutting items from common “Lovable / early SaaS” advice, mapped to thi
 | Item | Status | Notes |
 |------|--------|--------|
 | Playwright on PRs | ✅ Done | `.github/workflows/ci.yml` — `e2e` job runs `npx playwright install --with-deps` + `npm run test:e2e` when secrets are configured. |
-| Required GitHub Actions secrets | — | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (same as local `.env`; powers the Vite dev server during E2E). Optional: `VITE_STRIPE_PUBLISHABLE_KEY` for checkout specs. If URL/key are missing, the job skips E2E and passes. See [TESTING_GUIDE.md](TESTING_GUIDE.md). |
-| Seeded staging for E2E | ⏳ Optional | `supabase/migrations/seed*.sql` and `npm run seed:sydney` exist; not wired to CI. |
-| Visual / snapshot tests | Future | Not used today. |
+| Required GitHub Actions secrets | — | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (same as local `.env`; powers the Vite dev server during E2E). Optional: `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_SENTRY_DSN`. If URL/key are missing, the job skips E2E and passes. See [TESTING_GUIDE.md](TESTING_GUIDE.md). |
+| Seeded staging for E2E | ⏳ Optional | Host seed migrations: `20260325120000_seed_local_hosts.sql`, `20260325130000_seed_sydney_events.sql` (applied via `supabase db push` on target projects). `npm run seed:sydney` if present; not wired to CI. |
+
+Backlog for broader QA and coverage: [**Testing**](#testing) (manual UAT matrix, Playwright expansion, snapshots).
 
 ---
 

@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 DO $$
 DECLARE
-  v_pw text := crypt('seedhost123', gen_salt('bf'));
+  v_pw text := extensions.crypt('seedhost123', extensions.gen_salt('bf'));
   v_uid_1 uuid := '90ac0dd5-60d3-43d1-ab25-0000bcc506cf'::uuid;
   v_uid_2 uuid := '52fa6aaf-eac9-4ae3-a59f-00002895eafd'::uuid;
   v_uid_3 uuid := '3bb1c696-6e1a-459e-aff6-00006e31bd22'::uuid;

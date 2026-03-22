@@ -19,6 +19,7 @@ const updateSchema = z.object({
   max_guests: z.number().int().positive().nullable().optional(),
   is_public: z.boolean().optional(),
   cover_image: z.string().url().nullable().optional(),
+  publish_at: z.string().nullable().optional(),
   tickets_available_from: z.string().nullable().optional(),
   tickets_available_until: z.string().nullable().optional(),
   vip_tables_enabled: z.boolean().optional(),
@@ -147,6 +148,7 @@ Deno.serve(async (req) => {
     if (fields.max_guests !== undefined) updateData.max_guests = fields.max_guests;
     if (fields.is_public !== undefined) updateData.is_public = fields.is_public;
     if (fields.cover_image !== undefined) updateData.cover_image = fields.cover_image;
+    if (fields.publish_at !== undefined) updateData.publish_at = fields.publish_at;
     if (fields.tickets_available_from !== undefined) updateData.tickets_available_from = fields.tickets_available_from;
     if (fields.tickets_available_until !== undefined) updateData.tickets_available_until = fields.tickets_available_until;
     if (fields.vip_tables_enabled !== undefined) updateData.vip_tables_enabled = fields.vip_tables_enabled;

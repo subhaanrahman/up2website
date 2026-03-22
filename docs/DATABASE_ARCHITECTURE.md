@@ -1,8 +1,8 @@
 # Up2 Platform — Database Architecture
 
-> Last updated: 2026-03-24  
+> Last updated: 2026-03-21  
 > Companion to `docs/ARCHITECTURE.md` — deep-dive into the PostgreSQL schema, relationships, RLS policies, and future table plans.  
-> **Performance:** [PERFORMANCE.md](PERFORMANCE.md) (slow queries, indexes). **New region:** [REGION_MIGRATION.md](REGION_MIGRATION.md).
+> **Performance:** [PERFORMANCE.md](PERFORMANCE.md) (slow queries, indexes). **Hosting / region moves:** [supabase/MIGRATION_AND_HOSTING.md](supabase/MIGRATION_AND_HOSTING.md). **Hosted DB (Sydney):** project `fxcosnsbaaktblmnvycv` — schema via `supabase db push`; optional legacy `public` data via [`scripts/region-migration/apply-public-data.sh`](../scripts/region-migration/apply-public-data.sh).
 
 ---
 
@@ -143,7 +143,7 @@ Team membership for organiser profiles. Roles: `editor`. Statuses: `pending`, `a
 **RLS**: Owner has full access. Accepted members can view team. Invited user can view/update own membership.
 
 #### `organiser_followers`
-Simple follow relationship (user → organiser). Includes `muted` boolean (not yet used).
+Simple follow relationship (user → organiser). Includes `muted` boolean used to suppress organiser posts in the home feed.
 
 #### `user_roles`
 Admin role assignments. Enum: `super_admin`, `moderator`, `support`. **No client writes** — managed via DB only.
@@ -159,12 +159,12 @@ Music service integrations (Spotify, Apple Music). `service_id` + `connected` bo
 ### 3.2 Social
 
 #### `connections`
-Friend request graph. `requester_id` → `addressee_id`. Status: `pending`, `accepted`. `muted` boolean exists but unused in feed scoring.
+Friend request graph. `requester_id` → `addressee_id`. Status: `pending`, `accepted`. `muted` boolean is used to suppress posts in the home feed.
 
 **RLS**: Users can view/manage own connections (either side). Addressee can accept (UPDATE).
 
 #### `blocked_users`
-`blocker_id` → `blocked_id`. **Note**: Feed queries do NOT currently filter blocked users.
+`blocker_id` → `blocked_id`. Feed queries filter blocked users in `feedService.ts` and `usePostsQuery.ts`.
 
 #### `posts`
 | Column | Type | Notes |

@@ -55,18 +55,25 @@ const FriendsFollowing = () => {
         const friendIds = connections.map((c) =>
           c.requester_id === user.id ? c.addressee_id : c.requester_id
         );
-        const { data: profiles } = await supabase
+        const { data: profiles, error: profErr } = await supabase
           .from("profiles")
           .select("user_id, display_name, username, avatar_url")
           .in("user_id", friendIds);
 
+        if (profErr) console.error(profErr);
+
+        const byId = new Map((profiles || []).map((p) => [p.user_id, p]));
+        // One row per connection; placeholders if RLS still hides a row (apply migration 20260331120000)
         setFriends(
-          (profiles || []).map((p) => ({
-            userId: p.user_id,
-            displayName: p.display_name || "User",
-            username: p.username || "user",
-            avatarUrl: p.avatar_url,
-          }))
+          friendIds.map((fid) => {
+            const p = byId.get(fid);
+            return {
+              userId: fid,
+              displayName: p?.display_name || "User",
+              username: p?.username || "user",
+              avatarUrl: p?.avatar_url ?? null,
+            };
+          })
         );
       } else {
         setFriends([]);

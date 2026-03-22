@@ -59,6 +59,7 @@ export const eventsApi = {
         max_guests: fields.maxGuests,
         is_public: fields.isPublic,
         cover_image: fields.coverImage,
+        publish_at: fields.publishAt,
         tickets_available_from: fields.ticketsAvailableFrom,
         tickets_available_until: fields.ticketsAvailableUntil,
         vip_tables_enabled: fields.vipTablesEnabled,

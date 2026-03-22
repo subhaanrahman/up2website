@@ -14,6 +14,7 @@ export interface EventEntity {
   category: string | null;
   maxGuests: number | null;
   isPublic: boolean;
+  publishAt: string | null;
   vipTablesEnabled?: boolean;
   refundsEnabled?: boolean;
   refundPolicyText?: string | null;

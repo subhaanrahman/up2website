@@ -15,10 +15,13 @@
  */
 
 import type { PostWithAuthor, PostEventData, PostCollaborator } from '@/hooks/usePostsQuery';
+import { createLogger } from '@/infrastructure/logger';
 import { connectionsRepository } from '../repositories/connectionsRepository';
 import { profilesRepository } from '../repositories/profilesRepository';
 import { postsRepository } from '../repositories/postsRepository';
 import { eventsRepository } from '@/features/events/repositories/eventsRepository';
+
+const feedLog = createLogger('feed.context');
 
 // ─── Weights ───
 const WEIGHT_FRIEND_POST = 100;
@@ -44,42 +47,81 @@ export interface FeedContext {
   friendIds: Set<string>;
   followedOrgIds: Set<string>;
   friendFollowedOrgIds: Set<string>;
+  mutedFriendIds: Set<string>;
+  mutedOrgIds: Set<string>;
 }
 
 const PAGE_SIZE = 20;
 
+/** Logged-in user with an empty graph: still applies blocks / user-scored paths (not the anon public feed). */
+export function emptyFeedContextForUser(userId: string): FeedContext {
+  return {
+    userId,
+    friendIds: new Set(),
+    followedOrgIds: new Set(),
+    friendFollowedOrgIds: new Set(),
+    mutedFriendIds: new Set(),
+    mutedOrgIds: new Set(),
+  };
+}
+
+async function withFallback<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    feedLog.warn('partial context (network or RLS)', { label, error: String(e) });
+    return fallback;
+  }
+}
+
 // ─── Context builder (called once, cached by hook) ───
 export async function buildFeedContext(userId: string | null): Promise<FeedContext> {
   if (!userId) {
-    return { userId: null, friendIds: new Set(), followedOrgIds: new Set(), friendFollowedOrgIds: new Set() };
+    return {
+      userId: null,
+      friendIds: new Set(),
+      followedOrgIds: new Set(),
+      friendFollowedOrgIds: new Set(),
+      mutedFriendIds: new Set(),
+      mutedOrgIds: new Set(),
+    };
   }
 
-  // Parallel: friends, followed organisers
-  const [connections, followedOrgIdsList, ownedOrgIdsList] = await Promise.all([
-    connectionsRepository.getAcceptedConnections(userId),
-    connectionsRepository.getFollowedOrganiserIds(userId),
-    profilesRepository.getOwnedOrganiserIds(userId),
+  // Parallel: friends, followed organisers — never fail the whole graph on one flaky fetch (TypeError: Failed to fetch)
+  const [connections, followedOrgIdsList, ownedOrgIdsList, mutedFriendIds, mutedOrgIds] = await Promise.all([
+    withFallback('connections', () => connectionsRepository.getAcceptedConnections(userId), []),
+    withFallback('followedOrgs', () => connectionsRepository.getFollowedOrganiserIds(userId), []),
+    withFallback('ownedOrgs', () => profilesRepository.getOwnedOrganiserIds(userId), []),
+    withFallback('mutedFriends', () => connectionsRepository.getMutedConnectionIds(userId), new Set<string>()),
+    withFallback('mutedOrgs', () => connectionsRepository.getMutedOrganiserIds(userId), new Set<string>()),
   ]);
 
-  const friendIds = new Set<string>();
+  const allFriendIds = new Set<string>();
   for (const c of connections) {
-    friendIds.add(c.requester_id === userId ? c.addressee_id : c.requester_id);
+    allFriendIds.add(c.requester_id === userId ? c.addressee_id : c.requester_id);
   }
+  const friendIds = new Set([...allFriendIds].filter(id => !mutedFriendIds.has(id)));
 
   const ownedOrgIds = new Set(ownedOrgIdsList);
-  let followedOrgIds = new Set(followedOrgIdsList.filter(id => !ownedOrgIds.has(id)));
+  let followedOrgIds = new Set(
+    followedOrgIdsList.filter(id => !ownedOrgIds.has(id) && !mutedOrgIds.has(id)),
+  );
 
   // Organisers that friends follow (secondary signal)
   let friendFollowedOrgIds = new Set<string>();
   if (friendIds.size > 0) {
-    const friendArr = [...friendIds].slice(0, 50);
-    const friendFollows = await connectionsRepository.getFollowersByFriends(friendArr);
+    const friendArr = [...friendIds];
+    const friendFollows = await withFallback(
+      'friendFollows',
+      () => connectionsRepository.getFollowersByFriends(friendArr),
+      [],
+    );
     friendFollowedOrgIds = new Set(
-      friendFollows.filter(id => !followedOrgIds.has(id) && !ownedOrgIds.has(id)),
+      friendFollows.filter(id => !followedOrgIds.has(id) && !ownedOrgIds.has(id) && !mutedOrgIds.has(id)),
     );
   }
 
-  return { userId, friendIds, followedOrgIds, friendFollowedOrgIds };
+  return { userId, friendIds, followedOrgIds, friendFollowedOrgIds, mutedFriendIds, mutedOrgIds };
 }
 
 // ─── Score a single post ───
@@ -212,9 +254,12 @@ export async function fetchFeedPage(
 
   // 2. Fetch reposts via repository
   const rawReposts = await postsRepository.getRepostsForFeed(cursor, pageSize);
+  const mutedFriendIds = ctx.mutedFriendIds ?? new Set<string>();
+  const mutedOrgIds = ctx.mutedOrgIds ?? new Set<string>();
+  const filteredReposts = (rawReposts || []).filter((r: any) => !mutedFriendIds.has(r.user_id));
 
   // 3. Fetch repost source posts that may not be in our main query
-  const repostPostIds = [...new Set((rawReposts || []).map((r: any) => r.post_id))];
+  const repostPostIds = [...new Set((filteredReposts || []).map((r: any) => r.post_id))];
   const existingPostIds = new Set((rawPosts || []).map((p: any) => p.id));
   const missingRepostIds = repostPostIds.filter((id: string) => !existingPostIds.has(id));
 
@@ -224,12 +269,12 @@ export async function fetchFeedPage(
 
   // 4. Build repost metadata
   const repostMeta = new Map<string, { reposterId: string; reposterName: string; repostCreatedAt: string }>();
-  if (rawReposts && rawReposts.length > 0) {
-    const reposterIds = [...new Set(rawReposts.map(r => r.user_id))];
+  if (filteredReposts && filteredReposts.length > 0) {
+    const reposterIds = [...new Set(filteredReposts.map(r => r.user_id))];
     const reposterProfiles = await profilesRepository.getProfilesByIds(reposterIds);
     const rpMap = new Map(reposterProfiles.map(p => [p.user_id, p]));
 
-    for (const r of rawReposts) {
+    for (const r of filteredReposts) {
       const rp = rpMap.get(r.user_id);
       repostMeta.set(r.post_id, {
         reposterId: r.user_id,
@@ -246,10 +291,17 @@ export async function fetchFeedPage(
     if (blockedIds.size > 0) {
       allRawPosts = allRawPosts.filter((p: any) => !blockedIds.has(p.author_id));
       const repostBlocked = new Set(
-        (rawReposts || []).filter((r: any) => blockedIds.has(r.user_id)).map((r: any) => r.post_id),
+        (filteredReposts || []).filter((r: any) => blockedIds.has(r.user_id)).map((r: any) => r.post_id),
       );
       allRawPosts = allRawPosts.filter((p: any) => !repostBlocked.has(p.id));
     }
+  }
+  if (mutedFriendIds.size > 0 || mutedOrgIds.size > 0) {
+    allRawPosts = allRawPosts.filter((p: any) => {
+      if (mutedFriendIds.has(p.author_id)) return false;
+      if (p.organiser_profile_id && mutedOrgIds.has(p.organiser_profile_id)) return false;
+      return true;
+    });
   }
   const uniqueMap = new Map<string, any>();
   for (const p of allRawPosts) {
@@ -291,7 +343,22 @@ export async function fetchFeedPage(
     deduped.push(p);
   }
 
-  const page = deduped.slice(0, pageSize);
+  let page = deduped.slice(0, pageSize);
+  if (ctx.userId) {
+    const pageHasSelf = page.some((p) => p.author_id === ctx.userId);
+    if (!pageHasSelf) {
+      const selfPosts = deduped.filter((p) => p.author_id === ctx.userId);
+      if (selfPosts.length > 0) {
+        const newestSelf = selfPosts.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        )[0];
+        const existingKey = newestSelf._feedKey || newestSelf.id;
+        if (!page.some((p) => (p._feedKey || p.id) === existingKey)) {
+          page = [newestSelf, ...page].slice(0, pageSize);
+        }
+      }
+    }
+  }
   const lastPost = page[page.length - 1];
   const hasMore = deduped.length > pageSize;
 
@@ -308,7 +375,14 @@ export async function fetchPublicFeedPage(
   pageSize = PAGE_SIZE,
 ): Promise<FeedPage> {
   return fetchFeedPage(
-    { userId: null, friendIds: new Set(), followedOrgIds: new Set(), friendFollowedOrgIds: new Set() },
+    {
+      userId: null,
+      friendIds: new Set(),
+      followedOrgIds: new Set(),
+      friendFollowedOrgIds: new Set(),
+      mutedFriendIds: new Set(),
+      mutedOrgIds: new Set(),
+    },
     cursor,
     pageSize,
   );

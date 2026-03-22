@@ -7,6 +7,25 @@
  * External URLs (Tenor GIFs, Giphy, etc.) are returned untouched.
  */
 
+import { config } from '@/infrastructure/config';
+
+/**
+ * Rewrites `…/storage/v1/…` URLs to the app's current Supabase project host.
+ * Fixes broken avatars after migrating data from another project when rows still
+ * point at an old `*.supabase.co` origin.
+ */
+export function normalizeSupabaseStorageUrlToProject(url: string | null | undefined): string | undefined {
+  if (!url?.trim()) return undefined;
+  const trimmed = url.trim();
+  const marker = '/storage/v1/';
+  const idx = trimmed.indexOf(marker);
+  if (idx === -1) return trimmed;
+  const pathFromStorage = trimmed.slice(idx);
+  const base = (config.supabase.url || '').replace(/\/$/, '');
+  if (!base) return trimmed;
+  return `${base}${pathFromStorage}`;
+}
+
 // ── Standard image size presets ─────────────────────────────────────────────
 export const IMAGE_SIZES = {
   /** Tiny avatars in lists / collaborator chips (28–40px rendered) */

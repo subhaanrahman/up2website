@@ -64,9 +64,12 @@ export function parseApiError(status: number, body: unknown): AppError {
     const b = body as Record<string, unknown>;
     const msg = (b.error ?? b.message ?? b.msg) as string | undefined;
     if (typeof msg === 'string' && msg) {
-      const details = { ...(b.details as Record<string, unknown>) };
+      const rawDetails = b.details as Record<string, unknown> | undefined;
+      const hint = typeof rawDetails?.hint === 'string' ? rawDetails.hint.trim() : '';
+      const message = hint ? `${msg} — ${hint}` : msg;
+      const details = { ...(rawDetails ?? {}) };
       if (b.request_id) details.request_id = b.request_id;
-      return new ApiError(msg, status, Object.keys(details).length > 0 ? details : undefined);
+      return new ApiError(message, status, Object.keys(details).length > 0 ? details : undefined);
     }
   }
   const excerpt = bodyExcerpt(body);

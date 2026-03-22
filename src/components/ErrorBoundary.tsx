@@ -35,7 +35,9 @@ export class ErrorBoundary extends Component<Props, State> {
               Something went wrong. Please try again.
             </p>
             <Button asChild>
-              <Link to="/">Go to Home</Link>
+              <Link to="/" replace reloadDocument>
+                Go to Home
+              </Link>
             </Button>
           </main>
           <BottomNav />

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfileQuery';
 import { fetchForYouEvents } from '@/features/social/services/feedService';
+import { config } from '@/infrastructure/config';
 
 /**
  * "For You" recommendations via feedService:
@@ -13,16 +14,11 @@ import { fetchForYouEvents } from '@/features/social/services/feedService';
 export function useForYouEvents(limit = 15) {
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
+  const city = user ? (profile?.city ?? null) : (config.defaultGuestCity ?? null);
 
   return useQuery({
-    queryKey: ['for-you-events', user?.id, profile?.city],
-    queryFn: async () => {
-      try {
-        return await fetchForYouEvents(user?.id ?? null, profile?.city ?? null, limit);
-      } catch {
-        return [];
-      }
-    },
+    queryKey: ['for-you-events', user?.id ?? 'guest', city ?? ''],
+    queryFn: () => fetchForYouEvents(user?.id ?? null, city, limit),
     enabled: true, // Run for guests too — fetchForYouEvents backfills with upcoming events when no user
     retry: 1,
   });

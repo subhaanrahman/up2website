@@ -26,6 +26,7 @@ import type { VipTableTier } from "@/components/create-event/VipTableTierModal";
 import { useStripeConnectStatus } from "@/hooks/useStripeConnectStatus";
 import { useStripeConnectOnboard } from "@/hooks/useStripeConnectOnboard";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
+import { DateTimePicker } from "@/components/create-event/DateTimePicker";
 import { supabase } from "@/infrastructure/supabase";
 import { AppError } from "@/infrastructure/errors";
 
@@ -60,6 +61,7 @@ const EditEvent = () => {
   const [capacity, setCapacity] = useState("");
   const [formErrors, setFormErrors] = useState<{ title?: string; date?: string; venueName?: string; address?: string }>({});
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [publishAt, setPublishAt] = useState("");
 
   // Co-host state
   const [cohosts, setCohosts] = useState<CohostEntry[]>([]);
@@ -98,6 +100,7 @@ const EditEvent = () => {
       setAddress(event.address || "");
       setCapacity(event.maxGuests?.toString() || "");
       setCoverImage(event.coverImage || null);
+      setPublishAt(event.publishAt || "");
       setTicketsAvailableFrom(event.ticketsAvailableFrom || "");
       setTicketsAvailableUntil(event.ticketsAvailableUntil || "");
       setVipTablesEnabled(event.vipTablesEnabled ?? false);
@@ -286,6 +289,7 @@ const EditEvent = () => {
         eventDate: eventDateTime,
         maxGuests: capacity ? parseInt(capacity) : undefined,
         coverImage: coverImage || undefined,
+        publishAt: publishAt ? new Date(publishAt).toISOString() : null,
         ticketsAvailableFrom: ticketsAvailableFrom ? new Date(ticketsAvailableFrom).toISOString() : null,
         ticketsAvailableUntil: ticketsAvailableUntil ? new Date(ticketsAvailableUntil).toISOString() : null,
         vipTablesEnabled,
@@ -415,6 +419,23 @@ const EditEvent = () => {
                   cohostInput={cohostInput} setCohostInput={setCohostInput}
                   errors={formErrors}
                 />
+                <div className="space-y-3">
+                  <DateTimePicker
+                    value={publishAt}
+                    onChange={setPublishAt}
+                    label="Schedule Publishing"
+                    helperText="Leave empty to publish immediately"
+                    helperTextActive="Event will auto-publish at this time"
+                  />
+                  {isOrganiser && (
+                    <DateTimePicker
+                      value={ticketsAvailableUntil}
+                      onChange={setTicketsAvailableUntil}
+                      label="Ticket Sales End"
+                      helperText="Leave empty to close at event start"
+                    />
+                  )}
+                </div>
                 {/* Capacity */}
                 <div className="space-y-2">
                   <Label htmlFor="capacity" className="text-foreground text-[10px] font-bold tracking-[0.2em] uppercase">Capacity</Label>
@@ -462,7 +483,6 @@ const EditEvent = () => {
                   ticketTiers={ticketTiers} setTicketTiers={setTicketTiers}
                   vipTableTiers={vipTableTiers} setVipTableTiers={setVipTableTiers}
                   ticketsAvailableFrom={ticketsAvailableFrom} setTicketsAvailableFrom={setTicketsAvailableFrom}
-                  ticketsAvailableUntil={ticketsAvailableUntil} setTicketsAvailableUntil={setTicketsAvailableUntil}
                   soldOutMessageEnabled={soldOutMessageEnabled} setSoldOutMessageEnabled={setSoldOutMessageEnabled}
                   soldOutMessage={soldOutMessage} setSoldOutMessage={setSoldOutMessage}
                   vipTablesEnabled={vipTablesEnabled} setVipTablesEnabled={setVipTablesEnabled}

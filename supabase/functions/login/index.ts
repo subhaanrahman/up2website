@@ -3,6 +3,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { verifyPassword } from "../_shared/password.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import "../_shared/job-handlers.ts";
+import { enqueueAuthMomLogin } from "../_shared/mom-auth-events.ts";
 
 // Create clients ONCE at module level (reused across warm invocations)
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -94,11 +96,13 @@ Deno.serve(async (req) => {
         });
         if (!signInErr && signInData?.session) {
           edgeLog('info', `Login successful via signInWithPassword fallback for ${phone}`, { requestId });
+          const uid = signInData.session.user?.id ?? profile.user_id;
+          await enqueueAuthMomLogin(uid, requestId);
           return successResponse({
             success: true,
             access_token: signInData.session.access_token,
             refresh_token: signInData.session.refresh_token,
-            user_id: signInData.session.user?.id ?? profile.user_id,
+            user_id: uid,
           }, requestId);
         }
       }
@@ -156,11 +160,13 @@ Deno.serve(async (req) => {
         });
         if (!signInErr && signInData?.session) {
           edgeLog('info', `Login successful via verify+sync+signIn (phone) for ${phone}`, { requestId });
+          const uid = signInData.session.user?.id ?? profile.user_id;
+          await enqueueAuthMomLogin(uid, requestId);
           return successResponse({
             success: true,
             access_token: signInData.session.access_token,
             refresh_token: signInData.session.refresh_token,
-            user_id: signInData.session.user?.id ?? profile.user_id,
+            user_id: uid,
           }, requestId);
         }
         if (signInErr) edgeLog('debug', 'signInWithPassword phone attempt', { requestId, fmt, error: signInErr.message });
@@ -174,11 +180,13 @@ Deno.serve(async (req) => {
         });
         if (!signInErr && signInData?.session) {
           edgeLog('info', `Login successful via verify+sync+signIn (email) for ${phone}`, { requestId });
+          const uid = signInData.session.user?.id ?? profile.user_id;
+          await enqueueAuthMomLogin(uid, requestId);
           return successResponse({
             success: true,
             access_token: signInData.session.access_token,
             refresh_token: signInData.session.refresh_token,
-            user_id: signInData.session.user?.id ?? profile.user_id,
+            user_id: uid,
           }, requestId);
         }
         if (signInErr) edgeLog('debug', 'signInWithPassword email attempt', { requestId, email: syntheticEmail, error: signInErr.message });
@@ -225,6 +233,7 @@ Deno.serve(async (req) => {
         password,
       });
       if (!signInError && signInData?.session) {
+        await enqueueAuthMomLogin(user.id, requestId);
         return successResponse({
           success: true,
           access_token: signInData.session.access_token,
@@ -285,6 +294,7 @@ Deno.serve(async (req) => {
       });
       if (!signInError && signInData?.session) {
         edgeLog('info', `Login successful via verify+sync+signIn (phone) for ${phone}`, { requestId });
+        await enqueueAuthMomLogin(user.id, requestId);
         return successResponse({
           success: true,
           access_token: signInData.session.access_token,
@@ -302,6 +312,7 @@ Deno.serve(async (req) => {
       });
       if (!signInError && signInData?.session) {
         edgeLog('info', `Login successful via verify+sync+signIn (email) for ${phone}`, { requestId });
+        await enqueueAuthMomLogin(user.id, requestId);
         return successResponse({
           success: true,
           access_token: signInData.session.access_token,

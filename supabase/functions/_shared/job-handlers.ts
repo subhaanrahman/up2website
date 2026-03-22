@@ -14,7 +14,23 @@ import {
   type RankUpVoucherPayload,
   type AutoRsvpPayload,
   type TicketsIssuePayload,
+  type AuthMomPayload,
 } from "./queue.ts";
+
+// ── auth.login / auth.signup (MOM observability; no DB writes) ───────
+registerHandler<AuthMomPayload>('auth.login', async (payload, _sc) => {
+  edgeLog('info', 'MOM auth.login', {
+    user_id: payload.user_id,
+    edge_request_id: payload.edge_request_id,
+  });
+});
+
+registerHandler<AuthMomPayload>('auth.signup', async (payload, _sc) => {
+  edgeLog('info', 'MOM auth.signup', {
+    user_id: payload.user_id,
+    edge_request_id: payload.edge_request_id,
+  });
+});
 
 // ── notification.send ──────────────────────────────────────────────
 registerHandler<NotificationSendPayload>(

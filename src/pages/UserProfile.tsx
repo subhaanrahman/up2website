@@ -38,6 +38,7 @@ import { messagingRepository } from "@/features/messaging/repositories/messaging
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { getOptimizedUrl, normalizeSupabaseStorageUrlToProject } from "@/lib/imageUtils";
 
 type ConnectionStatus = "none" | "pending_sent" | "pending_received" | "accepted";
 
@@ -268,7 +269,8 @@ const UserProfile = () => {
 
   const displayName = profile?.display_name || profile?.username || "User";
   const username = profile?.username || displayName.toLowerCase().replace(/\s+/g, "");
-  const avatarUrl = profile?.avatar_url;
+  const avatarUrl =
+    getOptimizedUrl(normalizeSupabaseStorageUrlToProject(profile?.avatar_url ?? null), "AVATAR_MD") || undefined;
   const isOrg = !!profile?._isOrganiser;
   
 
@@ -501,7 +503,7 @@ const UserProfile = () => {
                 <Instagram className="h-5 w-5" />
               </Button>
             ) : null}
-            <ShareProfileSheet profileUrl={`/user/${userId}`} displayName={displayName} avatarUrl={profile?.avatar_url} />
+            <ShareProfileSheet profileUrl={`/user/${userId}`} displayName={displayName} avatarUrl={avatarUrl} />
           </div>
 
           {profile.bio && (

@@ -281,6 +281,26 @@ const ManageEvent = () => {
         </div>
       </header>
 
+      {event?.organiser_profile_id && (
+        <div className="px-4 pt-3">
+          <div className="rounded-tile border border-border/60 bg-card/60 px-4 py-3 text-sm">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-2">Schedule</p>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-muted-foreground">Listing time</span>
+              <span className="text-foreground">
+                {event.publish_at ? format(new Date(event.publish_at), "d MMM yyyy, h:mma") : "Immediate"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <span className="text-muted-foreground">Ticket sales end</span>
+              <span className="text-foreground">
+                {event.tickets_available_until ? format(new Date(event.tickets_available_until), "d MMM yyyy, h:mma") : "Event start"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="orders" className="w-full">
         <TabsList className="w-full rounded-none border-b border-border bg-background h-11">

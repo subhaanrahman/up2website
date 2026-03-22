@@ -64,7 +64,7 @@ Prefer **partial** indexes when filters are stable (e.g. `WHERE status = 'publis
 
 ## 3. Region and latency
 
-Primary DB region is fixed per Supabase project. Users far from that region pay round-trip latency on **every** query. Fixing indexes and reducing round-trips helps; **moving region** requires a **new project** and migration — see [REGION_MIGRATION.md](REGION_MIGRATION.md).
+Primary DB region is fixed per Supabase project. Users far from that region pay round-trip latency on **every** query. Fixing indexes and reducing round-trips helps; **moving region** requires a **new project** and migration — see [supabase/MIGRATION_AND_HOSTING.md](supabase/MIGRATION_AND_HOSTING.md) (*Future: moving to a new Supabase region*).
 
 ---
 

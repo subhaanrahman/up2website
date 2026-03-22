@@ -88,7 +88,9 @@ export const connectionsRepository = {
       .select('requester_id, addressee_id')
       .eq('status', 'accepted')
       .or(connectionsParticipantOr(userId));
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return data || [];
   },
 
@@ -161,6 +163,31 @@ export const connectionsRepository = {
     return (data || []).map(f => f.organiser_profile_id);
   },
 
+  async getMutedConnectionIds(userId: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('connections')
+      .select('requester_id, addressee_id')
+      .eq('status', 'accepted')
+      .eq('muted', true)
+      .or(connectionsParticipantOr(userId));
+    if (error) throw error;
+    const ids = new Set<string>();
+    for (const row of data || []) {
+      ids.add(row.requester_id === userId ? row.addressee_id : row.requester_id);
+    }
+    return ids;
+  },
+
+  async getMutedOrganiserIds(userId: string): Promise<Set<string>> {
+    const { data, error } = await supabase
+      .from('organiser_followers')
+      .select('organiser_profile_id')
+      .eq('user_id', userId)
+      .eq('muted', true);
+    if (error) throw error;
+    return new Set((data || []).map(row => row.organiser_profile_id));
+  },
+
   async getBlockedUserIds(userId: string): Promise<Set<string>> {
     const { data, error } = await supabase
       .from('blocked_users')
@@ -176,11 +203,19 @@ export const connectionsRepository = {
 
   async getFollowersByFriends(friendIds: string[]): Promise<string[]> {
     if (friendIds.length === 0) return [];
-    const { data, error } = await supabase
-      .from('organiser_followers')
-      .select('organiser_profile_id')
-      .in('user_id', friendIds.slice(0, 50));
-    if (error) throw error;
-    return (data || []).map(f => f.organiser_profile_id);
+    const ids = new Set<string>();
+    const chunkSize = 50;
+    for (let i = 0; i < friendIds.length; i += chunkSize) {
+      const chunk = friendIds.slice(i, i + chunkSize);
+      const { data, error } = await supabase
+        .from('organiser_followers')
+        .select('organiser_profile_id')
+        .in('user_id', chunk);
+      if (error) throw error;
+      for (const row of data || []) {
+        ids.add(row.organiser_profile_id);
+      }
+    }
+    return [...ids];
   },
 };

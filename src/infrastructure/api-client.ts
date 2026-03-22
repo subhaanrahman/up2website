@@ -60,26 +60,18 @@ function projectRefFromAnonKey(anonKey: string): string | null {
   return typeof p?.ref === 'string' ? p.ref : null;
 }
 
-function assertEdgeAuthContext(accessToken: string): void {
+/**
+ * Ensures the JWT was issued for the same Supabase project as `VITE_SUPABASE_URL` / publishable key.
+ * Use after project migration so stale sessions in localStorage are cleared instead of causing RLS / permission errors.
+ */
+export function assertSessionMatchesProjectEnv(accessToken: string): void {
   const appOrigin = supabaseAuthOriginFromAppUrl(config.supabase.url);
   const payload = decodeJwtPayload(accessToken);
   const iss = typeof payload?.iss === 'string' ? payload.iss : null;
   const tokenOrigin = iss ? supabaseAuthOriginFromIss(iss) : null;
 
-  if (appOrigin && tokenOrigin && appOrigin !== tokenOrigin) {
-    throw new AuthError(
-      'Your saved session is for a different Supabase project than VITE_SUPABASE_URL. Sign out, align .env (URL + publishable key from the same project), restart the dev server, then sign in again.',
-    );
-  }
-
   const urlRef = projectRefFromSupabaseCoUrl(config.supabase.url);
   const anonRef = projectRefFromAnonKey(config.supabase.anonKey);
-  if (urlRef && anonRef && urlRef !== anonRef) {
-    throw new AuthError(
-      'VITE_SUPABASE_PUBLISHABLE_KEY does not belong to the same project as VITE_SUPABASE_URL. Fix .env in Settings → API, restart the dev server, then sign in again.',
-    );
-  }
-
   const issRef =
     iss && iss.includes('.supabase.co')
       ? (() => {
@@ -87,6 +79,19 @@ function assertEdgeAuthContext(accessToken: string): void {
           return m ? m[1] : null;
         })()
       : null;
+
+  if (appOrigin && tokenOrigin && appOrigin !== tokenOrigin) {
+    throw new AuthError(
+      'Your saved session is for a different Supabase project than VITE_SUPABASE_URL. Sign out, align .env (URL + publishable key from the same project), restart the dev server, then sign in again.',
+    );
+  }
+
+  if (urlRef && anonRef && urlRef !== anonRef) {
+    throw new AuthError(
+      'VITE_SUPABASE_PUBLISHABLE_KEY does not belong to the same project as VITE_SUPABASE_URL. Fix .env in Settings → API, restart the dev server, then sign in again.',
+    );
+  }
+
   if (issRef && anonRef && issRef !== anonRef) {
     throw new AuthError(
       'Your session token does not match VITE_SUPABASE_PUBLISHABLE_KEY (different project refs). Sign out and sign in again after fixing .env.',
@@ -146,7 +151,7 @@ export async function callEdgeFunction<T = unknown>(
       );
     }
 
-    assertEdgeAuthContext(token);
+    assertSessionMatchesProjectEnv(token);
 
     // Validates with Auth API — catches stale/invalid JWT before the functions gateway returns opaque "Invalid JWT"
     const now = Date.now();
@@ -157,7 +162,7 @@ export async function callEdgeFunction<T = unknown>(
         const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
         if (!refreshErr && refreshed.session?.access_token) {
           token = refreshed.session.access_token;
-          assertEdgeAuthContext(token);
+          assertSessionMatchesProjectEnv(token);
           ({ error: getUserError } = await supabase.auth.getUser());
         }
       }
@@ -171,33 +176,6 @@ export async function callEdgeFunction<T = unknown>(
       lastPreflightAccessToken = token;
       edgeAuthPreflightOkUntil = now + EDGE_AUTH_PREFLIGHT_TTL_MS;
     }
-
-    // #region agent log
-    {
-      const appOrigin = supabaseAuthOriginFromAppUrl(config.supabase.url);
-      const iss = decodeJwtPayload(token)?.iss;
-      const tokenOrigin = typeof iss === 'string' ? supabaseAuthOriginFromIss(iss) : null;
-      fetch('http://127.0.0.1:7714/ingest/cc889300-2184-4e36-9364-a9f37953115f', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'db9c3f' },
-        body: JSON.stringify({
-          sessionId: 'db9c3f',
-          runId: 'jwt-hardening',
-          hypothesisId: 'H_env_mismatch',
-          location: 'api-client.ts:callEdgeFunction',
-          message: 'protected edge preflight',
-          data: {
-            functionName,
-            appOrigin,
-            tokenOrigin,
-            originsMatch: !!(appOrigin && tokenOrigin && appOrigin === tokenOrigin),
-            anonKeyLooksJwt: config.supabase.anonKey.includes('.'),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-    // #endregion
   }
 
   /**
@@ -235,8 +213,11 @@ export async function callEdgeFunction<T = unknown>(
       const json = await res.json().catch(() => null);
       let err = parseApiError(res.status, json);
       if (res.status === 401 && /invalid jwt/i.test(err.message)) {
+        const gatewayHint = !config.supabase.usesLegacyJwtAnonKey
+          ? ' With sb_publishable_* keys, the Edge gateway may reject JWT before your function runs — set verify_jwt = false for that function in supabase/config.toml, redeploy it, and keep auth in getUser() inside the function.'
+          : '';
         err = new ApiError(
-          `${err.message} — If your app .env is correct, verify Edge Functions use this project's secrets: \`supabase secrets list\` (SUPABASE_URL, SUPABASE_ANON_KEY) and redeploy functions. Also restart Vite after .env changes, then sign out and sign in.`,
+          `${err.message} — Confirm Edge secrets SUPABASE_URL + SUPABASE_ANON_KEY match this project and redeploy.${gatewayHint} Restart Vite after .env changes; sign out and sign in if the session is stale.`,
           401,
           err.details,
         );

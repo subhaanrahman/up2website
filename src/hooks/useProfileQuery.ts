@@ -12,7 +12,7 @@ export const profileKeys = {
 
 export function useProfile(userId: string | undefined) {
   return useQuery({
-    queryKey: profileKeys.detail(userId!),
+    queryKey: userId ? profileKeys.detail(userId) : [...profileKeys.all, 'anon'],
     queryFn: () => identityService.getProfileOrNull(userId!),
     enabled: !!userId,
     staleTime: 2 * 60 * 1000, // 2 min — profile doesn't change often

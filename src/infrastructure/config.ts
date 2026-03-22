@@ -3,10 +3,17 @@ export type Environment = 'development' | 'staging' | 'production';
 
 export const config = {
   env: (import.meta.env.MODE || 'development') as Environment,
+  /** When set, used for nearby / For You when logged out (no profile city). Optional. */
+  defaultGuestCity: (import.meta.env.VITE_DEFAULT_GUEST_CITY as string | undefined)?.trim() || undefined,
   supabase: {
     url: import.meta.env.VITE_SUPABASE_URL as string,
     anonKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string,
     projectId: import.meta.env.VITE_SUPABASE_PROJECT_ID as string,
+    /** Legacy anon JWT (starts with eyJ). Edge Functions gateway may return 401 Invalid JWT when using sb_publishable_* only. */
+    get usesLegacyJwtAnonKey() {
+      const k = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+      return typeof k === 'string' && k.startsWith('eyJ');
+    },
   },
   get isDev() { return this.env === 'development'; },
   get isProd() { return this.env === 'production'; },
@@ -23,5 +30,12 @@ if (typeof window !== 'undefined' && config.isDev) {
       '[Auth] VITE_SUPABASE_URL points to localhost. If auth fails, check .env — use your project URL (https://xxx.supabase.co) when using hosted Supabase.',
     );
     (window as { __authLocalhostWarned?: boolean }).__authLocalhostWarned = true;
+  }
+  const anon = config.supabase.anonKey || '';
+  if (anon && !anon.startsWith('eyJ') && !(window as { __edgeAnonKeyWarned?: boolean }).__edgeAnonKeyWarned) {
+    console.warn(
+      '[Supabase] Using sb_publishable_* key: Edge gateway may 401 before your function runs unless supabase/config.toml sets verify_jwt = false for that function (auth stays in getUser()). Deploy functions after config changes.',
+    );
+    (window as { __edgeAnonKeyWarned?: boolean }).__edgeAnonKeyWarned = true;
   }
 }

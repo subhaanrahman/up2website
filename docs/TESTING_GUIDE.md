@@ -1,201 +1,156 @@
-# Testing Guide — Unit, E2E & CI
+# Testing architecture and commands
 
-> How to run tests, add new tests, and keep the test suite healthy.
-
----
-
-## Quick Reference
-
-| What | Command |
-|------|---------|
-| Unit tests (run once) | `npm run test` |
-| Unit tests (watch) | `npm run test:watch` |
-| Smoke test (unit + build) | `npm run smoke` |
-| E2E tests | `npm run test:e2e` |
-| E2E with UI | `npm run test:e2e:ui` |
-
-**Production DB slowness / egress:** Use [PERFORMANCE.md](PERFORMANCE.md) (`pg_stat_statements` in Supabase SQL Editor) before changing Postgres settings.
+How automated tests, observability, and CI fit together. **Pending testing work and manual QA checklists** live in [`PLATFORM_TODOS.md`](PLATFORM_TODOS.md) under **Testing**.
 
 ---
 
-## Full local QA (comprehensive)
+## 1. Overview
 
-Use this before a release or when validating auth-heavy flows (e.g. create event, Edge Functions):
-
-1. **`npx eslint .`** — Currently reports warnings only (no errors); safe to treat as informational unless you tighten the config.
-2. **`npm run test`** — Full Vitest suite.
-3. **`npm run build`** — Production build; catches missing env at compile time where applicable.
-4. **`npm run test:e2e`** — Can take **5–15 minutes** on a cold run (Chromium download, dev server boot, network calls to Supabase). Requires a reachable project, **`dev-login`** deployed, and seed users as in [E2E Prerequisites](#e2e-prerequisites).
-
-**Stripe / payments (manual):** Use test keys, Connect test account, and webhook setup as in [PAYMENT_FLOW.md — Stripe sandbox checklist](PAYMENT_FLOW.md#stripe-sandbox-checklist-test-mode). Full paid-ticket acceptance is the [Manual QA playbook](PAYMENT_FLOW.md#manual-qa-playbook-sandbox). Automated E2E for real card flows is optional; document outcomes in release notes when touching checkout or refunds.
-
-**Invalid JWT / env mismatch (`401` on edge functions):**
-
-1. `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` must be the **anon key from the same project** where functions are deployed (ref in `supabase/config.toml` / Dashboard).
-2. If you switch projects or rotate keys, **sign out and sign in** — old refresh tokens are tied to the previous project.
-3. **CORS** changes do not fix JWT errors; this is always session or wrong keys.
-4. See [PAYMENT_FLOW.md — Troubleshooting](PAYMENT_FLOW.md#troubleshooting-401--invalid-jwt).
-
----
-
-## When to Run What
-
-**Before every push / PR:** Run `npm run smoke`. CI does the same (lint → unit tests → build).
-
-**After pulling/merging:** Run `npm run smoke` to catch breaking changes.
-
-**Before a release or major feature merge:** Run `npm run test:e2e` to validate auth, profile, tickets, dashboard flows. E2E starts the dev server; needs a working backend (Supabase).
-
-**During development:** Use `npm run test:watch` so unit tests re-run on file save.
-
----
-
-## Adding New Tests
-
-### Unit / component tests (Vitest + RTL)
-
-- **Location:** Colocate with source: `src/utils/foo.ts` → `src/utils/foo.test.ts`
-- **Pattern:** `*.test.ts` or `*.test.tsx`; Vitest picks them up from `src/**/*.{test,spec}.{ts,tsx}`.
-- **Utils:** Test pure logic, edge cases, error paths.
-- **Hooks:** Use `renderHook` + `act`; mock `callEdgeFunction` or other API clients with `vi.mock()`.
-- **Components:** Use `render`, `screen`, `userEvent`; wrap with providers (QueryClient, Router, etc.) if needed.
-
-**Example — new util:**
-
-```ts
-// src/utils/myUtil.test.ts
-import { describe, it, expect } from 'vitest';
-import { myUtil } from './myUtil';
-
-describe('myUtil', () => {
-  it('returns expected result', () => {
-    expect(myUtil('input')).toBe('output');
-  });
-});
+```mermaid
+flowchart LR
+  subgraph local [Local dev]
+    Vitest[Vitest unit or component]
+    Playwright[Playwright E2E]
+    DevServer[Vite dev server plus env]
+  end
+  subgraph ci [GitHub Actions]
+    Lint[ESLint]
+    Build[Vite build]
+    E2EJob[Playwright optional]
+  end
+  subgraph observability [Production visibility]
+    Sentry[Sentry browser SDK]
+    SupabaseLogs[Supabase Edge logs]
+  end
+  Vitest --> CI
+  Lint --> CI
+  Build --> CI
+  Playwright --> E2EJob
+  DevServer --> Sentry
 ```
 
-**Example — component with providers:**
-
-```tsx
-// src/components/MyButton.test.tsx
-import { render, screen, userEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-import MyButton from './MyButton';
-
-describe('MyButton', () => {
-  it('calls onClick when clicked', async () => {
-    const onClick = vi.fn();
-    render(<MyButton onClick={onClick}>Click me</MyButton>);
-    await userEvent.click(screen.getByRole('button', { name: /click me/i }));
-    expect(onClick).toHaveBeenCalledOnce();
-  });
-});
-```
-
-### E2E tests (Playwright)
-
-- **Location:** `tests/e2e/*.spec.ts`
-- **Pattern:** One spec per flow (auth, profile, tickets, dashboard, event-detail, checkout).
-- **Setup:** Playwright starts `npm run dev` (see `playwright.config.ts` `baseURL` / `webServer`, typically `http://127.0.0.1:4173`).
-- **Auth:** `auth.setup.ts` runs first and performs dev login (clicks "Dylan"), then saves `storageState` to `tests/.auth/user.json`. Authenticated specs (profile, dashboard, tickets, event-detail, checkout) use this state. Auth spec runs unauthenticated.
-- **Prerequisites:** Supabase project must be running with the `dev-login` edge function. The dev login user IDs (e.g. `1eafb563-071a-45c6-a82e-79b460b3a851` for Dylan) must exist in your Supabase `auth.users` table.
-
-**Example — new E2E spec:**
-
-```ts
-// tests/e2e/new-flow.spec.ts
-import { test, expect } from '@playwright/test';
-
-test.describe('New flow', () => {
-  test('page loads and shows expected content', async ({ page }) => {
-    await page.goto('/some-route');
-    await expect(page.getByRole('heading', { name: /expected/i })).toBeVisible();
-  });
-});
-```
+| Layer | Role | Where |
+|-------|------|--------|
+| **Vitest** | Fast feedback on hooks, repositories, utils, components | `src/**/*.test.{ts,tsx}` |
+| **Playwright** | Smoke paths with real browser + hosted Supabase | `tests/e2e/` |
+| **Lint + build** | Type/env issues before merge | `npm run smoke` |
+| **Sentry** | Client exceptions and `captureApiError` API failures | [`src/infrastructure/sentry.ts`](../src/infrastructure/sentry.ts), [`ErrorBoundary`](../src/components/ErrorBoundary.tsx) |
+| **Supabase** | Edge function logs, Postgres, Auth dashboard | Supabase project dashboard |
 
 ---
 
-## CI Behaviour
+## 2. Commands
 
-On push/PR to `main`, workflow `.github/workflows/ci.yml`:
+| Command | Purpose |
+|---------|---------|
+| `npm run test` | Full Vitest suite (once) |
+| `npm run test:watch` | Vitest watch mode |
+| `npm run build` | Production bundle (validates env consumers at compile time) |
+| `npm run smoke` | `npm run test` then `npm run build` |
+| `npm run lint` | ESLint (warnings are allowed today; zero errors required) |
+| `npm run test:e2e` | Playwright (starts dev server per `playwright.config.ts`) |
+| `npm run test:e2e:ui` | Playwright with UI |
 
-1. **Job `ci`:** Lint → unit tests → build (optional secret `VITE_STRIPE_PUBLISHABLE_KEY`).
-2. **Job `e2e`:** Runs after `ci` succeeds. Installs Playwright Chromium and runs `npm run test:e2e` **only if** repository secrets **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_PUBLISHABLE_KEY`** are set (same as your local `.env`). Otherwise the step exits 0 with a notice — the job stays green so forks and WIP branches without secrets are not blocked.
+**Before a PR:** `npm run smoke`.
 
-**Optional E2E secrets:**
+**Before a release:** add `npm run test:e2e` when secrets and seed data are available (see [E2E](#5-end-to-end-playwright)).
 
-| Secret | Purpose |
-|--------|---------|
-| `VITE_SUPABASE_PROJECT_ID` | Passed through if set; not strictly required for most flows |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Enables checkout E2E spec (otherwise that spec skips) |
-
-**Prerequisites for E2E in CI:** Hosted (or reachable) Supabase with **`dev-login`** deployed and seed users (e.g. Dylan) in `auth.users`, as in [E2E Prerequisites](#e2e-prerequisites).
-
----
-
-## Lovable Prompts (Supabase)
-
-Testing itself is not done via Lovable. Lovable is for Supabase: migrations, Edge Function deploys, dashboard config.
-
-Use `docs/LOVABLE_PROMPTS.md` when you need Lovable to:
-
-- Apply migrations
-- Deploy Edge Functions
-- Configure secrets (e.g. `STRIPE_SECRET_KEY`, `CRON_SECRET`)
+**Phone OTP helpers (Vitest):** [`src/utils/phoneLocalIdentity.test.ts`](../src/utils/phoneLocalIdentity.test.ts) covers `phoneLocalIdentityVariants` / `redactEmailForLog` used by [`verify-otp`](../supabase/functions/verify-otp/index.ts) via [`supabase/functions/_shared/phone-local-identity.ts`](../supabase/functions/_shared/phone-local-identity.ts). Staging smoke: complete SMS OTP on a real project after deploying `verify-otp` and confirm Edge logs show **`OTP login successful`** or a **`sessionDiag`** block on failure.
 
 ---
 
-## Test Coverage
+## 3. Sentry (browser)
 
-- Vitest can report coverage: add `--coverage` to the test script or run `npx vitest run --coverage`.
-- Coverage is not enforced in CI; use it locally to find untested paths.
+**Implementation**
 
-### Coverage priorities
+- **`initBrowserSentry()`** runs once at startup from [`src/main.tsx`](../src/main.tsx) before React renders.
+- If **`VITE_SENTRY_DSN`** is unset or empty, Sentry is **not** initialized (no overhead, no outbound calls).
+- When set, [`src/infrastructure/sentry.ts`](../src/infrastructure/sentry.ts) configures the React SDK with `sendDefaultPii: false` and `tracesSampleRate: 0` (errors only, no performance tracing by default).
+- **Reports go to Sentry when:**
+  - [`ErrorBoundary`](../src/components/ErrorBoundary.tsx) catches a render error (`captureClientException`).
+  - [`captureApiError`](../src/infrastructure/errorCapture.ts) runs after [`createLogger`](../src/infrastructure/logger.ts) logs an API error (edge function failures surfaced to the client).
 
-Add tests in this order when expanding coverage:
+**Local / staging setup**
 
-| Priority | Area | Items | Rationale |
-|----------|------|-------|-----------|
-| High | Repositories | ~~connectionsRepository~~, ~~profilesRepository~~, eventManagementRepository, messagingRepository, notificationsRepository, loyaltyRepository, supportRepository, organiserTeamRepository | Core data access; bugs here affect many features |
-| High | Hooks | ~~useUnreadMessages~~, useNotificationsQuery, useFriends, useFriendsGoing, usePendingTransfers, usePrivacySettings, useAdminMutations | Used in critical UI flows |
-| Medium | Components | ~~EventTile~~, TransferTicketModal, TicketDetailModal, ShareEventSheet, MutualFriendsRow | Reused or payment/transfer-critical |
-| Medium | Utils | ~~phone.ts~~, calendarUtils, imageUtils, gamification.ts | Pure logic, easy to test |
-| Low | Pages | Most pages (Index, Profile, Tickets, etc.) | Often integration-heavy; E2E covers flows |
+1. Create a project in [Sentry](https://sentry.io) (browser / React).
+2. Copy the **DSN** into **`.env.local`** (gitignored):
 
-### Patterns
+   ```bash
+   VITE_SENTRY_DSN=https://xxxx@xxxx.ingest.sentry.io/xxxx
+   ```
 
-- **Repositories:** Mock `@/infrastructure/supabase` with a chain-style mock (`from().select().eq()...then()`). Set `chainRes` per test to control returned data/errors. Mock `@/infrastructure/logger` when needed.
-- **Hooks:** Use `renderHook` with `QueryClientProvider` wrapper. Mock `useAuth`, external services (Supabase, API), and `vi.mock()` dependencies. Use `waitFor` for async assertions.
-- **Components:** Use `renderWithProviders` from `@/test/test-utils` (includes QueryClient + BrowserRouter with future flags). Prefer `getByRole` over `getByText` for interactive elements. Use flexible matchers for dates (timezone-aware).
-- **Utils:** Test pure functions directly; cover edge cases, empty input, and error paths.
+3. Restart `npm run dev`. Trigger an error (e.g. throw in a dev-only branch) and confirm the event in Sentry **Issues**.
 
-### Auth flows (unit-tested)
+**CI / production builds**
 
-- **PhoneStep** — phone input, continue, check-phone
-- **OtpStep** — OTP input, verify, onBack
-- **PasswordStep** — password input, login, onForgotPassword, onBack
-- **ForgotPasswordStep** — send OTP, verify, email vs phone reset paths
-- **ResetPassword** — recovery hash, loading, form submit, validation
+- Add **`VITE_SENTRY_DSN`** as an optional GitHub Actions **secret** so `vite build` in CI embeds the DSN in the bundle when you want release tracking from deployed artifacts. Same variable for hosting (Vercel, etc.).
+
+**Security note:** The DSN is embedded in client JS; it is not a server secret. Restrict data in events via Sentry project settings and scrubbing if needed.
 
 ---
 
-## E2E Prerequisites
+## 4. CI (GitHub Actions)
 
-- **Supabase:** Local or hosted project with `dev-login` edge function deployed.
-- **Dev login users:** Ensure these user IDs exist in `auth.users`:
-  - Dylan: `1eafb563-071a-45c6-a82e-79b460b3a851`
-  - Haan: `e8f02149-2ccf-4324-950a-d2a574c46569`
-- **Auth state:** `tests/.auth/user.json` is generated by the setup project and gitignored.
+Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+1. **Job `ci`:** checkout → `npm ci` → ESLint → Vitest → `vite build` (passes through `VITE_STRIPE_PUBLISHABLE_KEY`, **`VITE_SENTRY_DSN`** when the secret exists).
+2. **Job `e2e`:** runs after `ci` succeeds; installs Chromium; runs `npm run test:e2e` **only if** `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` repository secrets are set. Otherwise the step exits 0 and prints a notice.
+
+**Repository secrets (typical)**
+
+| Secret | Used for |
+|--------|----------|
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` | E2E dev server + app |
+| `VITE_SUPABASE_PROJECT_ID` | Optional for E2E |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Build + checkout E2E (non-placeholder) |
+| `VITE_SENTRY_DSN` | Optional; Sentry in CI-built bundle |
+| `SUPABASE_EXPECTED_PROJECT_ID` | Optional guard script vs `supabase/config.toml` |
 
 ---
 
-## Troubleshooting
+## 5. End-to-end (Playwright)
 
-| Issue | Fix |
-|-------|-----|
-| `npm run test` fails | Run `npm run smoke`; fix failing tests or build errors. |
-| E2E times out | Ensure dev server starts (see `playwright.config.ts` `webServer` URL/port); default is `127.0.0.1:4173`. |
-| E2E auth setup fails | Ensure Supabase is running and `dev-login` edge function works; verify Dylan user exists. |
-| E2E fails in CI | E2E may need Supabase env vars; consider running E2E only on main or manually. |
-| `vi.mock` not working | Mock must be hoisted; define it before imports, or use `vi.mock('@/path', () => ({ ... }))` at top of file. |
+- **Config:** [`playwright.config.ts`](../playwright.config.ts) — `baseURL` `http://127.0.0.1:4173`, `webServer` runs `npm run dev`.
+- **Auth fixture:** [`tests/e2e/auth.setup.ts`](../tests/e2e/auth.setup.ts) uses **dev-login** and saves `tests/.auth/user.json` for authenticated specs.
+- **Requires:** `dev-login` deployed; **`SEED_USER_PASSWORD`** Edge secret (e.g. `seedplaceholder1`); [`auth_users_seed.sql` + `data_export.sql`](supabase/AUTH_AND_SEEDING.md) on the **same** project as `VITE_SUPABASE_URL` so Dylan has a profile phone.
+
+**Invalid JWT on edge calls:** same `VITE_SUPABASE_*` project as deployed functions; sign out and sign in after switching projects. See [PAYMENT_FLOW.md — Troubleshooting](PAYMENT_FLOW.md#troubleshooting-401--invalid-jwt).
+
+---
+
+## 6. Writing tests
+
+**Unit / component (Vitest)**
+
+- Colocate: `foo.ts` → `foo.test.ts`.
+- Mock Supabase chains and `callEdgeFunction` where needed; see existing tests under `src/features/**`, `src/hooks/**`.
+
+**E2E**
+
+- Add specs under `tests/e2e/`; depend on `auth.setup` when authenticated state is required.
+
+**Performance of production DB**
+
+- Use [PERFORMANCE.md](PERFORMANCE.md) (`pg_stat_statements`) before tuning Postgres.
+
+---
+
+## 7. Troubleshooting
+
+| Issue | What to check |
+|-------|----------------|
+| `npm run test` fails | Fix failing tests or restore mocks; run `npm run smoke`. |
+| E2E times out | Dev server URL/port in `playwright.config.ts`; network to Supabase. |
+| E2E setup: `dev-login` **404** | Function not deployed, or `SEED_USER_PASSWORD` / profile phone missing — [AUTH_AND_SEEDING.md](supabase/AUTH_AND_SEEDING.md). |
+| E2E skipped in CI | Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` repo secrets. |
+| No Sentry events | `VITE_SENTRY_DSN` unset after restart; or error not reaching `ErrorBoundary` / `captureApiError`. |
+| `vi.mock` not applied | Hoist mocks; use `vi.mock` at top of file. |
+
+---
+
+## 8. Related docs
+
+- [`PLATFORM_TODOS.md`](PLATFORM_TODOS.md) — Testing backlog, manual UAT matrix, optional E2E hardening.
+- [`docs/supabase/README.md`](supabase/README.md) — Supabase ops hub.
+- [`docs/supabase/CLOUD_TASKS.md`](supabase/CLOUD_TASKS.md) — Message queue (GCP Cloud Tasks) and **why the queue can be empty**.
+- [`docs/PAYMENT_FLOW.md`](PAYMENT_FLOW.md) — Stripe sandbox and webhooks.

@@ -4,6 +4,8 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 import { generateAndUploadInitialsAvatar } from "../_shared/avatar.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import "../_shared/job-handlers.ts";
+import { enqueueAuthMomSignup } from "../_shared/mom-auth-events.ts";
 
 function phoneToInternalEmail(phone: string): string {
   return `${phone.replace(/[^0-9]/g, '')}@phone.local`;
@@ -131,6 +133,13 @@ Deno.serve(async (req) => {
     const supabaseAnon = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+      },
     );
 
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
@@ -143,10 +152,16 @@ Deno.serve(async (req) => {
       return errorResponse(500, 'Account created but sign-in failed. Please log in manually.', { requestId });
     }
 
-    const { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+    let { data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
       token_hash: linkData.properties.hashed_token,
-      type: 'magiclink',
+      type: 'email',
     });
+    if (verifyError) {
+      ({ data: verifyData, error: verifyError } = await supabaseAnon.auth.verifyOtp({
+        token_hash: linkData.properties.hashed_token,
+        type: 'magiclink',
+      }));
+    }
 
     if (verifyError || !verifyData?.session) {
       edgeLog('error', 'verifyOtp error', { requestId, error: JSON.stringify(verifyError) });
@@ -154,6 +169,8 @@ Deno.serve(async (req) => {
     }
 
     edgeLog('info', `Registration complete for user ${userId}`, { requestId });
+
+    await enqueueAuthMomSignup(userId, requestId);
 
     return successResponse({
       success: true,
