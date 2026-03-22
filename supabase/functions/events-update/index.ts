@@ -7,6 +7,84 @@ import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 import { processRefund } from "../_shared/refund.ts";
 
+/** Decode JWT payload (middle segment); returns role claim or null if not a valid Supabase JWT. */
+function jwtPayloadRole(secret: string): { role: string } | null {
+  const trimmed = secret.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split('.');
+  if (parts.length !== 3) return null;
+  let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4;
+  if (pad) b64 += '='.repeat(4 - pad);
+  try {
+    const json = atob(b64);
+    const payload = JSON.parse(json) as { role?: string };
+    if (typeof payload.role !== 'string') return null;
+    return { role: payload.role };
+  } catch {
+    return null;
+  }
+}
+
+const SERVICE_ROLE_CONFIG_MSG =
+  'Use the secret key from Supabase Dashboard → Project Settings → API: legacy service_role JWT (eyJ…) or new sb_secret_… key — not anon or sb_publishable_*. Set under Edge Functions secrets and redeploy events-update.';
+
+const EVENTS_PERM_HINT =
+  'Ensure SUPABASE_ANON_KEY in Edge Functions matches this project, the request includes Authorization: Bearer <user access token>, and migration 20260331120200_events_organiser_rls is applied for organiser editors.';
+
+/**
+ * Supabase now offers non-JWT keys (`sb_secret_…`). Legacy keys are JWTs with `role: "service_role"`.
+ * Reject obvious mistakes: publishable key, or anon JWT. Otherwise accept and let PostgREST validate.
+ */
+function validateServiceRoleKey(secret: string): { ok: true } | { ok: false; message: string } {
+  const t = secret.trim();
+  if (!t) {
+    return { ok: false, message: `Missing SUPABASE_SERVICE_ROLE_KEY. ${SERVICE_ROLE_CONFIG_MSG}` };
+  }
+  if (t.startsWith('sb_publishable_')) {
+    return {
+      ok: false,
+      message: `SUPABASE_SERVICE_ROLE_KEY is set to the publishable (anon) key. ${SERVICE_ROLE_CONFIG_MSG}`,
+    };
+  }
+  if (t.startsWith('sb_secret_')) {
+    return { ok: true };
+  }
+  const parts = t.split('.');
+  if (parts.length === 3) {
+    const roleClaim = jwtPayloadRole(t);
+    if (roleClaim?.role === 'anon') {
+      return {
+        ok: false,
+        message: `SUPABASE_SERVICE_ROLE_KEY looks like the anon JWT. ${SERVICE_ROLE_CONFIG_MSG}`,
+      };
+    }
+    if (roleClaim?.role === 'service_role') {
+      return { ok: true };
+    }
+    return { ok: true };
+  }
+  return { ok: true };
+}
+
+function mapEventsTablePermissionError(message: string): string {
+  if (/permission denied for table events/i.test(message)) {
+    return `${message} — ${EVENTS_PERM_HINT}`;
+  }
+  return message;
+}
+
+function parseBearerAccessToken(authHeader: string | null): string | null {
+  if (!authHeader?.toLowerCase().startsWith('bearer ')) return null;
+  const t = authHeader.slice(7).trim();
+  return t.length > 0 ? t : null;
+}
+
+/** Case-insensitive UUID string compare. */
+function uuidEquals(a: string, b: string): boolean {
+  return a.replace(/-/g, '').toLowerCase() === b.replace(/-/g, '').toLowerCase();
+}
+
 const updateSchema = z.object({
   action: z.enum(['update', 'delete']),
   event_id: z.preprocess(
@@ -46,11 +124,33 @@ Deno.serve(async (req) => {
       return errorResponse(401, 'Not authenticated', { requestId });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    if (!anonKey?.trim()) {
+      edgeLog('error', 'events-update: SUPABASE_ANON_KEY missing', { requestId });
+      return errorResponse(500, 'Missing SUPABASE_ANON_KEY in Edge Function secrets.', { requestId });
+    }
+
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+          apikey: anonKey,
+        },
+      },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const accessToken = parseBearerAccessToken(authHeader);
+    if (accessToken) {
+      const { error: sessionErr } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '',
+      });
+      if (sessionErr) {
+        edgeLog('warn', 'events-update: setSession', { requestId, message: sessionErr.message });
+      }
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -68,16 +168,21 @@ Deno.serve(async (req) => {
 
     const { action, event_id, ...fields } = parsed.data;
 
-    // Use service role to bypass RLS for ownership check and mutations
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const keyCheck = validateServiceRoleKey(serviceRoleKey);
+    if (!keyCheck.ok) {
+      edgeLog('error', 'events-update: SUPABASE_SERVICE_ROLE_KEY rejected', { requestId });
+      return errorResponse(500, keyCheck.message, { requestId });
+    }
 
-    // Verify ownership (direct host or organiser profile owner/member)
-    const { data: event, error: fetchErr } = await serviceClient
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // Load event with caller JWT (RLS: host + organiser policies after migration 20260331120200)
+    const { data: event, error: fetchErr } = await supabase
       .from('events')
-      .select('id, host_id, organiser_profile_id')
+      .select('id, host_id, organiser_profile_id, publish_at, status, is_public')
       .eq('id', event_id)
       .maybeSingle();
 
@@ -87,22 +192,31 @@ Deno.serve(async (req) => {
         code: fetchErr.code,
         message: fetchErr.message,
       });
-      return errorResponse(400, fetchErr.message || 'Database error loading event', { requestId });
+      return errorResponse(
+        400,
+        mapEventsTablePermissionError(fetchErr.message || 'Database error loading event'),
+        { requestId },
+      );
     }
     if (!event) {
+      edgeLog('warn', 'events-update: event not found (no row for event_id)', {
+        requestId,
+        event_id,
+        user_id: user.id,
+      });
       return errorResponse(404, 'Event not found', { requestId });
     }
 
-    let isAuthorized = event.host_id === user.id;
+    let isAuthorized = uuidEquals(event.host_id, user.id);
 
     if (!isAuthorized && event.organiser_profile_id) {
       const [orgResult, memberResult] = await Promise.all([
-        serviceClient
+        supabase
           .from('organiser_profiles')
           .select('owner_id')
           .eq('id', event.organiser_profile_id)
           .maybeSingle(),
-        serviceClient
+        supabase
           .from('organiser_members')
           .select('id')
           .eq('organiser_profile_id', event.organiser_profile_id)
@@ -110,7 +224,10 @@ Deno.serve(async (req) => {
           .eq('status', 'accepted')
           .maybeSingle(),
       ]);
-      if (orgResult.data?.owner_id === user.id || memberResult.data) {
+      if (
+        (orgResult.data?.owner_id && uuidEquals(orgResult.data.owner_id, user.id)) ||
+        memberResult.data
+      ) {
         isAuthorized = true;
       }
     }
@@ -118,6 +235,16 @@ Deno.serve(async (req) => {
     if (!isAuthorized) {
       return errorResponse(403, 'Not authorized', { requestId });
     }
+
+    const hostMatch = uuidEquals(event.host_id, user.id);
+    edgeLog('info', 'events-update: authorized', {
+      requestId,
+      action,
+      event_id,
+      mutate_via: 'user',
+      host_match: hostMatch,
+      has_organiser_profile_id: !!event.organiser_profile_id,
+    });
 
     if (action === 'delete') {
       const { data: confirmedOrders } = await serviceClient
@@ -143,14 +270,18 @@ Deno.serve(async (req) => {
         }
       }
 
-      const { error: delErr } = await serviceClient.from('events').delete().eq('id', event_id);
+      const { error: delErr } = await supabase.from('events').delete().eq('id', event_id);
       if (delErr) {
-        return errorResponse(400, delErr.message, { requestId });
+        const msg = mapEventsTablePermissionError(delErr.message);
+        const hint =
+          /permission denied for table events/i.test(delErr.message) && !hostMatch
+            ? 'Organiser delete path requires migration 20260331120200_events_organiser_rls.'
+            : undefined;
+        return errorResponse(400, msg, { requestId, details: hint ? { hint } : undefined });
       }
       return successResponse({ success: true, deleted: true }, requestId);
     }
 
-    // Build update object
     const updateData: Record<string, unknown> = {};
     if (fields.title !== undefined) updateData.title = fields.title;
     if (fields.description !== undefined) updateData.description = fields.description;
@@ -178,11 +309,27 @@ Deno.serve(async (req) => {
       updateData.refund_deadline_hours_before_event = fields.refund_deadline_hours_before_event;
     }
 
+    if (fields.publish_at !== undefined) {
+      const publishAtVal = updateData.publish_at as string | null | undefined;
+      const isScheduled = publishAtVal != null && new Date(publishAtVal) > new Date();
+      if (isScheduled) {
+        updateData.status = 'scheduled';
+        updateData.is_public = false;
+        updateData.publish_at = publishAtVal;
+      } else {
+        updateData.status = 'published';
+        updateData.publish_at = null;
+        if (fields.is_public === undefined) {
+          updateData.is_public = true;
+        }
+      }
+    }
+
     if (Object.keys(updateData).length === 0) {
       return errorResponse(400, 'No fields to update', { requestId });
     }
 
-    const { data: updated, error: updErr } = await serviceClient
+    const { data: updated, error: updErr } = await supabase
       .from('events')
       .update(updateData)
       .eq('id', event_id)
@@ -190,7 +337,12 @@ Deno.serve(async (req) => {
       .single();
 
     if (updErr) {
-      return errorResponse(400, updErr.message, { requestId });
+      const msg = mapEventsTablePermissionError(updErr.message);
+      const hint =
+        /permission denied for table events/i.test(updErr.message) && !hostMatch
+          ? 'Organiser update path requires migration 20260331120200_events_organiser_rls.'
+          : undefined;
+      return errorResponse(400, msg, { requestId, details: hint ? { hint } : undefined });
     }
 
     return successResponse(updated, requestId);

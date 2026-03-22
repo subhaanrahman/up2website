@@ -29,8 +29,7 @@ function mapRow(r: any): UserEvent {
 }
 
 /**
- * "My Plans" — events the user is attending via RSVP, ticket purchase, or saved.
- * Does NOT include events the user created (unless they also RSVP'd).
+ * "My Plans" — RSVP, ticket, saved, co-host, and hosted events (hosted uses ticketStatus `hosting`).
  */
 export function useUserPlannedEvents(userId: string | undefined) {
   const { activeProfile } = useActiveProfile();
@@ -42,27 +41,34 @@ export function useUserPlannedEvents(userId: string | undefined) {
     queryFn: async () => {
       if (!userId) return [];
 
+      const hostedQuery =
+        isOrganiser && profileId
+          ? supabase.from('events').select('id').eq('organiser_profile_id', profileId)
+          : supabase.from('events').select('id').eq('host_id', userId);
+
       const [rsvpResult, orderResult, savedResult, cohostResult, hostedResult] = await Promise.all([
         supabase
           .from('rsvps')
-          .select('event_id, status, events (id, title, event_date, cover_image, location, venue_name, address, category, status)')
+          .select(
+            'event_id, status, events (id, title, event_date, cover_image, location, venue_name, address, category, status, host_id)',
+          )
           .eq('user_id', userId)
           .in('status', ['going', 'interested', 'pending']),
         supabase
           .from('orders')
-          .select('event_id, status, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status)')
+          .select(
+            'event_id, status, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status, host_id)',
+          )
           .eq('user_id', userId)
           .eq('status', 'confirmed'),
         supabase
           .from('saved_events')
-          .select('event_id, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status)')
+          .select(
+            'event_id, events:event_id (id, title, event_date, cover_image, location, venue_name, address, category, status, host_id)',
+          )
           .eq('user_id', userId),
         supabase.from('event_cohosts').select('event_id').eq('user_id', userId),
-        profileId
-          ? (isOrganiser
-              ? supabase.from('events').select('id').eq('organiser_profile_id', profileId)
-              : supabase.from('events').select('id').eq('host_id', userId))
-          : Promise.resolve({ data: [], error: null } as any),
+        hostedQuery,
       ]);
 
       const seen = new Set<string>();
@@ -71,7 +77,6 @@ export function useUserPlannedEvents(userId: string | undefined) {
       const purchasedIds = new Set((orderResult.data || []).map((o) => o.event_id));
       const excludedEventIds = new Set<string>([
         ...new Set((cohostResult.data || []).map((r: any) => r.event_id)),
-        ...new Set((hostedResult.data || []).map((r: any) => r.id)),
       ]);
 
       // RSVPs first
@@ -81,8 +86,15 @@ export function useUserPlannedEvents(userId: string | undefined) {
         seen.add(r.event_id);
         const ev = r.events as any;
         if (!ev) continue;
-        let ticketStatus = r.status === 'going' ? 'going' : r.status === 'pending' ? 'pending' : 'interested';
-        if (purchasedIds.has(r.event_id)) ticketStatus = 'purchased';
+        let ticketStatus =
+          ev.host_id === userId
+            ? 'hosting'
+            : r.status === 'going'
+              ? 'going'
+              : r.status === 'pending'
+                ? 'pending'
+                : 'interested';
+        if (ev.host_id !== userId && purchasedIds.has(r.event_id)) ticketStatus = 'purchased';
         results.push({ ...mapRow(ev), ticketStatus });
       }
 
@@ -93,7 +105,8 @@ export function useUserPlannedEvents(userId: string | undefined) {
         seen.add(o.event_id);
         const ev = o.events as any;
         if (!ev) continue;
-        results.push({ ...mapRow(ev), ticketStatus: 'purchased' });
+        const ticketStatus = ev.host_id === userId ? 'hosting' : 'purchased';
+        results.push({ ...mapRow(ev), ticketStatus });
       }
 
       // Saved without RSVP or purchase
@@ -103,7 +116,23 @@ export function useUserPlannedEvents(userId: string | undefined) {
         seen.add(s.event_id);
         const ev = s.events as any;
         if (!ev) continue;
-        results.push({ ...mapRow(ev), ticketStatus: 'saved' });
+        const ticketStatus = ev.host_id === userId ? 'hosting' : 'saved';
+        results.push({ ...mapRow(ev), ticketStatus });
+      }
+
+      // Hosted-only (no RSVP / order / saved row yet)
+      const hostedIds = new Set((hostedResult.data || []).map((r: any) => r.id));
+      const missingHostedIds = [...hostedIds].filter((id) => !seen.has(id));
+      if (missingHostedIds.length > 0) {
+        const { data: hostedRows, error: hostedErr } = await supabase
+          .from('events')
+          .select('id, title, event_date, cover_image, location, venue_name, address, category, status')
+          .in('id', missingHostedIds);
+        if (hostedErr) throw hostedErr;
+        for (const row of hostedRows || []) {
+          seen.add(row.id);
+          results.push({ ...mapRow(row), ticketStatus: 'hosting' });
+        }
       }
 
       return results;

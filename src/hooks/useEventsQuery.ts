@@ -10,22 +10,29 @@ export const DEFAULT_USE_EVENTS_LIMIT = 100;
 
 export const eventKeys = {
   all: ['events'] as const,
-  list: (filters?: { limit?: number }) => [...eventKeys.all, 'list', filters] as const,
+  list: (filters?: { limit?: number; hostUserId?: string | null }) => [...eventKeys.all, 'list', filters] as const,
   search: (filters: Record<string, unknown>) => [...eventKeys.all, 'search', filters] as const,
   detail: (id: string) => [...eventKeys.all, 'detail', id] as const,
   hostEvents: (hostId: string) => [...eventKeys.all, 'host', hostId] as const,
   rsvps: (eventId: string) => [...eventKeys.all, 'rsvps', eventId] as const,
 };
 
-export function useEvents(options?: { limit?: number }) {
+export function useEvents(options?: { limit?: number; hostUserId?: string | null }) {
   const limit = options?.limit ?? DEFAULT_USE_EVENTS_LIMIT;
+  const hostUserId = options?.hostUserId;
   return useQuery({
-    queryKey: eventKeys.list({ limit }),
-    queryFn: () => eventsService.listEvents({ limit }),
+    queryKey: eventKeys.list({ limit, hostUserId: hostUserId ?? null }),
+    queryFn: () => eventsService.listEvents({ limit, hostUserId }),
   });
 }
 
-export function useSearchEvents(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }) {
+export function useSearchEvents(options: {
+  query?: string;
+  filter?: EventFilter;
+  city?: string;
+  limit?: number;
+  hostUserId?: string | null;
+}) {
   return useQuery({
     queryKey: eventKeys.search(options),
     queryFn: async () => {

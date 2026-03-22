@@ -256,14 +256,15 @@ const Events = () => {
     filter: selectedFilter || undefined,
     city: (!debouncedQuery.trim() && !selectedFilter && profile?.city) ? profile.city : undefined,
     limit: 30,
+    hostUserId: user?.id ?? null,
   });
 
   const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
   const { data: nearbyEvents = [] } = useNearbyEvents(8);
 
   const { data: trendingEvents = [] } = useQuery({
-    queryKey: ["trending-events-v1"],
-    queryFn: async () => eventsRepository.search({ limit: 12 }),
+    queryKey: ["trending-events-v1", user?.id ?? "guest"],
+    queryFn: async () => eventsRepository.search({ limit: 12, hostUserId: user?.id ?? null }),
   });
 
   const { data: friendsGoingEvents = [] } = useQuery({

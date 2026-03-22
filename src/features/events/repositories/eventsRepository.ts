@@ -11,7 +11,7 @@ export type EventFilter = 'all' | 'tonight' | 'thisWeek' | 'thisMonth' | 'free';
 
 /** Columns required by `mapEventRow` — avoids `select('*')` on hot list/search paths (lower PostgREST egress). */
 const EVENT_LIST_COLUMNS =
-  'id,host_id,title,description,location,venue_name,address,event_date,end_date,cover_image,category,max_guests,is_public,publish_at,vip_tables_enabled,refunds_enabled,refund_policy_text,refund_deadline_hours_before_event,tickets_available_from,tickets_available_until,created_at,updated_at';
+  'id,host_id,title,description,location,venue_name,address,event_date,end_date,cover_image,category,max_guests,is_public,publish_at,vip_tables_enabled,refunds_enabled,refund_policy_text,refund_deadline_hours_before_event,tickets_available_from,tickets_available_until,created_at,updated_at,ticket_price_cents';
 
 /** Safety cap when callers omit `limit` (prevents unbounded published-event scans). */
 const DEFAULT_EVENTS_LIST_LIMIT = 200;
@@ -46,8 +46,67 @@ function mapEventRow(row: Record<string, unknown>): EventEntity {
   };
 }
 
+/** Hosted rows not yet "discoverable" (e.g. scheduled) — merge into list/search for the host user only. */
+function hostedMatchesSearchFilters(
+  ev: EventEntity,
+  options: { query?: string; filter?: EventFilter; city?: string },
+): boolean {
+  const now = new Date();
+  const nowIso = now.toISOString();
+  if (new Date(ev.eventDate) < new Date(nowIso)) return false;
+
+  const q = options.query?.trim().toLowerCase();
+  if (q) {
+    const hay = `${ev.title} ${ev.location ?? ''} ${ev.venueName ?? ''} ${ev.address ?? ''}`.toLowerCase();
+    if (!hay.includes(q)) return false;
+  }
+
+  if (options.city) {
+    const c = options.city.toLowerCase();
+    if (!`${ev.location ?? ''} ${ev.address ?? ''}`.toLowerCase().includes(c)) return false;
+  }
+
+  const evDate = new Date(ev.eventDate);
+  if (options.filter === 'tonight') {
+    if (evDate < startOfToday() || evDate > endOfToday()) return false;
+  } else if (options.filter === 'thisWeek') {
+    if (evDate < startOfToday() || evDate > endOfWeek(now, { weekStartsOn: 1 })) return false;
+  } else if (options.filter === 'thisMonth') {
+    if (evDate < startOfToday() || evDate > endOfMonth(now)) return false;
+  } else if (options.filter === 'free') {
+    if ((ev.ticketPriceCents ?? 0) > 0) return false;
+  }
+
+  return true;
+}
+
+function mergeDiscoveryDedupeSort(base: EventEntity[], extras: EventEntity[]): EventEntity[] {
+  const seen = new Set(base.map((e) => e.id));
+  const merged = [...base];
+  for (const e of extras) {
+    if (!seen.has(e.id)) {
+      seen.add(e.id);
+      merged.push(e);
+    }
+  }
+  return merged.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime());
+}
+
 export const eventsRepository = {
-  async list(options?: { limit?: number }): Promise<EventEntity[]> {
+  /** All events where this user is host (any status, incl. organiser-linked). */
+  async getHostedEventsForUser(userId: string): Promise<EventEntity[]> {
+    const { data, error } = await supabase
+      .from('events')
+      .select(EVENT_LIST_COLUMNS)
+      .eq('host_id', userId)
+      .order('event_date', { ascending: true })
+      .limit(DEFAULT_EVENTS_LIST_LIMIT);
+
+    if (error) throw error;
+    return (data || []).map(mapEventRow);
+  },
+
+  async list(options?: { limit?: number; hostUserId?: string | null }): Promise<EventEntity[]> {
     const now = new Date().toISOString();
     const cap = options?.limit ?? DEFAULT_EVENTS_LIST_LIMIT;
     let query = supabase
@@ -62,10 +121,21 @@ export const eventsRepository = {
     if (error) {
       throw error;
     }
-    return (data || []).map(mapEventRow);
+    const base = (data || []).map(mapEventRow);
+    const hostId = options?.hostUserId;
+    if (!hostId) return base;
+    const hosted = await this.getHostedEventsForUser(hostId);
+    const extra = hosted.filter((h) => !base.some((b) => b.id === h.id));
+    return mergeDiscoveryDedupeSort(base, extra);
   },
 
-  async search(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }): Promise<EventEntity[]> {
+  async search(options: {
+    query?: string;
+    filter?: EventFilter;
+    city?: string;
+    limit?: number;
+    hostUserId?: string | null;
+  }): Promise<EventEntity[]> {
     const now = new Date();
 
     // For "free" filter we need to join ticket_tiers; otherwise plain events query
@@ -104,10 +174,22 @@ export const eventsRepository = {
 
     const { data, error } = await q;
     if (error) throw error;
-    return (data || []).map(mapEventRow);
+    const base = (data || []).map(mapEventRow);
+    const hostId = options.hostUserId;
+    if (!hostId) return base;
+    const hosted = await this.getHostedEventsForUser(hostId);
+    const extra = hosted.filter(
+      (h) => !base.some((b) => b.id === h.id) && hostedMatchesSearchFilters(h, options),
+    );
+    return mergeDiscoveryDedupeSort(base, extra);
   },
 
-  async _searchFreeEvents(options: { query?: string; limit?: number }): Promise<EventEntity[]> {
+  async _searchFreeEvents(options: {
+    query?: string;
+    limit?: number;
+    city?: string;
+    hostUserId?: string | null;
+  }): Promise<EventEntity[]> {
     const now = new Date().toISOString();
     // Free = ticket_price_cents is 0 AND no paid ticket tiers; only published, past publish_at
     let q = supabase
@@ -123,6 +205,9 @@ export const eventsRepository = {
       const term = `%${options.query.trim()}%`;
       q = q.or(`title.ilike.${term},location.ilike.${term}`);
     }
+    if (options.city) {
+      q = q.or(`location.ilike.%${options.city}%,address.ilike.%${options.city}%`);
+    }
     q = q.limit(options.limit ?? DEFAULT_EVENTS_LIST_LIMIT);
 
     const { data, error } = await q;
@@ -134,7 +219,30 @@ export const eventsRepository = {
       return tiers.every((t: any) => t.price_cents === 0);
     });
 
-    return freeEvents.map(mapEventRow);
+    const base = freeEvents.map(mapEventRow);
+    const hostId = options.hostUserId;
+    if (!hostId) return base;
+
+    const hosted = await this.getHostedEventsForUser(hostId);
+    const extraCandidates = hosted.filter(
+      (h) =>
+        !base.some((b) => b.id === h.id) &&
+        (h.ticketPriceCents ?? 0) === 0 &&
+        hostedMatchesSearchFilters(h, { ...options, filter: 'free' }),
+    );
+    if (extraCandidates.length === 0) return base;
+
+    const ids = extraCandidates.map((e) => e.id);
+    const { data: tierRows } = await supabase
+      .from('ticket_tiers')
+      .select('event_id, price_cents')
+      .in('event_id', ids);
+    const paidEventIds = new Set<string>();
+    for (const t of tierRows || []) {
+      if (t.price_cents > 0) paidEventIds.add(t.event_id);
+    }
+    const extraFree = extraCandidates.filter((e) => !paidEventIds.has(e.id));
+    return mergeDiscoveryDedupeSort(base, extraFree);
   },
 
   async getById(id: string): Promise<EventEntity | null> {

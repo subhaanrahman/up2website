@@ -8,11 +8,17 @@ import { createLogger } from '@/infrastructure/logger';
 const logger = createLogger('events.service');
 
 export const eventsService = {
-  async listEvents(options?: { limit?: number }): Promise<EventEntity[]> {
+  async listEvents(options?: { limit?: number; hostUserId?: string | null }): Promise<EventEntity[]> {
     return eventsRepository.list(options);
   },
 
-  async searchEvents(options: { query?: string; filter?: EventFilter; city?: string; limit?: number }): Promise<EventEntity[]> {
+  async searchEvents(options: {
+    query?: string;
+    filter?: EventFilter;
+    city?: string;
+    limit?: number;
+    hostUserId?: string | null;
+  }): Promise<EventEntity[]> {
     return eventsRepository.search(options);
   },
 

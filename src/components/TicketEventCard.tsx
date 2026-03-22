@@ -6,7 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EventTile } from "@/components/EventTile";
 
-export type TicketStatus = "purchased" | "going" | "pending" | "interested" | "saved" | "cohost";
+export type TicketStatus =
+  | "purchased"
+  | "going"
+  | "pending"
+  | "interested"
+  | "saved"
+  | "cohost"
+  | "hosting";
 
 interface TicketEventCardProps {
   rsvpId: string;
