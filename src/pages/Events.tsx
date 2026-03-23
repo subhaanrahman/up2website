@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EventTile } from "@/components/EventTile";
-import { Search, ChevronRight, Bookmark, Check, Share2, Map, List, X, Users, DollarSign, Mail } from "lucide-react";
+import { Search, ChevronRight, Bookmark, Check, Send, Map, List, X, Users, DollarSign, Mail } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import { eventsRepository } from "@/features/events/repositories/eventsRepository";
@@ -19,7 +19,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import type { EventFilter, EventEntity } from "@/features/events";
-import { rsvpApi } from "@/api";
 import { trackInteraction } from "@/lib/interactionAnalytics";
 import { getEventPricePillLabel, eventHasPaidTickets } from "@/lib/utils";
 import { prefetchEventDetail } from "@/lib/prefetch";
@@ -99,7 +98,6 @@ function normalizeEvent(raw: any): EventEntity {
 }
 
 const Events = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id);
   const { toast } = useToast();
@@ -111,7 +109,6 @@ const Events = () => {
   const [peopleResults, setPeopleResults] = useState<SearchResult[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [rsvpLoadingId, setRsvpLoadingId] = useState<string | null>(null);
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecentSearches());
   const peopleSearchSeqRef = useRef(0);
 
@@ -140,16 +137,6 @@ const Events = () => {
     queryFn: async () => {
       if (!user) return new Set<string>();
       return eventsRepository.getSavedEventIds(user.id);
-    },
-    enabled: !!user,
-  });
-
-  const { data: goingEventIds = new Set<string>() } = useQuery({
-    queryKey: ["going-event-ids", user?.id],
-    queryFn: async () => {
-      if (!user) return new Set<string>();
-      const ids = await eventsRepository.getUserRsvpEventIds(user.id);
-      return new Set(ids);
     },
     enabled: !!user,
   });
@@ -202,39 +189,6 @@ const Events = () => {
       setSavingId(null);
     }
   }, [user, savingId, savedEventIds, queryClient, toast]);
-
-  const handleQuickRsvp = useCallback(async (eventId: string) => {
-    if (!user) {
-      navigate("/auth", { state: { from: `/events/${eventId}` } });
-      return;
-    }
-    if (goingEventIds.has(eventId)) return;
-    setRsvpLoadingId(eventId);
-    try {
-      await rsvpApi.join(eventId, "going", 1);
-      trackInteraction({ action: "quick_rsvp", eventId, source: "search_tile" });
-      queryClient.invalidateQueries({ queryKey: ["going-event-ids", user.id] });
-      queryClient.invalidateQueries({ queryKey: ["user-rsvp", eventId, user.id] });
-      toast({
-        title: "You're going",
-        action: (
-          <ToastAction
-            altText="Undo"
-            onClick={async () => {
-              await rsvpApi.leave(eventId);
-              queryClient.invalidateQueries({ queryKey: ["going-event-ids", user.id] });
-            }}
-          >
-            Undo
-          </ToastAction>
-        ),
-      });
-    } catch {
-      toast({ title: "RSVP failed", variant: "destructive" });
-    } finally {
-      setRsvpLoadingId(null);
-    }
-  }, [user, navigate, goingEventIds, queryClient, toast]);
 
   const handleQuickShare = useCallback(async (event: EventEntity) => {
     const url = `${window.location.origin}/events/${event.id}`;
@@ -329,9 +283,7 @@ const Events = () => {
 
   const renderEventItem = (event: EventEntity) => {
     const isSaved = savedEventIds.has(event.id);
-    const isGoing = goingEventIds.has(event.id);
-    const isFreeEvent = (event.ticketPriceCents ?? 0) === 0;
-    const actionLoading = savingId === event.id || rsvpLoadingId === event.id;
+    const actionLoading = savingId === event.id;
     const priceCents = event.ticketPriceCents ?? event.ticket_price_cents;
     const hasPaid = eventHasPaidTickets(priceCents);
 
@@ -356,25 +308,18 @@ const Events = () => {
           </Badge>
         }
         trailing={<ChevronRight className="h-5 w-5 text-muted-foreground pl-2 pr-3 flex-shrink-0" />}
-        primaryAction={{
-          label: isGoing ? "Going" : isFreeEvent ? "RSVP" : "Tickets",
-          disabled: actionLoading || isGoing,
-          onClick: () => {
-            if (isGoing) return;
-            if (isFreeEvent) handleQuickRsvp(event.id);
-            else navigate(`/events/${event.id}`);
-          },
-        }}
         secondaryActions={[
           {
             label: isSaved ? "Saved" : "Save",
+            ariaLabel: isSaved ? "Saved" : "Save event",
             disabled: actionLoading,
-            icon: isSaved ? <Check className="h-3 w-3" /> : <Bookmark className="h-3 w-3" />,
+            icon: isSaved ? <Check className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />,
             onClick: () => handleToggleSave(event.id),
           },
           {
             label: "Share",
-            icon: <Share2 className="h-3 w-3" />,
+            ariaLabel: "Share event",
+            icon: <Send className="h-3.5 w-3.5" />,
             onClick: () => handleQuickShare(event),
           },
         ]}
