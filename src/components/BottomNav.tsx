@@ -5,7 +5,7 @@ import { useRef, useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useUnreadMessageBadgeCount } from "@/hooks/useUnreadMessages";
 import {
   Sheet,
   SheetContent,
@@ -24,7 +24,7 @@ const BottomNav = () => {
   const { user, signOut } = useAuth();
   const { activeProfile, switchProfile, organiserProfiles, isOrganiser } = useActiveProfile();
   const { data: personalProfile } = useProfile(user?.id);
-  const { totalUnread } = useUnreadMessages();
+  const totalUnread = useUnreadMessageBadgeCount();
   const [sheetOpen, setSheetOpen] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);

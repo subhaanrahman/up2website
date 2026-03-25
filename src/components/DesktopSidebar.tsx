@@ -6,7 +6,7 @@ import { useContext } from "react";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImg from "@/assets/logo.png";
-import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useUnreadMessageBadgeCount } from "@/hooks/useUnreadMessages";
 
 // Import context directly to avoid the throwing hook when provider isn't mounted yet
 import { ActiveProfileContext } from "@/contexts/ActiveProfileContext";
@@ -18,7 +18,7 @@ const DesktopSidebar = () => {
   const activeProfileCtx = useContext(ActiveProfileContext);
   const isOrganiser = activeProfileCtx?.isOrganiser ?? false;
   const { data: profile } = useProfile(user?.id);
-  const { totalUnread } = useUnreadMessages();
+  const totalUnread = useUnreadMessageBadgeCount();
 
   const navItems = [
     { icon: Home, label: "Home", path: "/" },

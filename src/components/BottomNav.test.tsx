@@ -20,7 +20,7 @@ vi.mock('@/contexts/ActiveProfileContext', () => ({
 }));
 
 vi.mock('@/hooks/useUnreadMessages', () => ({
-  useUnreadMessages: () => ({ totalUnread: 0 }),
+  useUnreadMessageBadgeCount: () => 0,
 }));
 
 vi.mock('@/hooks/useProfileQuery', () => ({

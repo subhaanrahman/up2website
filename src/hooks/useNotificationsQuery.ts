@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from '@/infrastructure/supabase';
+import { supabase } from "@/infrastructure/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useEffect } from "react";
@@ -22,14 +22,83 @@ export interface AppNotification {
 /** Notification types that are hidden from the user-facing list and unread count. */
 export const HIDDEN_NOTIFICATION_TYPES = new Set(["suggested_account"]);
 
+const notificationSelectFields = [
+  "id",
+  "user_id",
+  "type",
+  "title",
+  "message",
+  "read",
+  "avatar_url",
+  "event_image",
+  "link",
+  "created_at",
+  "expires_at",
+  "organiser_profile_id",
+].join(", ");
+
 function notificationsKey(userId: string | undefined, activeOrgId: string | null) {
   return ["notifications", userId, activeOrgId] as const;
+}
+
+function unreadNotificationsKey(userId: string | undefined, activeOrgId: string | null) {
+  return ["notifications-unread-count", userId, activeOrgId] as const;
+}
+
+function applyNotificationScope<TQuery>(query: TQuery, activeOrgId: string | null) {
+  let scoped = query as any;
+  if (activeOrgId) {
+    scoped = scoped.eq("organiser_profile_id", activeOrgId);
+  } else {
+    scoped = scoped.is("organiser_profile_id", null);
+  }
+  return scoped as TQuery;
+}
+
+function applyHiddenNotificationTypeFilter<TQuery>(query: TQuery) {
+  const hiddenTypes = [...HIDDEN_NOTIFICATION_TYPES];
+  if (hiddenTypes.length === 0) return query;
+
+  let filtered = query as any;
+  if (hiddenTypes.length === 1) {
+    filtered = filtered.neq("type", hiddenTypes[0]);
+  } else {
+    const values = hiddenTypes.map((type) => `"${type}"`).join(",");
+    filtered = filtered.not("type", "in", `(${values})`);
+  }
+
+  return filtered as TQuery;
+}
+
+function useNotificationsRealtimeInvalidation(userId: string | undefined, activeOrgId: string | null) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const invalidateNotifications = () => {
+      queryClient.invalidateQueries({ queryKey: notificationsKey(userId, activeOrgId) });
+      queryClient.invalidateQueries({ queryKey: unreadNotificationsKey(userId, activeOrgId) });
+    };
+
+    const channel = supabase
+      .channel(`notifications-${userId}-${activeOrgId ?? "personal"}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        invalidateNotifications,
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeOrgId, queryClient, userId]);
 }
 
 export function useNotifications() {
   const { user } = useAuth();
   const { activeProfile } = useActiveProfile();
-  const queryClient = useQueryClient();
 
   const isOrganiserView = activeProfile?.type === "organiser";
   const activeOrgId = isOrganiserView ? activeProfile.id : null;
@@ -40,16 +109,12 @@ export function useNotifications() {
     queryFn: async () => {
       let q = supabase
         .from("notifications")
-        .select("*")
+        .select(notificationSelectFields)
         .eq("user_id", user!.id)
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false });
 
-      if (isOrganiserView && activeOrgId) {
-        q = q.eq("organiser_profile_id", activeOrgId);
-      } else {
-        q = q.is("organiser_profile_id", null);
-      }
+      q = applyNotificationScope(q, activeOrgId);
 
       const { data, error } = await q;
       if (error) throw error;
@@ -58,30 +123,42 @@ export function useNotifications() {
     enabled: !!user?.id,
   });
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!user?.id) return;
-    const channel = supabase
-      .channel(`notifications-${user.id}-${activeOrgId ?? "personal"}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => queryClient.invalidateQueries({ queryKey: qk })
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [user?.id, activeOrgId, queryClient, qk]);
+  useNotificationsRealtimeInvalidation(user?.id, activeOrgId);
 
   return query;
 }
 
 export function useUnreadCount() {
-  const { data: notifications } = useNotifications();
-  return (
-    notifications?.filter(
-      (n) => !n.read && !HIDDEN_NOTIFICATION_TYPES.has(n.type),
-    ).length ?? 0
-  );
+  const { user } = useAuth();
+  const { activeProfile } = useActiveProfile();
+
+  const activeOrgId = activeProfile?.type === "organiser" ? activeProfile.id : null;
+  const qk = unreadNotificationsKey(user?.id, activeOrgId);
+
+  const query = useQuery({
+    queryKey: qk,
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      let q = supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id)
+        .eq("read", false)
+        .gt("expires_at", new Date().toISOString());
+
+      q = applyNotificationScope(q, activeOrgId);
+      q = applyHiddenNotificationTypeFilter(q);
+
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  useNotificationsRealtimeInvalidation(user?.id, activeOrgId);
+
+  return query.data ?? 0;
 }
 
 export function useMarkNotificationRead() {
@@ -110,7 +187,10 @@ export function useMarkNotificationRead() {
     onError: (_err, _id, context) => {
       if (context?.prev) queryClient.setQueryData(qk, context.prev);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: qk }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: qk });
+      queryClient.invalidateQueries({ queryKey: unreadNotificationsKey(user?.id, activeOrgId) });
+    },
   });
 }
 
@@ -130,11 +210,7 @@ export function useMarkAllRead() {
         .eq("user_id", user.id)
         .eq("read", false);
 
-      if (activeOrgId) {
-        q = q.eq("organiser_profile_id", activeOrgId);
-      } else {
-        q = q.is("organiser_profile_id", null);
-      }
+      q = applyNotificationScope(q, activeOrgId);
 
       const { error } = await q;
       if (error) throw error;
@@ -150,6 +226,9 @@ export function useMarkAllRead() {
     onError: (_err, _vars, context) => {
       if (context?.prev) queryClient.setQueryData(qk, context.prev);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: qk }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: qk });
+      queryClient.invalidateQueries({ queryKey: unreadNotificationsKey(user?.id, activeOrgId) });
+    },
   });
 }

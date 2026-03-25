@@ -2025,6 +2025,17 @@ export type Database = {
           username: string
         }[]
       }
+      get_unread_message_counts: {
+        Args: { p_last_read?: Json }
+        Returns: {
+          chat_id: string
+          unread_count: number
+        }[]
+      }
+      get_unread_message_total: {
+        Args: { p_last_read?: Json }
+        Returns: number
+      }
       get_mutual_friends: {
         Args: { p_user_a: string; p_user_b: string }
         Returns: {

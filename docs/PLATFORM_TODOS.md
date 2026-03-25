@@ -2,7 +2,7 @@
 
 > **Canonical pending backlog for the repo.** `docs/PLATFORM_TODOS.md` is **pending-only**: open, partial, deferred, and future work lives here. Shipped behaviour and completed architecture belong in the canonical docs instead: [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATABASE_ARCHITECTURE.md`](DATABASE_ARCHITECTURE.md), [`Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md`](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md), [`PAYMENT_FLOW.md`](PAYMENT_FLOW.md), [`PAYMENT_TICKETING_PROGRAM.md`](PAYMENT_TICKETING_PROGRAM.md), [`SECURITY_CHECKLIST.md`](SECURITY_CHECKLIST.md), and [`TESTING_GUIDE.md`](TESTING_GUIDE.md).  
 > Critical incidents and release blockers stay at the top of this file.  
-> Last updated: 2026-03-25 (Disk IO incident runbook, backlog reorder, pending-only cleanup)
+> Last updated: 2026-03-25 (evidence-adjusted Disk IO stabilization, home-route priority shift)
 
 ---
 
@@ -16,14 +16,14 @@ Use the runbook above for the evidence pack, repo-grounded hypotheses, validatio
 
 | Priority | Item | Status | Notes |
 | --- | --- | --- | --- |
-| P0 | Capture Supabase evidence for the alert window around **2026-03-25 16:20 Australia/Sydney** | ⏳ Pending | Save hourly and daily Disk IO budget, CPU, memory, swap, cache-hit indicators, connections, and top SQL snapshots for the incident window. |
-| P0 | Run the SQL evidence pack and save outputs into the incident log | ⏳ Pending | Use the fixed queries in [SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md). |
-| P0 | Add missing messaging indexes | ⏳ Pending | Add indexes for `dm_messages(thread_id, created_at desc)`, `group_chat_messages(group_chat_id, created_at desc)`, `dm_threads(user_id, updated_at desc)`, `dm_threads(organiser_profile_id, updated_at desc)`, and `group_chat_members(user_id, group_chat_id)`. |
-| P1 | Replace unread polling + per-thread unread count loops with a server-side unread-count path | ⏳ Pending | Current path in `useUnreadMessages` is a strong IO candidate. |
+| P0 | Capture the incident window evidence plus the later live flapping window | ⏳ Pending | Save the **2026-03-25 16:00-17:00** alert window and the later **2026-03-25 22:08-23:08 Australia/Sydney** live metrics window, including component health flapping, IOWait, IOPS, CPU, memory, swap, cache-hit, connections, and top SQL. |
+| P0 | Run the five-step reproduction matrix and log which route/session state causes health flapping | ⏳ Pending | Test: all tabs closed, signed-out home, signed-in personal home, signed-in organiser home, dashboard/manage-event. |
+| P0 | Validate the current home-route stabilization patch against the evidence pack | ⏳ Pending | Confirm the unread aggregate path, count-only notification badge, deferred suggestions, and queued feed refresh lower read IOPS and IOWait. |
+| P0 | Temporarily upgrade compute above `Nano` if health flapping remains reproducible during QA | ⏳ Conditional | Use as a safety valve in parallel with query fixes; document before/after evidence and do not treat it as the root-cause fix. |
 | P1 | Paginate DM/group/event board history instead of refetching full threads | ⏳ Pending | Current messaging screens refetch whole histories on realtime inserts. |
-| P1 | Narrow realtime subscriptions and invalidation scope | ⏳ Pending | Focus on notifications, messaging, and feed invalidation breadth. |
-| P1 | Remove remaining hot-path `select("*")` usage and move hot reads toward repository/RPC patterns | ⏳ Pending | Notifications and messaging are the first targets. |
-| P1 | Review `dashboard-analytics` fan-out reads and move toward aggregated/RPC-backed queries | ⏳ Pending | Treat organiser analytics as a likely expensive read path. |
+| P1 | Narrow remaining realtime subscriptions and invalidation scope | ⏳ Pending | The home feed now queues refreshes; continue with messaging and any remaining broad notifications/feed invalidation. |
+| P1 | Remove remaining hot-path `select("*")` usage and move hot reads toward repository/RPC patterns | ⏳ Pending | Notifications list reads are partly tightened; continue with messaging and other high-churn paths. |
+| P1 | Review `dashboard-analytics` fan-out reads and move toward aggregated/RPC-backed queries | ⏳ Pending | Still important, but now secondary to the signed-in home-route baseline. |
 | P1 | Move rate-limit cleanup off request traffic | ⏳ Pending | `check_rate_limit` still performs cleanup in-band today. |
 | P1 | Audit whether `notifications-process`, event analytics tables, and image telemetry contribute meaningful write churn | ⏳ Pending | Keep image telemetry if the sample rate remains intentionally low. |
 | P2 | Add row-growth snapshots and table-size monitoring for hot tables | ⏳ Pending | Focus on `rate_limits`, `notifications`, `dm_messages`, `group_chat_messages`, `orders`, `rsvps`, `event_views`, `event_link_clicks`, `image_telemetry_events`. |
