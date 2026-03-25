@@ -117,8 +117,13 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
         <>
           {status?.stripe_account_record_exists === false && (
             <p className="text-xs text-amber-700 dark:text-amber-500">
-              No Stripe Connect account is stored for this organiser yet. If you already finished Stripe&apos;s steps, tap
-              Set up payouts once to create the link, or check Edge logs for errors.
+              <strong>No payout link stored yet.</strong> We create the database row when <strong>Set up payouts</strong> succeeds—before Stripe&apos;s hosted flow—not when you finish Stripe alone.
+              Tap Set up payouts again, or verify <code className="text-[11px]">organiser_stripe_accounts</code> and <code className="text-[11px]">stripe-connect-onboard</code> logs (same Supabase project as the app).
+            </p>
+          )}
+          {status?.stripe_account_record_exists !== false && status?.connected === false && (
+            <p className="text-xs text-muted-foreground">
+              Couldn&apos;t load payout status. Refresh and check Network for <code className="text-[11px]">stripe-connect-status</code>.
             </p>
           )}
           <p className="text-sm text-muted-foreground">

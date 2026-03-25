@@ -1,6 +1,6 @@
 # Payment Flow Documentation
 
-> Last updated: 2026-03-25  
+> Last updated: 2026-03-26  
 > **Program / QA phases (buyer + organiser, test mode):** [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md)  
 > **Environment checklist / owner sign-off (Stripe test keys, webhook, phased QA):** same program doc — [Phase A](PAYMENT_TICKETING_PROGRAM.md#phase-a--environment-and-ops-do-first). Current **open** release blockers remain in [PLATFORM_TODOS — Pre-launch](PLATFORM_TODOS.md#pre-launch). Technical webhook and order behaviour remain below.
 
@@ -97,6 +97,29 @@ More detail: [TESTING_GUIDE.md](TESTING_GUIDE.md) (Invalid JWT / env mismatch).
 
 ---
 
+## Troubleshooting: Connect / no payout link stored
+
+Use the **same Supabase project** as `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` in the app. A mismatch looks like onboarding “worked” in one environment while the UI reads another.
+
+### Verify a row in `organiser_stripe_accounts`
+
+In **SQL Editor** (or Table Editor), use the organiser id from **Edit organiser** (`?org=<uuid>`):
+
+```sql
+select id, organiser_profile_id, stripe_account_id, charges_enabled, payouts_enabled, onboarding_complete, updated_at
+from public.organiser_stripe_accounts
+where organiser_profile_id = '<organiser_profile_id>';
+```
+
+- **No rows** — The link was never persisted. The insert runs inside `stripe-connect-onboard` when **Set up payouts** first succeeds (before Stripe’s hosted onboarding), not when the user merely finishes Stripe’s UI.
+- **A row with `charges_enabled = false`** — The link exists; paid ticket checkout stays blocked until Stripe enables charges (see **Pending** in the payout UI, not the amber “no link stored” copy).
+
+### Check `stripe-connect-onboard` Edge logs
+
+**Dashboard → Edge Functions → `stripe-connect-onboard` → Logs.** On the first **Set up payouts**, expect **200** and a JSON body with `url` (Account Link). **5xx** or **546** (*not enough compute resources*) means the client never got a persisted row—investigate secrets (`STRIPE_SECRET_KEY`, `APP_ORIGIN` / `PUBLIC_APP_URL`), email on the user account (required for new Express accounts), and successful deploy of the function.
+
+---
+
 ## Ticket Issuance Path
 
 1. `payment_intent.succeeded` → webhook confirms order
@@ -145,6 +168,8 @@ Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the queue abst
 6. `account.updated` webhook keeps `organiser_stripe_accounts` in sync
 
 **`stripe-connect-status` response:** includes `stripe_account_record_exists` — `false` when there is no row in `organiser_stripe_accounts` yet (all other flags will also be false); `true` when a Connect account row exists and Stripe was queried.
+
+If `stripe_account_record_exists` stays `false` after you believe onboarding finished, see [Troubleshooting: Connect / no payout link stored](#troubleshooting-connect--no-payout-link-stored) (verify the DB row and `stripe-connect-onboard` logs).
 
 **Touchpoints:** PayoutSetupSection, OnboardingRequired page, TicketingPanel, OrganiserPayoutTask (floating pill)
 
