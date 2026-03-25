@@ -20,9 +20,16 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import type { EventFilter, EventEntity } from "@/features/events";
 import { trackInteraction } from "@/lib/interactionAnalytics";
-import { getEventPricePillLabel, eventHasPaidTickets } from "@/lib/utils";
+import { cn, getEventPricePillLabel, eventHasPaidTickets } from "@/lib/utils";
+import { MOBILE_TAB_HEADER_CLASS, MOBILE_TAB_HEADER_TITLE_CLASS } from "@/lib/pageHeaderStyles";
 import { prefetchEventDetail } from "@/lib/prefetch";
 import { TileSkeleton } from "@/components/ui/skeletons";
+import { Button } from "@/components/ui/button";
+
+function queryErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  return "Request failed. Check your network and Supabase project settings.";
+}
 
 interface SearchResult {
   id: string;
@@ -205,7 +212,13 @@ const Events = () => {
     }
   }, [toast]);
 
-  const { data: eventResults = [], isLoading: eventsLoading } = useSearchEvents({
+  const {
+    data: eventResults = [],
+    isLoading: eventsLoading,
+    isError: eventsSearchError,
+    error: eventsSearchErr,
+    refetch: refetchEventSearch,
+  } = useSearchEvents({
     query: debouncedQuery,
     filter: selectedFilter || undefined,
     city: (!debouncedQuery.trim() && !selectedFilter && profile?.city) ? profile.city : undefined,
@@ -213,10 +226,21 @@ const Events = () => {
     hostUserId: user?.id ?? null,
   });
 
-  const { data: forYouEvents = [], isLoading: forYouLoading } = useForYouEvents(15);
+  const {
+    data: forYouEvents = [],
+    isLoading: forYouLoading,
+    isError: forYouError,
+    error: forYouErr,
+    refetch: refetchForYou,
+  } = useForYouEvents(15);
   const { data: nearbyEvents = [] } = useNearbyEvents(8);
 
-  const { data: trendingEvents = [] } = useQuery({
+  const {
+    data: trendingEvents = [],
+    isError: trendingError,
+    error: trendingErr,
+    refetch: refetchTrending,
+  } = useQuery({
     queryKey: ["trending-events-v1", user?.id ?? "guest"],
     queryFn: async () => eventsRepository.search({ limit: 12, hostUserId: user?.id ?? null }),
   });
@@ -246,6 +270,8 @@ const Events = () => {
   const showDiscoveryLanding = !isSearching && !selectedFilter;
   const displayEvents = showDiscoveryLanding ? forYouEvents : eventResults;
   const displayEventsLoading = showDiscoveryLanding ? forYouLoading : eventsLoading;
+  const primaryListError = showDiscoveryLanding ? forYouError : eventsSearchError;
+  const primaryListErr = showDiscoveryLanding ? forYouErr : eventsSearchErr;
 
   // Search people when query changes
   useEffect(() => {
@@ -357,9 +383,9 @@ const Events = () => {
 
       {/* Mobile */}
       <div className="md:hidden">
-        <header className="sticky top-0 z-40 bg-background px-4 pt-5 pb-2 border-b border-border/70">
-          <h1 className="text-xl font-bold text-foreground mb-3 text-center tracking-wide">Search</h1>
-          <form className="relative mb-2" onSubmit={onSearchSubmit}>
+        <header className={cn("sticky top-0", MOBILE_TAB_HEADER_CLASS)}>
+          <h1 className={MOBILE_TAB_HEADER_TITLE_CLASS}>Search</h1>
+          <form className="relative mb-3" onSubmit={onSearchSubmit}>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search events & people"
@@ -413,6 +439,35 @@ const Events = () => {
             ))}
           </div>
 
+          {primaryListError && (
+            <div className="mb-3 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm">
+              <p className="font-medium text-foreground">Couldn’t load events</p>
+              <p className="text-xs text-muted-foreground mt-1">{queryErrorMessage(primaryListErr)}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 h-8"
+                onClick={() => {
+                  void refetchForYou();
+                  void refetchEventSearch();
+                  void refetchTrending();
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {trendingError && showDiscoveryLanding && !primaryListError && (
+            <div className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              Trending couldn’t load: {queryErrorMessage(trendingErr)}{" "}
+              <button type="button" className="text-primary font-semibold ml-1" onClick={() => void refetchTrending()}>
+                Retry
+              </button>
+            </div>
+          )}
+
           {showDiscoveryLanding && (
             <div className="flex items-center gap-2 mb-3">
               <button
@@ -462,7 +517,7 @@ const Events = () => {
               {renderRail("Friends Going", friendsGoingNormalized, <Users className="h-4 w-4 text-muted-foreground" />)}
               {renderRail("Soon", soonEvents)}
             </>
-          ) : displayEvents.length === 0 ? (
+          ) : eventsSearchError ? null : displayEvents.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-foreground font-medium">No upcoming events found</p>
               <p className="text-sm text-muted-foreground mt-1">Try another term or reset your filters.</p>
@@ -535,6 +590,26 @@ const Events = () => {
               ))}
             </div>
 
+            {primaryListError && (
+              <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-sm max-w-lg">
+                <p className="font-medium text-foreground">Couldn’t load events</p>
+                <p className="text-xs text-muted-foreground mt-1">{queryErrorMessage(primaryListErr)}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-8"
+                  onClick={() => {
+                    void refetchForYou();
+                    void refetchEventSearch();
+                    void refetchTrending();
+                  }}
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+
             {displayEventsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
@@ -548,7 +623,7 @@ const Events = () => {
                 {renderRail("Friends Going", friendsGoingNormalized, <Users className="h-4 w-4 text-muted-foreground" />)}
                 {renderRail("Soon", soonEvents)}
               </>
-            ) : displayEvents.length === 0 ? (
+            ) : eventsSearchError ? null : displayEvents.length === 0 ? (
               <p className="text-muted-foreground py-12 text-center">No upcoming events found</p>
             ) : (
               <div className="grid grid-cols-1 gap-3 max-w-lg grid-auto-rows-[1fr]">{displayEvents.map(renderEventItem)}</div>

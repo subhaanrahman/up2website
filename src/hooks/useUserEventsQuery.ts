@@ -71,6 +71,14 @@ export function useUserPlannedEvents(userId: string | undefined) {
         hostedQuery,
       ]);
 
+      const firstErr =
+        rsvpResult.error ||
+        orderResult.error ||
+        savedResult.error ||
+        cohostResult.error ||
+        hostedResult.error;
+      if (firstErr) throw firstErr;
+
       const seen = new Set<string>();
       const results: (UserEvent & { ticketStatus: string })[] = [];
 
@@ -150,24 +158,25 @@ export function useUserCreatedEvents(userId: string | undefined) {
   const { activeProfile } = useActiveProfile();
 
   const isOrganiser = activeProfile?.type === 'organiser';
-  const profileId = activeProfile?.id;
+  const organiserProfileId = isOrganiser ? activeProfile?.id : undefined;
 
   return useQuery({
-    queryKey: ['user-created-events', userId, profileId, isOrganiser],
+    queryKey: ['user-created-events', userId, organiserProfileId ?? 'personal', isOrganiser],
     queryFn: async () => {
-      if (!profileId) return [];
+      if (!userId) return [];
+      if (isOrganiser && !organiserProfileId) return [];
 
       let query = supabase
         .from('events')
         .select('id, title, event_date, cover_image, location, venue_name, address, category, status')
         .order('event_date', { ascending: false });
 
-      if (isOrganiser) {
-        query = query.eq('organiser_profile_id', profileId);
+      if (isOrganiser && organiserProfileId) {
+        query = query.eq('organiser_profile_id', organiserProfileId);
       } else {
         // host_id references profiles.user_id (i.e. the auth user id).
         // Include both personal-hosted and organiser-hosted events.
-        query = query.eq('host_id', userId as string);
+        query = query.eq('host_id', userId);
       }
 
       const [createdResult, cohostResult] = await Promise.all([
@@ -202,6 +211,7 @@ export function useUserCreatedEvents(userId: string | undefined) {
       );
       return merged;
     },
-    enabled: !!userId && !!profileId,
+    // Run as soon as user is known; personal mode does not wait for ActiveProfile hydration.
+    enabled: !!userId && (!isOrganiser || !!organiserProfileId),
   });
 }

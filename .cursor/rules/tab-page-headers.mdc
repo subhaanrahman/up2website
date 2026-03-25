@@ -1,0 +1,26 @@
+---
+description: Mobile tab page headers (Tickets, Search, Dashboard) share one typography + spacing system
+globs: src/pages/Tickets.tsx,src/pages/Events.tsx,src/pages/Dashboard.tsx,src/components/AppHeader.tsx,src/lib/pageHeaderStyles.ts
+alwaysApply: false
+---
+
+# Mobile tab page headers
+
+Primary bottom-nav surfaces **Tickets**, **Search** (Events mobile), and **Dashboard** messages / group chats must use the same mobile title block as **Tickets**.
+
+## Source of truth
+
+- Constants live in `src/lib/pageHeaderStyles.ts`:
+  - `MOBILE_TAB_HEADER_CLASS` — shell padding (`px-4 pt-6 pb-2 z-40`) + background
+  - `MOBILE_TAB_HEADER_TITLE_CLASS` — `text-2xl font-bold mb-4 text-center uppercase`
+
+## Usage
+
+- **Tickets** mobile: `header` = `cn("flex-shrink-0", MOBILE_TAB_HEADER_CLASS)` inside the column layout; `h1` = `MOBILE_TAB_HEADER_TITLE_CLASS`. Pass title as normal words (e.g. `Tickets`); CSS `uppercase` renders the all-caps look.
+- **Search** (Events mobile): `header` = `cn("sticky top-0", MOBILE_TAB_HEADER_CLASS)` (add `border-b` only if product explicitly wants a divider; default is none to match Tickets).
+- **Group Chats / Messages**: `<AppHeader variant="tabMain" title="…" />` — no back button on these two.
+
+## Do not
+
+- Invent a new `text-xl` / `text-lg` title for these three without updating `pageHeaderStyles.ts` and all call sites.
+- Use `AppHeader variant="tabMain"` for screens that need the compact bar + border (`Notifications`, `Checkout`, etc.) — keep `variant="default"`.

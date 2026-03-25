@@ -35,13 +35,7 @@ export function useSearchEvents(options: {
 }) {
   return useQuery({
     queryKey: eventKeys.search(options),
-    queryFn: async () => {
-      try {
-        return await eventsService.searchEvents(options);
-      } catch {
-        return [];
-      }
-    },
+    queryFn: () => eventsService.searchEvents(options),
     retry: 1,
   });
 }

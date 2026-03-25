@@ -320,7 +320,7 @@ const Dashboard = () => {
 
     return (
       <div className="min-h-screen bg-background pb-20">
-        <AppHeader title="Messages" />
+        <AppHeader title="Messages" variant="tabMain" />
 
         <main className="px-4">
           {/* Inbox section */}
@@ -370,7 +370,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <AppHeader title="Group Chats" />
+      <AppHeader title="Group Chats" variant="tabMain" />
 
       <main className="px-4">
         {/* Group chats grid */}

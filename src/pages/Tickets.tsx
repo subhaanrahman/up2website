@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EventTile } from "@/components/EventTile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,6 +24,8 @@ import { ticketSelfRefundAllowed } from "@/utils/refundEligibility";
 import {
   startOfWeek, startOfMonth, subMonths, isAfter, isBefore, isSameDay
 } from "date-fns";
+import { cn } from "@/lib/utils";
+import { MOBILE_TAB_HEADER_CLASS, MOBILE_TAB_HEADER_TITLE_CLASS } from "@/lib/pageHeaderStyles";
 
 interface TicketEvent {
   rsvpId: string;
@@ -158,8 +161,20 @@ const Tickets = () => {
   );
 
   // New separated hooks
-  const { data: plannedEvents = [], isLoading: plansLoading, refetch: refetchPlans } = useUserPlannedEvents(user?.id);
-  const { data: createdEvents = [], isLoading: createdLoading } = useUserCreatedEvents(user?.id);
+  const {
+    data: plannedEvents = [],
+    isLoading: plansLoading,
+    isError: plansError,
+    error: plansErr,
+    refetch: refetchPlans,
+  } = useUserPlannedEvents(user?.id);
+  const {
+    data: createdEvents = [],
+    isLoading: createdLoading,
+    isError: createdError,
+    error: createdErr,
+    refetch: refetchCreated,
+  } = useUserCreatedEvents(user?.id);
 
   const now = useMemo(() => new Date(), []);
 
@@ -385,6 +400,19 @@ const Tickets = () => {
   const allPlans = [...todayPlans, ...upcomingPlans, ...pastPlans];
 
   const renderPlansContent = () => {
+    if (plansError) {
+      return (
+        <div className="text-center py-16 px-4">
+          <p className="text-foreground font-medium">Couldn’t load your plans</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            {plansErr instanceof Error && plansErr.message ? plansErr.message : "Check your session and network, then try again."}
+          </p>
+          <Button type="button" variant="outline" className="mt-4" onClick={() => void refetchPlans()}>
+            Retry
+          </Button>
+        </div>
+      );
+    }
     if (isLoading) return renderSkeleton();
     if (allPlans.length === 0) {
       return (
@@ -421,6 +449,19 @@ const Tickets = () => {
   };
 
   const renderCreatedContent = () => {
+    if (createdError) {
+      return (
+        <div className="text-center py-16 px-4">
+          <p className="text-foreground font-medium">Couldn’t load your events</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
+            {createdErr instanceof Error && createdErr.message ? createdErr.message : "Check your session and network, then try again."}
+          </p>
+          <Button type="button" variant="outline" className="mt-4" onClick={() => void refetchCreated()}>
+            Retry
+          </Button>
+        </div>
+      );
+    }
     if (createdLoading) return renderSkeleton();
     if (filteredCreated.length === 0) {
       return (
@@ -477,8 +518,8 @@ const Tickets = () => {
 
       {/* Mobile */}
       <div className="md:hidden flex flex-col flex-1 overflow-hidden">
-        <header className="flex-shrink-0 bg-background px-4 pt-6 pb-2 z-40">
-          <h1 className="text-2xl font-bold text-foreground mb-4 text-center">TICKETS</h1>
+        <header className={cn("flex-shrink-0", MOBILE_TAB_HEADER_CLASS)}>
+          <h1 className={MOBILE_TAB_HEADER_TITLE_CLASS}>Tickets</h1>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
