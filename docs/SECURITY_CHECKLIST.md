@@ -1,10 +1,10 @@
 # Security Checklist
 
-> Last updated: 2026-03-16
+> Last updated: 2026-03-24
 
 ## File Validation (Client-Side)
 
-`src/utils/fileValidation.ts` — `validateImageFile()` / `validateImageFileOrMessage()` enforces type whitelist (jpeg, png, webp) and max size (5MB default). Wired into: avatar upload (EditProfile), post images (PostComposer), event flyer (EventDetailsForm), event media (ManageEvent).
+`src/utils/fileValidation.ts` — `validateImageFile()` / `validateImageFileOrMessage()` enforces type whitelist (jpeg, png, webp) and max size (5MB default). Wired into: avatar upload (EditProfile + EditOrganiserProfile), post images (PostComposer), event flyer (EventDetailsForm), event media (ManageEvent).
 
 ## Client-Write Locked Tables
 
@@ -34,7 +34,7 @@ All writes below are routed through Edge Functions even though RLS may allow the
 | `profiles` | `profile-update` | Auth, field whitelist |
 | `privacy_settings` | `settings-upsert` | Auth, table whitelist |
 | `notification_settings` | `settings-upsert` | Auth, table whitelist |
-| `organiser_profiles` | `organiser-profile-create`, `organiser-profile-update` | Auth, avatar generation |
+| `organiser_profiles` | `organiser-profile-create`, `organiser-profile-update`, `avatar-upload` | Auth, avatar generation / organiser avatar ownership |
 | `blocked_users` | `moderation-block` | Auth, service-role insert |
 | `organiser_members` | `organiser-team-manage` | Auth, ownership validation |
 | `group_chat_members` | `group-chat-manage` | Auth, membership validation |
@@ -70,7 +70,10 @@ All writes below are routed through Edge Functions even though RLS may allow the
 - ✅ Reserve order tickets (`orders-reserve`) — Zod validation, capacity check, 15-min expiry
 - ✅ Create payment intent (`payments-intent`) — Stripe integration, Zod validation
 - ✅ Organiser profile CRUD (`organiser-profile-create`, `organiser-profile-update`)
-- ✅ Avatar upload (`avatar-upload`) — file type/size validation
+- ✅ Avatar upload (`avatar-upload`) — signed upload flow, file type/size validation, organiser-avatar ownership validation
+- ✅ Post image upload (`post-image-upload`) — signed upload flow
+- ✅ Event flyer upload (`event-flyer-upload`) — signed upload flow
+- ✅ Event media upload (`event-media-upload`) — signed upload flow
 - ✅ Report creation (`report-create`) — validation
 - ✅ Support request creation (`support-request-create`) — validation
 - ✅ Block user (`moderation-block`)
@@ -114,11 +117,11 @@ All edge functions use DB-backed `check_rate_limit` RPC:
 - [ ] Add rate limiting to `event_messages` INSERT (event board spam prevention)
 - [ ] Implement content moderation pipeline (report → review → action)
 - [ ] Move Stripe publishable key to environment variable
-- [ ] **Create `src/utils/fileValidation.ts`** — reusable `validateImageFile(file, { maxSizeMB, allowedTypes })` helper
-- [ ] Wire file validation into all 4 upload points: avatar (`EditProfile`), flyer (`EventDetailsForm`), media gallery (`ManageEvent`), post image (`PostComposer`)
+- [x] **Create `src/utils/fileValidation.ts`** — reusable `validateImageFile(file, { maxSizeMB, allowedTypes })` helper
+- [x] Wire file validation into all 4 upload points: avatar (`EditProfile` + organiser avatar), flyer (`EventDetailsForm`), media gallery (`ManageEvent`), post image (`PostComposer`)
 - [ ] Add client-side text length limits to bio, event description, posts, DMs, group/event messages, contact form
 - [ ] Backend: malware scanning for stored media, strict storage RLS, output escaping strategy
-- [x] ~~Move avatar file upload to Edge Function~~ — `avatar-upload` with type/size validation, rate limiting
+- [x] ~~Move avatar file upload to Edge Function~~ — `avatar-upload` with signed upload init/complete flow
 - [x] ~~Implement `orders-reserve` and `payments-intent`~~ — Zod validation, rate limiting, Stripe integration
 - [x] ~~Add rate limiting to Edge Functions~~ — DB-backed `check_rate_limit` RPC
 - [x] ~~Add input sanitization (Zod) to all Edge Functions~~ — applied across all endpoints

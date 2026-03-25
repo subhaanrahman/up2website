@@ -8,13 +8,12 @@ import { Search, Calendar, Plus, ChevronRight, Settings, Pencil } from "lucide-r
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/infrastructure/supabase";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
-import { useProfile } from "@/hooks/useProfileQuery";
 import { useUserPlannedEvents, useUserCreatedEvents } from "@/hooks/useUserEventsQuery";
 import BottomNav from "@/components/BottomNav";
 import Navbar from "@/components/Navbar";
 import OrganiserDashboard from "@/components/OrganiserDashboard";
 import TicketEventCard, { type TicketStatus } from "@/components/TicketEventCard";
-import ProfileQrModal from "@/components/ProfileQrModal";
+import { useDigitalIdSheet } from "@/contexts/DigitalIdSheetContext";
 import TransferTicketModal from "@/components/TransferTicketModal";
 import { usePendingTransfers, useCancelTransfer } from "@/hooks/usePendingTransfers";
 import { useToast } from "@/hooks/use-toast";
@@ -140,12 +139,11 @@ function CreatedEventCard({ event, isPast, isHost }: { event: any; isPast: boole
 
 const Tickets = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [qrOpen, setQrOpen] = useState(false);
+  const { openDigitalIdSheet } = useDigitalIdSheet();
   const [transferEvent, setTransferEvent] = useState<{ eventId: string; title: string } | null>(null);
   const [activeSection, setActiveSection] = useState<"plans" | "events">("plans");
   const { user } = useAuth();
   const { isOrganiser, activeProfile } = useActiveProfile();
-  const { data: profile } = useProfile(user?.id);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const dividerRef = useRef<HTMLDivElement>(null);
@@ -316,11 +314,6 @@ const Tickets = () => {
     }
   }, [plansLoading, plannedEvents, activeSection, scrollToToday]);
 
-  const displayName = profile?.displayName || "";
-  const username = profile?.username || displayName || user?.phone || "User";
-  const avatarUrl = profile?.avatarUrl || "";
-  const profileUrl = `${window.location.origin}/user/${user?.id}`;
-
   if (isOrganiser) {
     return (
       <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -355,7 +348,7 @@ const Tickets = () => {
       isPast={isPast}
       ticketStatus={t.ticketStatus}
       hasPendingTransfer={pendingEventIds.has(t.eventId)}
-      onQrClick={() => setQrOpen(true)}
+      onQrClick={() => openDigitalIdSheet()}
       onTransferClick={() => setTransferEvent({ eventId: t.eventId, title: t.title })}
       onCancelTransfer={() => handleCancelTransfer(t.eventId)}
       canRequestRefund={canRequestRefundFor(t)}
@@ -538,15 +531,6 @@ const Tickets = () => {
           </div>
         </div>
       </main>
-
-      <ProfileQrModal
-        open={qrOpen}
-        onOpenChange={setQrOpen}
-        displayName={displayName}
-        username={username}
-        avatarUrl={avatarUrl || undefined}
-        profileUrl={profileUrl}
-      />
 
       {transferEvent && (
         <TransferTicketModal

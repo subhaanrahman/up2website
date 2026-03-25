@@ -1,8 +1,10 @@
-# Welcome to your Lovable project
+# Up2
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+This repo originated in Lovable and may still sync through GitHub, but the active production frontend is no longer deployed via Lovable Publish.
+
+Current production hosting is a containerized build from [`Dockerfile`](Dockerfile), deployed by the team via Google Cloud Run.
 
 ## How can I edit this code?
 
@@ -18,11 +20,11 @@ There are several ways of editing your application.
 - development
 - production
 
-**Use Lovable**
+**Use Lovable (optional / legacy workflow)**
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+If you still use Lovable for GitHub sync or prompt-driven changes, open the current project from your Lovable workspace.
 
-Changes made via Lovable will be committed automatically to this repo.
+Lovable can still sync with this repo, but it is not the primary production deployment path.
 
 **Use your preferred IDE**
 
@@ -72,12 +74,8 @@ This project is built with:
 
 ## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Production deploys use the repo container build from [`Dockerfile`](Dockerfile) and the team’s Google Cloud Run workflow.
 
-## Can I connect a custom domain to my Lovable project?
+## Can I connect a custom domain?
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Yes. Treat the active production domain as part of the Cloud Run deployment inventory and disaster recovery plan rather than the older Lovable Publish flow.

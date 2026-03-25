@@ -1,7 +1,34 @@
 import { supabase } from '@/infrastructure/supabase';
 import { buildDualColumnIlikeOr } from '@/utils/postgrest-ilike';
+import { connectionsRepository } from './connectionsRepository';
 
 export const profilesRepository = {
+  /**
+   * Search accepted connections by name (RLS allows viewing friend profiles).
+   * Use for collaborator pickers; global `searchProfiles` often returns nothing after privacy migrations.
+   */
+  async searchProfilesAmongConnections(
+    term: string,
+    currentUserId: string,
+    opts?: { excludeUserId?: string; limit?: number },
+  ) {
+    const friendIds = [...(await connectionsRepository.getFriendIds(currentUserId))];
+    if (friendIds.length === 0) return [];
+    const orFilter = buildDualColumnIlikeOr(['display_name', 'username'], term);
+    let query = supabase
+      .from('profiles')
+      .select('user_id, display_name, username, avatar_url')
+      .in('user_id', friendIds)
+      .or(orFilter);
+    if (opts?.excludeUserId) {
+      query = query.neq('user_id', opts.excludeUserId);
+    }
+    query = query.limit(opts?.limit ?? 10);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
+  },
+
   async searchProfiles(term: string, opts?: { excludeUserId?: string; limit?: number }) {
     const orFilter = buildDualColumnIlikeOr(['display_name', 'username'], term);
     let query = supabase

@@ -1,11 +1,83 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_IMAGE_SIZE_BYTES,
+  createSignedImageUpload,
+  ensureStoragePathPrefix,
+  getPublicStorageUrl,
+  removeStorageObjectsUnderPrefix,
+} from "../_shared/image-upload.ts";
 
-const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const avatarActorSchema = z.enum(['personal', 'organiser']);
+
+const initSchema = z.object({
+  action: z.literal('init'),
+  actor_type: avatarActorSchema,
+  organiser_profile_id: z.string().uuid().optional(),
+  file_name: z.string().min(1),
+  content_type: z.enum(ALLOWED_IMAGE_TYPES),
+  file_size: z.number().int().min(1).max(MAX_IMAGE_SIZE_BYTES),
+});
+
+const completeSchema = z.object({
+  action: z.literal('complete'),
+  actor_type: avatarActorSchema,
+  organiser_profile_id: z.string().uuid().optional(),
+  path: z.string().min(1),
+});
+
+const bodySchema = z.discriminatedUnion('action', [initSchema, completeSchema]);
+
+async function resolveAvatarTarget(
+  serviceClient: ReturnType<typeof createClient>,
+  userId: string,
+  actorType: z.infer<typeof avatarActorSchema>,
+  organiserProfileId?: string,
+) {
+  if (actorType === 'personal') {
+    return {
+      pathPrefix: `${userId}/personal/${userId}`,
+      async updateAvatar(publicUrl: string) {
+        const { error } = await serviceClient
+          .from('profiles')
+          .update({ avatar_url: publicUrl })
+          .eq('user_id', userId);
+        if (error) throw error;
+      },
+    };
+  }
+
+  if (!organiserProfileId) {
+    throw new Error('organiser_profile_id is required');
+  }
+
+  const { data: organiserProfile, error } = await serviceClient
+    .from('organiser_profiles')
+    .select('id, owner_id')
+    .eq('id', organiserProfileId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!organiserProfile || organiserProfile.owner_id !== userId) {
+    throw new Error('Not authorized to update this organiser avatar');
+  }
+
+  return {
+    pathPrefix: `${userId}/organiser/${organiserProfileId}`,
+    async updateAvatar(publicUrl: string) {
+      const { error: updateError } = await serviceClient
+        .from('organiser_profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', organiserProfileId);
+      if (updateError) throw updateError;
+    },
+  };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +92,6 @@ Deno.serve(async (req) => {
       return errorResponse(401, 'Missing authorization', { requestId });
     }
 
-    // Auth with user's token
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
@@ -32,84 +103,67 @@ Deno.serve(async (req) => {
       return errorResponse(401, 'Unauthorized', { requestId });
     }
 
-    // Rate limit
     const allowed = await checkRateLimit('avatar-upload', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    // Parse multipart form data
-    const formData = await req.formData();
-    const file = formData.get('file');
-
-    if (!file || !(file instanceof File)) {
-      return errorResponse(400, 'No file provided', { requestId });
+    const body = await req.json();
+    const parsed = bodySchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse(400, 'Invalid input', { requestId, details: parsed.error.flatten().fieldErrors });
     }
 
-    // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return errorResponse(400, 'File must be a JPEG, PNG, WebP, or GIF image', { requestId });
-    }
-
-    // Validate file size
-    if (file.size > MAX_SIZE) {
-      return errorResponse(400, 'Image must be smaller than 5MB', { requestId });
-    }
-
-    // Use service role for storage upload (bypasses storage RLS)
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    // Path-based versioning: each upload gets a unique path so the CDN
-    // caches indefinitely until a new version is uploaded.
-    const safeName = `${user.id}/avatar-${Date.now()}.${ext}`;
+    const data = parsed.data;
+    const target = await resolveAvatarTarget(
+      serviceClient,
+      user.id,
+      data.actor_type,
+      'organiser_profile_id' in data ? data.organiser_profile_id : undefined,
+    );
 
-    // Delete previous avatar files for this user (best-effort cleanup)
-    try {
-      const { data: existing } = await serviceClient.storage
-        .from('avatars')
-        .list(user.id, { limit: 20 });
-      if (existing && existing.length > 0) {
-        const toRemove = existing.map((f) => `${user.id}/${f.name}`);
-        await serviceClient.storage.from('avatars').remove(toRemove);
-      }
-    } catch {
-      // Non-fatal — old files stay but don't break anything
-    }
+    if (data.action === 'init') {
+      const segments =
+        data.actor_type === 'personal'
+          ? ['personal', user.id]
+          : ['organiser', data.organiser_profile_id!];
 
-    // Upload to storage
-    const { error: uploadError } = await serviceClient.storage
-      .from('avatars')
-      .upload(safeName, file, {
-        upsert: true,
-        contentType: file.type,
+      const signed = await createSignedImageUpload({
+        serviceClient,
+        bucket: 'avatars',
+        ownerId: user.id,
+        segments,
+        fileName: data.file_name,
+        contentType: data.content_type,
+        fileSize: data.file_size,
+        versioned: true,
       });
 
-    if (uploadError) {
-      edgeLog('error', 'Storage upload error', { requestId, error: String(uploadError) });
-      return errorResponse(500, 'Failed to upload file', { requestId });
+      return successResponse({
+        upload_url: signed.uploadUrl,
+        path: signed.path,
+      }, requestId);
     }
 
-    // Get public URL — clean, no query-string cache-buster
-    const { data: { publicUrl } } = serviceClient.storage
-      .from('avatars')
-      .getPublicUrl(safeName);
+    ensureStoragePathPrefix(data.path, target.pathPrefix);
 
-    // Update profile with new avatar URL
-    const { error: profileError } = await serviceClient
-      .from('profiles')
-      .update({ avatar_url: publicUrl })
-      .eq('user_id', user.id);
-
-    if (profileError) {
-      edgeLog('error', 'Profile update error', { requestId, error: String(profileError) });
-      return errorResponse(500, 'Failed to update profile', { requestId });
-    }
+    const publicUrl = await getPublicStorageUrl(serviceClient, 'avatars', data.path);
+    await removeStorageObjectsUnderPrefix({
+      serviceClient,
+      bucket: 'avatars',
+      prefix: target.pathPrefix,
+      excludePaths: [data.path],
+    });
+    await target.updateAvatar(publicUrl);
 
     return successResponse({ avatar_url: publicUrl }, requestId);
   } catch (err) {
-    edgeLog('error', 'Unexpected error', { requestId, error: String(err) });
-    return errorResponse(500, 'Internal server error', { requestId });
+    const message = err instanceof Error ? err.message : String(err);
+    const status = /not authorized/i.test(message) ? 403 : /required|invalid/i.test(message) ? 400 : 500;
+    edgeLog('error', 'avatar-upload error', { requestId, error: message });
+    return errorResponse(status, status === 500 ? 'Internal server error' : message, { requestId });
   }
 });

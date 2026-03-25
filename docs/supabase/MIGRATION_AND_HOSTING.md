@@ -21,6 +21,14 @@ Use this when the hosted DB is already on this project and `supabase/config.toml
 | **Edge functions** | Deploy to this project: `supabase functions deploy … --project-ref fxcosnsbaaktblmnvycv`. Re-deploy after code changes. |
 | **Secrets / Stripe** | Parity with Dashboard; Stripe webhook → `https://fxcosnsbaaktblmnvycv.supabase.co/functions/v1/stripe-webhook`. See **Edge Function secrets** below and [AUTH_AND_SEEDING.md](AUTH_AND_SEEDING.md) for auth-specific secrets. |
 
+#### Storage migration has three separate steps
+
+- **Bucket layout is expected:** `avatars`, `post-images`, `event-flyers`, `event-media`.
+- **Object copy** moves the files. If this step is incomplete, rewritten URLs on the new project will still fail even when the old public URLs still load.
+- If legacy URLs reference more than one old project ref, copy from the project that still serves the public objects, or from each source project in turn. Rewriting URLs alone is not enough.
+- **DB URL rewrite** updates stored hosts in tables such as `profiles.avatar_url`; it does **not** copy objects.
+- **Transformed / cached URLs** (`/storage/v1/render/image/public/...`) only optimize delivery for objects that already exist. They do not recover files that were never copied.
+
 ### Local Vite env (`.env.local` at repo root)
 
 Vite merges `.env.local` over `.env`. Required for local dev against Sydney:
@@ -52,10 +60,11 @@ Set in **Dashboard → Project Settings → Edge Functions → Secrets** (or `su
 | `SUPABASE_PUBLISHABLE_KEY` | `loyalty-award-points` |
 | `STRIPE_SECRET_KEY` | Payments, Stripe Connect, webhooks, refunds |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook` |
+| `APP_ORIGIN` | Fallback frontend origin for redirects such as `stripe-connect-onboard` when the request `Origin` header is missing |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_VERIFY_SERVICE_SID` | OTP / forgot-password flows |
 | `SEED_USER_PASSWORD` | `dev-login`, `verify-otp` fallback — use `seedplaceholder1` to match [`auth_users_seed.sql`](auth_users_seed.sql) |
-| `CRON_SECRET` | `orders-expire-cleanup` |
-| `TENOR_API_KEY` | `gif-search` |
+| `CRON_SECRET` | `orders-expire-cleanup`; duplicate as a **GitHub Actions** repository secret if you use [`.github/workflows/orders-expire-cleanup.yml`](../../.github/workflows/orders-expire-cleanup.yml) |
+| `GIPHY_API_KEY` | `gif-search` |
 | `PAYMENTS_DISABLED` | Optional (`vip-payments-intent`, `vip-reserve`) |
 | `CLOUD_TASKS_ENABLED` | Enable Cloud Tasks dispatch in `_shared/queue.ts` |
 | `CLOUD_TASKS_PROJECT_ID` | GCP project ID for Cloud Tasks |
@@ -63,6 +72,26 @@ Set in **Dashboard → Project Settings → Edge Functions → Secrets** (or `su
 | `CLOUD_TASKS_QUEUE` | Cloud Tasks queue name |
 | `CLOUD_TASKS_WORKER_URL` | Supabase Edge Function URL for `queue-worker` |
 | `CLOUD_TASKS_SERVICE_ACCOUNT_JSON` | Service account JSON (raw or base64) |
+| **Digital ID — Apple Wallet** (`wallet-apple-pass`) | `WALLET_APPLE_PASS_TYPE_IDENTIFIER`, `WALLET_APPLE_TEAM_IDENTIFIER`, `WALLET_APPLE_ORGANIZATION_NAME` (optional), `WALLET_APPLE_WWDR_PEM`, `WALLET_APPLE_SIGNER_CERT_PEM`, `WALLET_APPLE_SIGNER_KEY_PEM`, optional `WALLET_APPLE_SIGNER_KEY_PASSPHRASE` — see [Apple PassKit](https://developer.apple.com/documentation/walletpasses) cert guide |
+| **Digital ID — Google Wallet** (`wallet-google-save`) | `GOOGLE_WALLET_ISSUER_ID`, `GOOGLE_WALLET_GENERIC_CLASS_ID` (full class id `issuerId.suffix`), `GOOGLE_WALLET_SERVICE_ACCOUNT_JSON` (see below), optional `GOOGLE_WALLET_ALLOWED_ORIGIN` or `WALLET_WEB_ORIGIN` (JWT `origins`; defaults to request `Origin` if unset) |
+
+If wallet secrets are missing, the app still works; the Edge Functions return **503** with `WALLET_APPLE_UNAVAILABLE` / `WALLET_GOOGLE_UNAVAILABLE` and the UI shows the error toast.
+
+#### Google Wallet: which service account and key? (not Firebase / not queue)
+
+The Edge Function [`wallet-google-save`](../../supabase/functions/wallet-google-save/index.ts) must **sign a JWT** using a Google service account **private key**. That is what the JSON key file is for.
+
+1. **Do not reuse** `firebase-adminsdk-*` or `queue-mom` (or any unrelated SA JSON) for Wallet unless you deliberately grant those identities Wallet issuer access. Prefer a **dedicated** service account, e.g. `wallet-digital-id@<project>.iam.gserviceaccount.com`, so credentials stay least-privilege and rotatable independently of Firebase or Cloud Tasks.
+2. In **Google Cloud Console** → **IAM & Admin** → **Service Accounts** → **Create service account** (name it e.g. `wallet-digital-id`). Then attach the IAM roles Google documents for **Google Wallet API** / your issuer (often done via the [Google Pay & Wallet Console](https://pay.google.com/business/console) when you add a service account as a developer).
+3. Open that service account → **Keys** → **Add key** → **Create new key** → **JSON** → download. That file is a single JSON object (`type`, `project_id`, `private_key`, `client_email`, …).
+4. In **Supabase** → **Project Settings** → **Edge Functions** → **Secrets**, create **`GOOGLE_WALLET_SERVICE_ACCOUNT_JSON`** and paste the **entire JSON file contents** (multiline is fine). This is **only** stored server-side; it never goes in Vite `.env` or the browser.
+5. Separately set **`GOOGLE_WALLET_ISSUER_ID`** and **`GOOGLE_WALLET_GENERIC_CLASS_ID`** from the Pay & Wallet Console (you must create a **Generic** class for Digital ID before saves succeed).
+
+This secret is **different** from `CLOUD_TASKS_SERVICE_ACCOUNT_JSON` (queue worker) and different from Firebase Admin credentials.
+
+#### Apple Wallet: certificates (Developer Program)
+
+Signing **`.pkpass`** requires a **Pass Type ID** and certificates from an [**Apple Developer Program**](https://developer.apple.com/programs/) membership (annual fee). That membership is **not** only for App Store apps; PassKit / Wallet passes use the same program. Export PEMs into the `WALLET_APPLE_*` secrets listed above; nothing Apple-related belongs in the public web bundle.
 
 ### Stripe webhook
 
@@ -139,7 +168,8 @@ Follow [Supabase migrating users](https://supabase.com/docs/guides/platform/migr
 ### Storage
 
 1. Recreate buckets and policies in the new project.
-2. Copy objects: helper [`05_storage_copy.sh`](../../scripts/region-migration/05_storage_copy.sh), or CLI `supabase storage cp` between projects (re-link CLI with `supabase link` as needed).
+2. Copy objects: helper [`05_storage_copy.sh`](../../scripts/region-migration/05_storage_copy.sh), or CLI `supabase storage cp` between projects (re-link CLI with `supabase link` as needed). If historical URLs reference multiple old refs, repeat the copy for each source that still has live objects.
+3. Run public spot checks on historical objects, especially `avatars`, before assuming image issues are a caching or transform problem.
 
 If the DB stores full public URLs, run a one-off migration to rewrite hosts when the storage URL changes.
 
@@ -174,6 +204,21 @@ supabase db push
 ```
 
 Do **not** mark a migration as `applied` if you still need `supabase db push` to run it for real.
+
+---
+
+## Troubleshooting: missing migrated images
+
+- If an old public storage URL still returns `200` but the rewritten current-project URL returns `400` or `403`, the storage object copy is incomplete.
+- Fix in this order: copy objects for `avatars`, `post-images`, `event-flyers`, and `event-media`; rerun [`20260327120000_rewrite_storage_urls_to_sydney.sql`](../../supabase/migrations/20260327120000_rewrite_storage_urls_to_sydney.sql); then smoke-test profile avatars and event media in the app.
+- The frontend now prefers current-project avatar URLs but can fall back to the original public URL while copy gaps still exist. That fallback is a safety net, not a replacement for finishing the storage migration.
+- **`initials.svg` / `avatar.jpeg` still `400` on `…/object/public/avatars/…`:** the row’s URL was rewritten to this project, but **no object exists** at that key. Either finish copying the `avatars` bucket from the source project (see [`05_storage_copy.sh`](../../scripts/region-migration/05_storage_copy.sh)), or set `profiles.avatar_url` / `organiser_profiles.avatar_url` to `NULL` for affected rows and re-upload or let signup/profile flows regenerate initials ([`supabase/functions/_shared/avatar.ts`](../../supabase/functions/_shared/avatar.ts)).
+- **SVG:** the app does not request `/storage/v1/render/image/…` for `.svg` files (transforms are for raster images). Remaining failures are missing objects, not transform settings.
+
+## Troubleshooting: `image-telemetry` returns 500
+
+- The Edge Function [`image-telemetry`](../../supabase/functions/image-telemetry/index.ts) inserts into `public.image_telemetry_events` from migration [`20260324183000_image_platform_hardening.sql`](../../supabase/migrations/20260324183000_image_platform_hardening.sql). If that migration is not applied on the hosted project, inserts fail.
+- Ensure **Edge Function secrets** include **`SUPABASE_URL`** and **`SUPABASE_SERVICE_ROLE_KEY`** for this project (same as other admin writers). Check Dashboard → Edge Functions → `image-telemetry` → Logs for the PostgREST error.
 
 ---
 

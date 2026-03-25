@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
   // ── Organiser profiles ──
   const { data: orgs } = await adminClient
     .from("organiser_profiles")
-    .select("id, username, display_name")
+    .select("id, username, display_name, owner_id")
     .is("avatar_url", null);
 
   if (orgs) {
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       try {
         const url = await generateAndUploadInitialsAvatar(
           adminClient,
-          `org-${o.username}`,
+          `${o.owner_id}/organiser/${o.id}`,
           o.display_name,
         );
         await adminClient

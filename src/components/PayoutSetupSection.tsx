@@ -17,6 +17,7 @@ interface ConnectStatus {
   onboarding_complete: boolean;
   charges_enabled: boolean;
   payouts_enabled: boolean;
+  stripe_account_record_exists?: boolean;
 }
 
 const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionProps) => {
@@ -55,8 +56,10 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('stripe_onboard') === 'complete') {
-      // Remove query param
-      window.history.replaceState({}, '', window.location.pathname);
+      // Remove only stripe_onboard; keep other params (e.g. org) for deep-link context
+      params.delete('stripe_onboard');
+      const qs = params.toString();
+      window.history.replaceState({}, '', qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
       // Re-fetch status
       setLoading(true);
       fetchStatus();
@@ -112,6 +115,12 @@ const PayoutSetupSection = ({ organiserProfileId, isOwner }: PayoutSetupSectionP
 
       {!status?.connected && (
         <>
+          {status?.stripe_account_record_exists === false && (
+            <p className="text-xs text-amber-700 dark:text-amber-500">
+              No Stripe Connect account is stored for this organiser yet. If you already finished Stripe&apos;s steps, tap
+              Set up payouts once to create the link, or check Edge logs for errors.
+            </p>
+          )}
           <p className="text-sm text-muted-foreground">
             Set up payouts to receive money from ticket sales. You'll need to verify your identity and add a bank account.
           </p>

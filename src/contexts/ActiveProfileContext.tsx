@@ -28,11 +28,12 @@ export interface ActiveProfile {
 
 interface ActiveProfileContextValue {
   activeProfile: ActiveProfile | null;
-  switchProfile: (id: string, type: "personal" | "organiser") => void;
+  switchProfile: (id: string, type: "personal" | "organiser", orgOverride?: OrganiserProfile) => void;
   organiserProfiles: OrganiserProfile[];
   isOrganiser: boolean;
   isLoading: boolean;
-  refetchOrganiserProfiles: () => Promise<void>;
+  /** Returns the fetched organiser list (after state update) so callers can switch profile without a stale closure race. */
+  refetchOrganiserProfiles: () => Promise<OrganiserProfile[]>;
 }
 
 export const ActiveProfileContext = createContext<ActiveProfileContextValue | undefined>(undefined);
@@ -88,10 +89,10 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
 
   const lastFetchedUserId = useRef<string | null>(null);
 
-  const fetchOrganiserProfiles = useCallback(async () => {
+  const fetchOrganiserProfiles = useCallback(async (): Promise<OrganiserProfile[]> => {
     if (!user) {
       setOrganiserProfiles([]);
-      return;
+      return [];
     }
 
     // PARALLEL: fetch owned profiles AND accepted memberships simultaneously
@@ -129,7 +130,9 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setOrganiserProfiles([...owned, ...memberProfiles]);
+    const merged = [...owned, ...memberProfiles];
+    setOrganiserProfiles(merged);
+    return merged;
   }, [user?.id]);
 
   // Initialise active profile from localStorage or default to personal
@@ -229,12 +232,12 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
   }, [organiserProfiles, isLoading, user, profile]);
 
   const switchProfile = useCallback(
-    (id: string, type: "personal" | "organiser") => {
+    (id: string, type: "personal" | "organiser", orgOverride?: OrganiserProfile) => {
       let next: ActiveProfile;
       if (type === "personal" && user) {
         next = personalProfileFromUserAndProfile(user.id, user, profile ?? null);
       } else {
-        const org = organiserProfiles.find((o) => o.id === id);
+        const org = orgOverride ?? organiserProfiles.find((o) => o.id === id);
         if (!org) return;
         next = {
           id: org.id,
@@ -245,12 +248,15 @@ export function ActiveProfileProvider({ children }: { children: ReactNode }) {
       }
       setActiveProfile(next);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      if (type === "organiser") {
+        localStorage.setItem("lastOrganiserForEventCreate", id);
+      }
     },
     [user, organiserProfiles, profile]
   );
 
   const refetchOrganiserProfiles = useCallback(async () => {
-    await fetchOrganiserProfiles();
+    return fetchOrganiserProfiles();
   }, [fetchOrganiserProfiles]);
 
   return (

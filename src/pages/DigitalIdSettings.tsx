@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import BottomNav from "@/components/BottomNav";
+import DigitalIdWalletActions from "@/components/DigitalIdWalletActions";
 
 const DigitalIdSettings = () => {
   const navigate = useNavigate();
@@ -86,6 +87,10 @@ const DigitalIdSettings = () => {
               <p className="text-xs text-muted-foreground font-mono mt-3 break-all text-center max-w-[240px]">
                 {qrCode}
               </p>
+              <div className="w-full max-w-xs mt-6">
+                <p className="text-xs font-medium text-foreground text-center mb-2">Add to device wallet</p>
+                <DigitalIdWalletActions canUseWallet />
+              </div>
             </div>
           ) : (
             <div className="py-6 text-center text-muted-foreground">

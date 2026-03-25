@@ -24,7 +24,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/.auth/user.json',
       },
-      testMatch: /(profile|dashboard|tickets|event-detail|checkout)\.spec\.ts/,
+      testMatch: /(profile|dashboard|tickets|event-detail|checkout|send-rsvp|gif-picker)\.spec\.ts/,
       dependencies: ['setup'],
     },
   ],

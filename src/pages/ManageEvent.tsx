@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { eventManagementRepository } from "@/features/events/repositories/eventManagementRepository";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, Search, Upload, X, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Upload, X, Download, Trash2, MailPlus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
@@ -15,6 +15,7 @@ import { validateImageFileOrMessage } from "@/utils/fileValidation";
 import GuestlistApprovalList from "@/components/GuestlistApprovalList";
 import { rsvpApprovalApi } from "@/api";
 import { uploadEventMediaFile } from "@/features/events/eventMediaUpload";
+import { PublicImage } from "@/components/ui/public-image";
 
 const ManageEvent = () => {
   const { id } = useParams<{ id: string }>();
@@ -247,7 +248,14 @@ const ManageEvent = () => {
             <div className="grid grid-cols-3 gap-2">
               {media.map((item: any) => (
                 <div key={item.id} className="relative aspect-square rounded-lg overflow-hidden group">
-                  <img src={item.url} alt="" className="w-full h-full object-cover" />
+                  <PublicImage
+                    src={item.url}
+                    preset="GALLERY_GRID"
+                    assetType="event-media"
+                    surface="manage-event-gallery"
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                   <button
                     onClick={() => handleDeleteMedia(item.id)}
                     className="absolute top-1 right-1 bg-background/80 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -300,6 +308,17 @@ const ManageEvent = () => {
           </div>
         </div>
       )}
+
+      <div className="px-4 pt-3">
+        <Button
+          variant="secondary"
+          className="w-full h-11 gap-2"
+          onClick={() => navigate(`/events/${id}/send-rsvp`)}
+        >
+          <MailPlus className="h-4 w-4" />
+          Send RSVP invites
+        </Button>
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="orders" className="w-full">

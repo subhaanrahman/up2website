@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useRespondToTransfer } from "@/hooks/usePendingTransfers";
 import { useToast } from "@/hooks/use-toast";
+import { PublicImage } from "@/components/ui/public-image";
 
 const iconMap: Record<string, typeof Bell> = {
   shared_event: Share2,
@@ -192,12 +193,19 @@ const NotificationItem = ({ notification }: { notification: AppNotification }) =
       >
         {notification.avatar_url ? (
           <Avatar className="h-12 w-12 flex-shrink-0">
-            <AvatarImage src={notification.avatar_url} />
+            <AvatarImage src={notification.avatar_url} surface="notification-avatar" />
             <AvatarFallback><Icon className={`h-5 w-5 ${iconColor}`} /></AvatarFallback>
           </Avatar>
         ) : notification.event_image ? (
           <div className="h-12 w-12 rounded-lg overflow-hidden flex-shrink-0 bg-secondary">
-            <img src={notification.event_image} alt="" className="h-full w-full object-cover" />
+            <PublicImage
+              src={notification.event_image}
+              preset="NOTIFICATION_THUMB"
+              assetType="notification"
+              surface="notification-event-image"
+              alt=""
+              className="h-full w-full object-cover"
+            />
           </div>
         ) : (
           <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -40,11 +40,16 @@ const MessageThread = () => {
   const lastTypingBroadcastRef = useRef(0);
   const typingChannelRef = useRef<any>(null);
   const scrollRef = useRef<HTMLElement | null>(null);
+  const initialScrollDoneRef = useRef(false);
 
   // Mark chat as read on mount
   useEffect(() => {
     if (id) markChatRead(id);
   }, [id, markChatRead]);
+
+  useEffect(() => {
+    initialScrollDoneRef.current = false;
+  }, [id]);
 
   const { data: chat } = useQuery({
     queryKey: ["group-chat", id],
@@ -183,15 +188,28 @@ const MessageThread = () => {
     return () => el.removeEventListener("scroll", onScroll);
   }, [id, markChatRead]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 56;
-    if (nearBottom) {
+    if (!el || messages.length === 0) return;
+
+    const nearBottom = () =>
+      el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+
+    const last = messages[messages.length - 1];
+    const lastFromMe = last?.sender_id === user?.id;
+
+    if (!initialScrollDoneRef.current) {
+      el.scrollTop = el.scrollHeight;
+      initialScrollDoneRef.current = true;
+      setShowJumpToLatest(false);
+      return;
+    }
+
+    if (lastFromMe || nearBottom()) {
       el.scrollTop = el.scrollHeight;
       setShowJumpToLatest(false);
     }
-  }, [messages.length]);
+  }, [id, messages, user?.id]);
 
   const lastOwnIndex = [...messages].map((m) => m.sender_id).lastIndexOf(user?.id || "");
   const hasReplyAfterLastOwn =

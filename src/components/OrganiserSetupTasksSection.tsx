@@ -141,7 +141,7 @@ const OrganiserSetupTasksSection = ({
     [organiserProfileId]
   );
 
-  const editLink = "/profile/edit-organiser";
+  const editLink = `/profile/edit-organiser?org=${encodeURIComponent(organiserProfileId)}`;
 
   const taskDefs: TaskDef[] = [
     {

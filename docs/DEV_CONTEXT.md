@@ -1,6 +1,6 @@
 # Up2 — Developer Context & Coding Standards
 
-> Last updated: 2026-03-16
+> Last updated: 2026-03-25
 > This document is the human-readable companion to `.cursor/rules/dev-context.mdc`, which is auto-loaded by Cursor AI agents.
 
 ---
@@ -160,7 +160,7 @@ Users can switch between personal and organiser profiles. The active profile det
 
 ## Known Issues (Intentional — Do Not "Fix" Without Discussion)
 
-1. `is_profile_public()` returns `true` always — privacy enforcement is planned
+1. `is_profile_public()` now enforces `profile_tier`, but richer privacy settings are still not part of the DB visibility rule
 2. `authorization.ts` in frontend is dead code — edge functions do inline auth
 3. `src/infrastructure/queue.ts` is unused — reserved for Cloud Tasks migration
 4. `feedService.ts` does direct Supabase queries for core post fetching
@@ -184,18 +184,28 @@ Before committing any code change:
 
 ---
 
+## Documentation And Backlog Discipline
+
+- `docs/PLATFORM_TODOS.md` is the **pending-only** backlog. Keep only open, partial, deferred, and future work there.
+- When work is shipped, move the lasting narrative into the canonical docs such as `ARCHITECTURE.md`, `DATABASE_ARCHITECTURE.md`, `Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md`, `PAYMENT_FLOW.md`, `PAYMENT_TICKETING_PROGRAM.md`, `SECURITY_CHECKLIST.md`, or `TESTING_GUIDE.md`.
+- Keep critical incidents and release blockers at the top of `docs/PLATFORM_TODOS.md`.
+- Preserve or deliberately update inbound headings and links when restructuring shared docs.
+
+---
+
 ## Key Docs Reference
 
 | Document | Purpose |
 |----------|---------|
 | `docs/ARCHITECTURE.md` | Full platform architecture (routes, DB, edge functions, risks) |
-| `docs/DATABASE_ARCHITECTURE.md` | Schema deep-dive (46 tables, RPCs, RLS, indexes) |
+| `docs/DATABASE_ARCHITECTURE.md` | Schema deep-dive (47 tables, RPCs, RLS, indexes) |
+| `docs/Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md` | Disk IO, slow-query, cache-hit, and incident operating runbook |
 | `docs/supabase/MIGRATION_AND_HOSTING.md` | Supabase hosting (Sydney), secrets, region migration, MCP |
 | `docs/supabase/AUTH_AND_SEEDING.md` | Dev login, seeds, OTP/Twilio |
-| `docs/PLATFORM_TODOS.md` | Consolidated todos (pre-launch, backend, Stripe, optimisation, API, cleanup) |
+| `docs/PLATFORM_TODOS.md` | Pending-only backlog (critical incidents, release blockers, open platform work) |
 | `docs/SECURITY_CHECKLIST.md` | Which tables are locked, which are edge-only, which are client-writable |
 | `docs/GAMIFICATION_OPTIONS.md` | Points, ranks, badges roadmap |
 
 ---
 
-*Last updated: 16 March 2026*
+*Last updated: 25 March 2026*

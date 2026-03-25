@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { BadgeCheck, Image, X, UserPlus } from "lucide-react";
-import { supabase } from '@/infrastructure/supabase';
 import { postsRepository } from "@/features/social/repositories/postsRepository";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { validateImageFileOrMessage } from "@/utils/fileValidation";
 import GifPicker from "@/components/GifPicker";
 import CollaboratorPicker from "@/components/CollaboratorPicker";
+import { uploadPostImage } from "@/features/media";
 
 interface PostComposerProps {
   displayName: string;
@@ -109,14 +109,8 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
 
     try {
       if (selectedImage) {
-        const ext = selectedImage.name.split(".").pop();
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("post-images")
-          .upload(path, selectedImage, { contentType: selectedImage.type });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("post-images").getPublicUrl(path);
-        imageUrl = urlData.publicUrl;
+        const result = await uploadPostImage(selectedImage);
+        imageUrl = result.url;
       }
 
       const newPost = await postsRepository.createPost({
@@ -136,8 +130,8 @@ const PostComposer = ({ displayName, username, avatarUrl, organiserProfileId, is
       setCollaborators([]);
       setIsComposing(false);
       onPostCreated?.();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to post");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to post");
     }
     setPosting(false);
   };

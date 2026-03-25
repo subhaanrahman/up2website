@@ -9,3 +9,7 @@ alwaysApply: true
 - When **merging or moving** documentation: **delete** superseded files and **update in-repo links** in the same change. Do **not** leave long-lived “content moved to …” stub pages unless there is a strong external URL requirement (e.g. a published permalink you cannot change).
 - If a short redirect is needed temporarily, treat it as **delete after one release** or track in an issue — default is **delete + grep for broken links** before finishing.
 - The hub at [`docs/supabase/README.md`](docs/supabase/README.md) is enough to discover Supabase docs; do not recreate top-level alias files under `docs/` for the same topic.
+- [`docs/PLATFORM_TODOS.md`](docs/PLATFORM_TODOS.md) is a **pending-only backlog**. Do **not** leave `✅ Done` rows or long shipped-behaviour summaries in that file.
+- When work is shipped, update the canonical docs in the **same change** and remove the completed item from `docs/PLATFORM_TODOS.md`.
+- Keep **critical incidents** and **release blockers** at the top of `docs/PLATFORM_TODOS.md`.
+- When restructuring major docs like `docs/PLATFORM_TODOS.md`, preserve or intentionally update inbound headings/anchors that other docs link to.

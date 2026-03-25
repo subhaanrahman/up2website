@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import { fetchStripeConnectAccountFlags } from "../_shared/stripe-account-fetch.ts";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
@@ -73,19 +73,16 @@ Deno.serve(async (req) => {
         onboarding_complete: false,
         charges_enabled: false,
         payouts_enabled: false,
+        stripe_account_record_exists: false,
       }, requestId);
     }
 
-    // Fetch latest status from Stripe
-    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-      apiVersion: '2025-08-27.basil',
-    });
-
-    const account = await stripe.accounts.retrieve(record.stripe_account_id);
-
-    const chargesEnabled = account.charges_enabled ?? false;
-    const payoutsEnabled = account.payouts_enabled ?? false;
-    const detailsSubmitted = account.details_submitted ?? false;
+    // Fetch latest status from Stripe (REST only — full SDK blows Edge memory / triggers 546)
+    const {
+      charges_enabled: chargesEnabled,
+      payouts_enabled: payoutsEnabled,
+      details_submitted: detailsSubmitted,
+    } = await fetchStripeConnectAccountFlags(record.stripe_account_id);
 
     await serviceClient
       .from('organiser_stripe_accounts')
@@ -102,6 +99,7 @@ Deno.serve(async (req) => {
       onboarding_complete: detailsSubmitted,
       charges_enabled: chargesEnabled,
       payouts_enabled: payoutsEnabled,
+      stripe_account_record_exists: true,
     }, requestId);
   } catch (err) {
     edgeLog('error', 'stripe-connect-status error', { requestId, error: String(err) });

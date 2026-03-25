@@ -1,5 +1,5 @@
 -- Performance indexes aligned with app query patterns (events list, connections, notifications unread, profile feed, event board).
--- See docs/PERFORMANCE.md for pg_stat_statements verification after deploy.
+-- See docs/Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md for pg_stat_statements verification after deploy.
 
 -- Published events ordered by event_date (list/search paths in eventsRepository)
 CREATE INDEX IF NOT EXISTS idx_events_status_event_date

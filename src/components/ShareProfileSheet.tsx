@@ -14,7 +14,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/infrastructure/supabase';
 import { connectionsParticipantOr } from '@/utils/postgrest-connection-filters';
 import { useQuery } from "@tanstack/react-query";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 
 interface ShareProfileSheetProps {
   profileUrl: string;
@@ -136,7 +135,7 @@ const ShareProfileSheet = ({ profileUrl, displayName, avatarUrl }: ShareProfileS
                       className="flex flex-col items-center gap-1.5 min-w-[64px] disabled:opacity-50"
                     >
                       <Avatar className="h-14 w-14">
-                        <AvatarImage src={getOptimizedUrl(friend.avatar_url, 'AVATAR_SM') || undefined} />
+                        <AvatarImage src={friend.avatar_url || undefined} surface="share-profile-friend" />
                         <AvatarFallback className="text-sm">
                           {(friend.display_name || friend.username || "?")[0].toUpperCase()}
                         </AvatarFallback>

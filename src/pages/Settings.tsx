@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { profileApi } from "@/api";
 import { toast } from "@/hooks/use-toast";
@@ -59,6 +60,7 @@ const PROFESSIONAL_CLASSIFICATIONS = ["DJ", "Artist", "Promoter"] as const;
 const Settings = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isOrganiser, activeProfile } = useActiveProfile();
   const { data: profile } = useProfile(user?.id);
   const queryClient = useQueryClient();
   const [upgradeOpen, setUpgradeOpen] = useState(false);
@@ -106,17 +108,44 @@ const Settings = () => {
     <div className="min-h-screen bg-background pb-20">
        {/* Header */}
        <header className="sticky top-0 z-40 bg-background border-b border-border">
-         <div className="flex items-center justify-center px-4 py-4 relative">
+         <div className="flex flex-col items-center justify-center px-4 py-4 relative">
            <h1 className="text-xl font-bold text-foreground text-center">SETTINGS</h1>
-           <button onClick={() => navigate(-1)} className="absolute left-2 p-2 -ml-2">
+           {isOrganiser && activeProfile?.type === "organiser" ? (
+             <p className="text-xs text-muted-foreground mt-1 text-center max-w-[20rem]">
+               Managing <span className="text-foreground font-medium">{activeProfile.displayName}</span>
+               {" · "}
+               Lists below are your <span className="text-foreground">personal</span> account (login, payments, privacy). Switch to your personal profile to change DJ/Artist/Promoter tier.
+             </p>
+           ) : (
+             <p className="text-xs text-muted-foreground mt-1 text-center">Personal account</p>
+           )}
+           <button onClick={() => navigate(-1)} className="absolute left-2 p-2 -ml-2 top-4">
              <ArrowLeft className="h-6 w-6 text-foreground" />
            </button>
          </div>
        </header>
 
       <main className="px-4 pt-4">
-        {/* Upgrade / Downgrade Professional */}
-        {profile && (
+        {isOrganiser && activeProfile?.type === "organiser" && (
+          <Link
+            to={`/profile/edit-organiser?org=${encodeURIComponent(activeProfile.id)}`}
+            className="w-full flex items-center gap-4 p-4 rounded-tile-sm mb-2 bg-secondary border border-border hover:bg-secondary/80 transition-colors"
+          >
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <SettingsIcon className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="font-medium text-foreground">Edit organiser profile</p>
+              <p className="text-sm text-muted-foreground truncate">
+                Branding, category, payouts — {activeProfile.displayName}
+              </p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+          </Link>
+        )}
+
+        {/* Personal account: professional tier (only when not viewing as organiser) */}
+        {profile && !isOrganiser && (
           <button
             onClick={() => isProfessional ? handleDowngrade() : setUpgradeOpen(true)}
             disabled={upgrading}

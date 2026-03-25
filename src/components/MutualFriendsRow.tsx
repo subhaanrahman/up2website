@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/infrastructure/supabase';
-import { getOptimizedUrl } from "@/lib/imageUtils";
 
 interface MutualFriend {
   user_id: string;
@@ -50,7 +49,7 @@ export default function MutualFriendsRow({ targetUserId }: { targetUserId: strin
         {shown.map((f) => (
           <Link key={f.user_id} to={`/user/${f.user_id}`}>
             <Avatar className="h-7 w-7 border-2 border-background">
-              <AvatarImage src={getOptimizedUrl(f.avatar_url, 'AVATAR_SM') || undefined} />
+              <AvatarImage src={f.avatar_url || undefined} surface="mutual-friends-row" />
               <AvatarFallback className="bg-secondary text-foreground text-[10px] font-semibold">
                 {f.display_name?.[0]?.toUpperCase() || "U"}
               </AvatarFallback>

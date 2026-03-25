@@ -5,16 +5,20 @@ import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 import { isEventMediaManager } from "../_shared/event-media-auth.ts";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-limit.ts";
-
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+import {
+  ALLOWED_IMAGE_TYPES,
+  MAX_IMAGE_SIZE_BYTES,
+  createSignedImageUpload,
+  ensureStoragePathPrefix,
+  getPublicStorageUrl,
+} from "../_shared/image-upload.ts";
 
 const initSchema = z.object({
   action: z.literal('init'),
   event_id: z.string().uuid(),
   file_name: z.string().min(1),
   content_type: z.enum(ALLOWED_IMAGE_TYPES),
-  file_size: z.number().int().min(1).max(MAX_FILE_SIZE_BYTES),
+  file_size: z.number().int().min(1).max(MAX_IMAGE_SIZE_BYTES),
   sort_order: z.number().int().min(0).default(0),
 });
 
@@ -66,7 +70,6 @@ Deno.serve(async (req) => {
     );
 
     const data = parsed.data;
-
     const { data: event } = await serviceClient
       .from('events')
       .select('id, host_id, organiser_profile_id')
@@ -98,43 +101,29 @@ Deno.serve(async (req) => {
       return errorResponse(403, 'Not authorized to manage media for this event', { requestId });
     }
 
+    const pathPrefix = `${user.id}/events/${data.event_id}/gallery`;
+
     if (data.action === 'init') {
-      const ext = data.file_name.includes('.')
-        ? data.file_name.split('.').pop()
-        : data.content_type.split('/').pop();
-      const safeExt = (ext || 'jpg').toLowerCase();
-      const path = `${user.id}/${data.event_id}/${crypto.randomUUID()}.${safeExt}`;
-
-      const { data: signed, error: signedErr } = await serviceClient.storage
-        .from('event-media')
-        .createSignedUploadUrl(path);
-
-      if (signedErr || !signed?.signedUrl) {
-        edgeLog('error', 'Signed upload URL failed', { requestId, error: String(signedErr) });
-        return errorResponse(500, 'Failed to prepare upload', { requestId });
-      }
+      const signed = await createSignedImageUpload({
+        serviceClient,
+        bucket: 'event-media',
+        ownerId: user.id,
+        segments: ['events', data.event_id, 'gallery'],
+        fileName: data.file_name,
+        contentType: data.content_type,
+        fileSize: data.file_size,
+      });
 
       return successResponse({
-        upload_url: signed.signedUrl,
-        path,
+        upload_url: signed.uploadUrl,
+        path: signed.path,
         sort_order: data.sort_order,
       }, requestId);
     }
 
-    // complete
-    if (!data.path.includes(`/${data.event_id}/`)) {
-      return errorResponse(400, 'Invalid upload path', { requestId });
-    }
+    ensureStoragePathPrefix(data.path, pathPrefix);
 
-    const { data: publicUrlData } = serviceClient.storage
-      .from('event-media')
-      .getPublicUrl(data.path);
-
-    const publicUrl = publicUrlData?.publicUrl;
-    if (!publicUrl) {
-      return errorResponse(500, 'Failed to resolve public URL', { requestId });
-    }
-
+    const publicUrl = await getPublicStorageUrl(serviceClient, 'event-media', data.path);
     const { error: insertErr } = await serviceClient.from('event_media').insert({
       event_id: data.event_id,
       url: publicUrl,

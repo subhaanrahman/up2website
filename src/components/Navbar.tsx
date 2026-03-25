@@ -8,15 +8,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sparkles, Plus, User, LogOut, LayoutDashboard } from "lucide-react";
+import { Sparkles, Plus, User, LogOut, LayoutDashboard, QrCode } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from '@/infrastructure/supabase';
 import { useNavigate } from "react-router-dom";
+import { useDigitalIdSheet } from "@/contexts/DigitalIdSheetContext";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { openDigitalIdSheet } = useDigitalIdSheet();
   const [profile, setProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
 
   useEffect(() => {
@@ -92,6 +94,13 @@ const Navbar = () => {
                         <User className="h-4 w-4" />
                         Profile
                       </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => openDigitalIdSheet()}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      Digital ID and wallet
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

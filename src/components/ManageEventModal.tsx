@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Image, Crown, ScanLine, Share2, Settings, BarChart3, Megaphone } from "lucide-react";
+import { ClipboardList, Image, Crown, ScanLine, Share2, Settings, BarChart3, Megaphone, MailPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import ShareEventLinksModal from "@/components/ShareEventLinksModal";
@@ -24,6 +24,7 @@ const ManageEventModal = ({ open, onOpenChange, eventId, eventTitle }: ManageEve
   };
 
   const items = [
+    { icon: MailPlus, label: "Send RSVP", description: "Search users by username and add them to the guest list", action: () => goTo(`/events/${eventId}/send-rsvp`) },
     { icon: ClipboardList, label: "Orders, Guestlists & Refunds", description: "View all ticket orders, guest lists, and refunds", action: () => goTo(`/events/${eventId}/manage`) },
     { icon: ScanLine, label: "Check-In", description: "Attendee list & QR scan mode", action: () => goTo(`/events/${eventId}/checkin`) },
     { icon: Share2, label: "Share & Ticket Links", description: "Copy event link, RSVP link & QR code", action: () => { onOpenChange(false); setShareOpen(true); } },

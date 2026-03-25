@@ -1,175 +1,219 @@
 # Platform Todos
 
-> Consolidated checklist of pending work across APIs, backend, Stripe, optimisation, and cleanup.  
-> Shipped items (e.g. standard ticket `charge.refunded`, organiser refund ledger via `orders-list`, buyer self-service refunds) are documented in `docs/PAYMENT_FLOW.md` and `docs/ARCHITECTURE.md` so this file stays short.  
-> Last updated: 2026-03-21
+> **Canonical pending backlog for the repo.** `docs/PLATFORM_TODOS.md` is **pending-only**: open, partial, deferred, and future work lives here. Shipped behaviour and completed architecture belong in the canonical docs instead: [`ARCHITECTURE.md`](ARCHITECTURE.md), [`DATABASE_ARCHITECTURE.md`](DATABASE_ARCHITECTURE.md), [`Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md`](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md), [`PAYMENT_FLOW.md`](PAYMENT_FLOW.md), [`PAYMENT_TICKETING_PROGRAM.md`](PAYMENT_TICKETING_PROGRAM.md), [`SECURITY_CHECKLIST.md`](SECURITY_CHECKLIST.md), and [`TESTING_GUIDE.md`](TESTING_GUIDE.md).  
+> Critical incidents and release blockers stay at the top of this file.  
+> Last updated: 2026-03-25 (Disk IO incident runbook, backlog reorder, pending-only cleanup)
 
 ---
 
-## Testing
+## Critical Now — Disk IO / DB / storage / query hygiene
 
-Tracked here instead of [`TESTING_GUIDE.md`](TESTING_GUIDE.md) (that doc is **architecture + commands** only).
+Primary incident reference:
+
+- [Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md)
+
+Use the runbook above for the evidence pack, repo-grounded hypotheses, validation queries, and acceptance thresholds. This section tracks only the still-open work.
+
+| Priority | Item | Status | Notes |
+| --- | --- | --- | --- |
+| P0 | Capture Supabase evidence for the alert window around **2026-03-25 16:20 Australia/Sydney** | ⏳ Pending | Save hourly and daily Disk IO budget, CPU, memory, swap, cache-hit indicators, connections, and top SQL snapshots for the incident window. |
+| P0 | Run the SQL evidence pack and save outputs into the incident log | ⏳ Pending | Use the fixed queries in [SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md). |
+| P0 | Add missing messaging indexes | ⏳ Pending | Add indexes for `dm_messages(thread_id, created_at desc)`, `group_chat_messages(group_chat_id, created_at desc)`, `dm_threads(user_id, updated_at desc)`, `dm_threads(organiser_profile_id, updated_at desc)`, and `group_chat_members(user_id, group_chat_id)`. |
+| P1 | Replace unread polling + per-thread unread count loops with a server-side unread-count path | ⏳ Pending | Current path in `useUnreadMessages` is a strong IO candidate. |
+| P1 | Paginate DM/group/event board history instead of refetching full threads | ⏳ Pending | Current messaging screens refetch whole histories on realtime inserts. |
+| P1 | Narrow realtime subscriptions and invalidation scope | ⏳ Pending | Focus on notifications, messaging, and feed invalidation breadth. |
+| P1 | Remove remaining hot-path `select("*")` usage and move hot reads toward repository/RPC patterns | ⏳ Pending | Notifications and messaging are the first targets. |
+| P1 | Review `dashboard-analytics` fan-out reads and move toward aggregated/RPC-backed queries | ⏳ Pending | Treat organiser analytics as a likely expensive read path. |
+| P1 | Move rate-limit cleanup off request traffic | ⏳ Pending | `check_rate_limit` still performs cleanup in-band today. |
+| P1 | Audit whether `notifications-process`, event analytics tables, and image telemetry contribute meaningful write churn | ⏳ Pending | Keep image telemetry if the sample rate remains intentionally low. |
+| P2 | Add row-growth snapshots and table-size monitoring for hot tables | ⏳ Pending | Focus on `rate_limits`, `notifications`, `dm_messages`, `group_chat_messages`, `orders`, `rsvps`, `event_views`, `event_link_clicks`, `image_telemetry_events`. |
+| P2 | Frontend hosting target: move to **static build + CDN** instead of long-term Cloud Run static serving | ⏳ Pending | Target Cloud Storage or Firebase Hosting plus Cloud CDN. |
+| P2 | Add build/release stamp and deploy parity checks | ⏳ Pending | Teammates need an easy way to confirm they are testing the same live build. |
+
+---
+
+## Critical Now — Payment and ticketing QA / release blockers
+
+Technical flow reference:
+
+- [PAYMENT_FLOW.md](PAYMENT_FLOW.md)
+- [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md)
+
+### Pre-launch
+
+This section stays pending-only. Completed Stripe env sign-off and shipped flow details live in [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md) and [PAYMENT_FLOW.md](PAYMENT_FLOW.md).
 
 | Item | Status | Notes |
-|------|--------|--------|
-| `VITE_SENTRY_DSN` in GitHub Actions secrets | ⏳ Optional | Enables Sentry in CI-built bundle; local uses `.env.local`. See [TESTING_GUIDE.md](TESTING_GUIDE.md#3-sentry-browser). |
-| E2E: seed data on hosted project for `dev-login` | ⏳ When needed | Run `auth_users_seed.sql` + `data_export.sql` on same project as `VITE_SUPABASE_URL`; set `SEED_USER_PASSWORD` Edge secret. |
-| Expand Playwright: create event, feed posts, full RSVP, paid checkout | ⏳ Future | Current E2E is smoke-level; see specs in `tests/e2e/`. |
-| Visual / snapshot regression tests | Future | Not used. |
+| --- | --- | --- |
+| Test end-to-end payment flow in Stripe sandbox | ⏳ Partial | Automated runs were recorded earlier; manual buyer and organiser sandbox QA still needs release sign-off in [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md). |
+| Confirm Supabase session and frontend env match the same deployed project as Edge Functions | ⏳ Pending | Avoid `401 Invalid JWT` and stale-project testing. |
+| Configure CORS for the production domain | ⏳ Pending | Edge functions still use wildcard CORS. |
+| Confirm `orders-expire-cleanup` is scheduled and observable in logs | ⏳ Pending | Scheduler exists in repo; confirm secrets and production execution path are actually active. |
+| Verify `PAYMENTS_DISABLED` kill-switch behaviour in the current environment | ⏳ Optional | Useful operations drill before broader QA. |
 
-### Manual UAT matrix (post–region migration)
+### Testing
 
-Browser pass against the project in `supabase/config.toml` (e.g. Sydney). Seed: [`supabase/AUTH_AND_SEEDING.md`](supabase/AUTH_AND_SEEDING.md) (`seedplaceholder1` for seeded accounts). After switching Supabase projects, sign out and sign in ([`TESTING_GUIDE.md` — Invalid JWT](TESTING_GUIDE.md#5-end-to-end-playwright)).
+Tracked here instead of [TESTING_GUIDE.md](TESTING_GUIDE.md), which remains the commands and architecture guide.
+
+| Item | Status | Notes |
+| --- | --- | --- |
+| E2E: seed hosted project for `dev-login` when needed | ⏳ When needed | Run `auth_users_seed.sql` and `data_export.sql` on the same project as `VITE_SUPABASE_URL`; set `SEED_USER_PASSWORD`. |
+| Expand Playwright for create event, feed posts, full RSVP, and paid checkout | ⏳ Future | Current E2E coverage is smoke-level. |
+| Visual / snapshot regression tests | Future | Not used yet. |
+| Release regression pass across auth, core, storage, social, notifications, check-in, embed, and payments | ⏳ Pending | Run this before release after the current payment and performance work settles. |
+
+### Manual UAT matrix
+
+Browser pass against the project in `supabase/config.toml` (current Sydney project unless explicitly testing elsewhere). Seed accounts and troubleshooting live in [`supabase/AUTH_AND_SEEDING.md`](supabase/AUTH_AND_SEEDING.md) and [`TESTING_GUIDE.md`](TESTING_GUIDE.md).
 
 | Area | Check |
-|------|--------|
-| Auth | Phone OTP (if Twilio live) or dev-login seed user |
-| Auth | Sign out → sign in; session survives refresh |
-| Core | Home `/`, search `/search`, event `/events/:id` |
-| Core | Own `/profile`; other user `/user/:userId` |
-| Organiser | Create `/create`; edit `/events/:id/edit`; manage `/events/:id/manage` |
-| Tickets | `/events`; checkout `/checkout` → `/checkout/success` if Stripe test configured |
-| VIP | `/vip-checkout` → `/vip-checkout/success` if enabled |
-| Storage | Avatars / event images load |
-| Social | `/profile/friends`, `/profile/followers`; `/messages` and threads |
-| Settings | `/settings` and key subpages (incl. `/settings/digital-id` if used) |
-| Notifications | `/notifications` |
+| --- | --- |
+| Auth | Phone OTP or `dev-login` seed user; sign out and sign in; session survives refresh |
+| Core | Home `/`, search `/search`, event `/events/:id`, own `/profile`, other user `/user/:userId` |
+| Organiser | Create `/create`, edit `/events/:id/edit`, manage `/events/:id/manage` |
+| Tickets | `/events`, `/checkout`, `/checkout/success` with Stripe test configuration |
+| VIP | `/vip-checkout`, `/vip-checkout/success` if enabled |
+| Storage | Avatars, flyers, and post images load correctly |
+| Social | Friends/followers, `/messages`, DM and group threads |
+| Settings | `/settings` and key subpages including Digital ID if used |
+| Notifications | `/notifications` list and unread state |
 | Edge-heavy | Check-in `/events/:id/checkin`; embed `/embed/:id` if used |
-| Payments (optional) | Stripe test checkout per [PAYMENT_FLOW.md](PAYMENT_FLOW.md) sandbox checklist |
-
----
-
-## Pre-launch
-
-| Item | Status | Notes |
-|------|--------|-------|
-| Stripe publishable key in env | ⏳ Pending | Set `VITE_STRIPE_PUBLISHABLE_KEY` (see `src/lib/stripe.ts`); must match Stripe Dashboard **test vs live** mode for each environment. |
-| Verify `STRIPE_WEBHOOK_SECRET` | ⏳ Pending | Stripe → Webhooks → endpoint `{SUPABASE_URL}/functions/v1/stripe-webhook`; signing secret must match Edge secret. See [PAYMENT_FLOW.md](PAYMENT_FLOW.md). |
-| Test end-to-end payment flow | ⏳ Partial | **(A)** Automated **recorded 2026-03-20:** `npm run test` ✅, `npm run build` ✅, `npm run test:e2e` ✅ (14 passed, 2 skipped; no real card). **(B)** Manual sandbox: [PAYMENT_FLOW.md — Manual QA playbook](PAYMENT_FLOW.md#manual-qa-playbook-sandbox). Mark **Done** for (B) when run and noted in release. |
-| Run unit + E2E test suites | ✅ Done (2026-03-20) | Same env prerequisites as [TESTING_GUIDE.md](TESTING_GUIDE.md). Latest recorded run: unit + build + Playwright (14 passed, 2 skipped). Re-run before releases if env or specs change. |
-| Configure CORS for production domain | ⏳ Pending | Edge functions use `*` wildcard — restrict to production domain. **Note:** CORS does **not** fix `401 Invalid JWT` (that is auth/env/session). |
-| Add unique constraint on `rsvps (event_id, user_id)` | ✅ Done | `20260317140000_rsvps_event_user_unique.sql` |
+| Payments | Buyer and organiser sandbox flows from [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md) |
 
 ---
 
 ## API Integrations
 
 | API | Purpose | Status | Notes |
-|-----|---------|--------|-------|
-| Google Places API | City autocomplete in Edit Profile | ⏳ Pending | Currently using hardcoded city list (`src/data/cities.ts`). Need to set up Google Cloud project, enable Places API, create API key, add as backend secret `GOOGLE_PLACES_API_KEY`, and build a proxy edge function. |
-| GIF API (GIPHY) | GIF picker in Post Composer | ⏳ Pending | Tenor API deprecated. GIPHY is the preferred alternative. Edge function `gif-search` and `GifPicker` component exist as placeholders. Need API key as backend secret. |
-| Twilio Verify Email Channel | Email OTP verification | ⏳ Pending | Enable the email channel in Twilio Verify Service (Twilio Console → Verify → your service → Email Integration). Requires SendGrid integration or approved email sender. |
-| Push Notifications (FCM/APNs) | Mobile push notifications | Future | `notification_settings` table has `push_notifications` toggle but no push infrastructure exists. |
+| --- | --- | --- | --- |
+| Google Places API | City autocomplete in Edit Profile | ⏳ Pending | Replace the hardcoded city list with a backend proxy and secret-managed API key. |
+| Twilio Verify Email Channel | Email OTP verification | ⏳ Pending | Requires Twilio Verify email channel setup plus sender integration. |
+| Push notifications (FCM/APNs) | Mobile push | Future | `notification_settings` already has toggles, but there is no push infrastructure. |
+| Apple Developer Program + PassKit | Apple Wallet Digital ID | ⏳ Pending | Requires Pass Type ID, certificates, and `WALLET_APPLE_*` secrets. |
+| Google Wallet API | Google Wallet Digital ID | ⏳ Pending | Requires issuer setup and a dedicated service-account JSON for `wallet-google-save`. |
 
 ---
 
-## Backend
+## Backend / product backlog
 
-Completed backend items are summarized in `docs/ARCHITECTURE.md` and `docs/DATABASE_ARCHITECTURE.md` to keep this list focused on pending work.
+Open product/backend items that are not already tracked in the critical sections above.
+
+| Area | Open items |
+| --- | --- |
+| Check-in | Digital ID wallet completion still depends on Apple/Google wallet setup. |
+| Event media | Optional tightening of RLS and path ownership beyond the current image-platform hardening pass. |
+| Event board | Message delete flow and send-path rate limiting. |
+| DMs | Organiser-initiated outbound messaging. |
+| Group chat | Remaining notification and unread-count cleanup after the current performance work. |
+| Analytics | Richer sales, revenue, and demographic reporting beyond current dashboards. |
+| Waitlist | Additional position and promotion rules after core flow stabilizes. |
+| Reminders | Stronger scheduling/worker path for `event_reminders`. |
+| Guestlist approval | Continue polishing host approval and pending RSVP rules. |
+
+---
+
+## Database & storage hygiene (extended)
+
+Urgent DB/query work is tracked in the top critical section. This section is for the longer-tail hygiene items that should follow once the incident is contained.
+
+| Theme | Backlog |
+| --- | --- |
+| Retention | Archive or summarize `point_transactions` after roughly 12 months; consider TTL for old `event_messages`; archive `check_ins` after event + N months. |
+| Integrity | Confirm `ON DELETE CASCADE` on `post_likes`, `post_reposts`, and `post_collaborators`. |
+| Storage | Orphan cleanup for avatars, `post-images`, `event-flyers`, and `event-media`; evaluate optional resize/WebP pipeline. |
+| Ops | Weekly row-count snapshot, dead-tuple review, and connection alerting for heavy tables. |
 
 ---
 
 ## Ticketing Flow — standard tickets (Stripe)
 
-**Status: feature-complete for app flows** (reserve → pay → webhook → tickets; Connect onboarding; 7% platform fee on top; refund policy + self-service + organiser ledger). Details: [PAYMENT_FLOW.md](PAYMENT_FLOW.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+Core standard ticketing is implemented. Remaining **open** standard-ticket items are:
 
-- [x] Checkout, webhooks, organiser Connect, refunds (organiser + self-service), Manage Event orders/refunds via `orders-list`
+- manual buyer and organiser sandbox sign-off in [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md)
+- release regression after payment, auth, or environment changes
+- production CORS restriction
+- confirmed `orders-expire-cleanup` scheduling and observability
+
+Deeper technical behaviour remains documented in [PAYMENT_FLOW.md](PAYMENT_FLOW.md), not repeated here.
 
 ---
 
 ## Product: Guestlist vs VIP tables
 
-| Concept | Meaning in product | Implementation notes |
-|--------|---------------------|----------------------|
-| **Guestlist** | People on the **guest list** / RSVP path — **free entry** or non–card gate (approval, capacity, members-only visibility). Not “VIP minimum spend.” | Guestlist panels, `rsvp` / `rsvp-approve`, waitlist; distinct from paid `orders`. |
-| **VIP tables** | **High-AOV** table bookings (minimum spend, larger payment totals). Separate commercial track from standard tickets. | Backend **partially** shipped (tiers, `vip-reserve`, `vip-payments-intent`, `vip-cancel`, Manage Event, analytics). Treat as **finish later** epic — see below. |
+Keep these concepts separate when planning work:
+
+| Concept | Meaning |
+| --- | --- |
+| **Guestlist** | Free-entry or non-card RSVP path with approvals, capacity, and waitlist rules. |
+| **VIP tables** | Higher-AOV reservations with their own pricing, refund, reconciliation, and fee strategy. |
+
+The open VIP backlog remains below.
 
 ---
 
 ## VIP tables / high-AOV (deferred epic)
 
-Finish as a **separate** initiative from standard ticketing (lower platform fee vs standard **7%** is a product decision once AOV/pricing is finalised).
-
-- [ ] Stripe: `charge.refunded` for VIP reservations — sync `vip_refunds` / reservation state (`stripe-webhook`)
-- [ ] Reconciliation report: VIP PaymentIntents vs `vip_table_reservations`
-- [ ] Fee strategy: e.g. lower **application_fee** % than standard tickets for high minimum-spend tables (today VIP uses same **7%** on top in `vip-reserve` — change when product locks)
-- [ ] UX polish, ops runbooks, optional E2E with Stripe test mode
-
-**Still useful today (partial ship):**
-
-- [x] VIP tier availability in Event Detail (sold-out per tier)
-- [x] VIP reservations list in Manage Event
-- [x] VIP cancellation/refund flow (host + attendee) via `vip-cancel`
-- [x] VIP analytics in organiser dashboard
+- Handle `charge.refunded` for VIP reservations and sync `vip_refunds` / reservation state.
+- Add reconciliation reporting for VIP PaymentIntents versus `vip_table_reservations`.
+- Finalize fee strategy for high minimum-spend reservations.
+- Finish UX polish, operations runbooks, and optional Stripe sandbox E2E.
 
 ---
 
 ## Optimisation
 
 ### Auth / Login
-| # | Item | Impact |
-|---|------|--------|
-| 1 | Merge `check-phone` + `login` into single call for returning users | Medium |
+
+| Item | Impact |
+| --- | --- |
+| Merge `check-phone` and `login` for returning users | Medium |
 
 ### Frontend
-| # | Item | Impact |
-|---|------|--------|
-| 2 | Convert suggested profiles query to `useQuery` instead of raw `useEffect` | Low |
-| 3 | Remove static event data import from `Index.tsx` and `EventDetail.tsx` | Low |
-| 4 | Add `loading="lazy"` to off-screen images (event lists, suggested profiles, feed posts) | Medium |
-| 5 | Add `React.lazy()` + `Suspense` for route-level code splitting | Medium |
-| 6 | **N+1 post interactions** — batch feed post queries into single RPC (like count, repost count, my like, my repost) | High |
+
+| Item | Impact |
+| --- | --- |
+| Convert suggested profiles query to `useQuery` instead of raw `useEffect` | Low |
+| Remove static event data imports from `Index.tsx` and `EventDetail.tsx` | Low |
+| Add `loading="lazy"` to off-screen images | Medium |
+| Add route-level code splitting with `React.lazy()` and `Suspense` | Medium |
+| Batch feed post interaction queries into a single RPC path | High |
 
 ### Backend / Edge Functions
-| # | Item | Impact |
-|---|------|--------|
-| 7 | Rate limit cleanup: consider pg_cron instead of 5% of requests | Low |
-| 8 | Edge function cold starts: consider connection pooling / module-level client | Medium |
-| 9 | Defer avatar generation to background task instead of blocking registration | Medium |
-| 10 | Extract phone normalization to shared utility across functions | Low |
+
+| Item | Impact |
+| --- | --- |
+| Edge function cold starts: review connection pooling or module-level client reuse | Medium |
+| Defer avatar generation to a background task instead of blocking registration | Medium |
+| Extract phone normalization into one shared utility | Low |
 
 ### Database
-Shipped indexes are in migrations (latest batch `20260324120000_performance_indexes.sql`). Use [PERFORMANCE.md](PERFORMANCE.md) (`pg_stat_statements`) to validate in production.
 
-| # | Item | Impact | Status |
-|---|------|--------|--------|
-| 11 | Unique `profiles.username` | Medium | ✅ Done (`UNIQUE` constraint migration) |
-| 12 | Organiser profile queries: single RPC or join instead of waterfall | Low | ⏳ Open |
-| 13 | **notifications(user_id, created_at)** | High | ✅ Done (`idx_notifications_user_id`) |
-| 14 | **notifications** partial unread `(user_id, created_at) WHERE read = false` | High | ✅ Done (`idx_notifications_user_unread_created`) |
-| 15 | **posts(created_at DESC)** — feed pagination | Medium | ✅ Done (`idx_posts_created`) |
-| 16 | **posts(author_id, created_at DESC)** — profile feed | Medium | ✅ Done (`idx_posts_author_created_at`) |
-| 17 | **rsvps(event_id, status)** | High | ✅ Done (`idx_rsvps_event_status`) |
-| 18 | **rsvps(user_id, status)** — tickets / my RSVPs | Medium | ✅ Done (`idx_rsvps_user_status`) |
-| 19 | **connections** — `(requester_id, status)`, `(addressee_id, status, created_at)` | Medium | ✅ Done |
-| 20 | **events(status, event_date)** — list / search | Medium | ✅ Done (`idx_events_status_event_date`) |
-| 21 | **events(organiser_profile_id, event_date)** — organiser dashboard | Medium | ✅ Done (partial index) |
-| 22 | **organiser_followers(organiser_profile_id)** | Low–Medium | ✅ Done (`idx_organiser_followers_organiser_id`) |
-| 23 | **post_likes(post_id)** | Medium | ✅ Done (`idx_post_likes_post`) |
-| 24 | **profiles(username)** — lookups | Medium | ✅ Covered by unique username |
-| 25 | **event_messages(event_id, created_at)** | Medium | ✅ Done (`idx_event_messages_event_created`) |
+| Item | Impact |
+| --- | --- |
+| Organiser profile queries: use a single RPC or join instead of a waterfall | Low |
 
 ### Resource Efficiency
-| # | Item | Impact |
-|---|------|--------|
-| 26 | Unused dependencies audit | Low |
-| 27 | Image optimisation (WebP, transforms) | Medium |
-| 28 | Supabase Realtime audit — verify needed subscriptions | Low |
-| 29 | Dead code removal (`queue.ts`, `authorization.ts`, etc.) | Low |
+
+| Item | Impact |
+| --- | --- |
+| Unused dependencies audit | Low |
+| Supabase Realtime audit — verify every subscription is still needed | Low |
+| Dead code removal (`queue.ts`, `authorization.ts`, and related leftovers) | Low |
 
 ---
 
 ## Stripe Phase 3 (partial)
 
-### Webhook Updates
-- [x] Handle `charge.refunded` (standard ticket orders) — `stripe-webhook` updates order to `refunded`, cancels tickets, upserts `refunds` row (see `docs/PAYMENT_FLOW.md`)
-- [ ] Handle `charge.refunded` for **VIP** reservations — sync `vip_refunds` / reservation state (see [VIP tables / high-AOV (deferred epic)](#vip-tables--high-aov-deferred-epic))
-- [ ] Handle `charge.dispute.created` — flag order, notify admin
-- [ ] Handle `payout.paid` / `payout.failed` (optional) — organiser payout status tracking
+### Webhook updates
 
-### Audit & Observability
-- [ ] Add admin-facing order history view
-- [ ] Add reconciliation query: compare Stripe PaymentIntents with local orders
+- Handle `charge.refunded` for standard ticket orders with refund and ticket sync.
+- Handle `charge.dispute.created` and flag admin follow-up.
+- Optionally track `payout.paid` and `payout.failed`.
+
+### Audit and observability
+
+- Add admin-facing order history.
+- Add reconciliation query or report comparing Stripe PaymentIntents with local orders.
 
 ---
 
@@ -177,78 +221,43 @@ Shipped indexes are in migrations (latest batch `20260324120000_performance_inde
 
 ### MOM: Cloud Tasks first, Pub/Sub later
 
-| # | Item |
-|---|------|
-| 1 | Design Cloud Tasks queue(s) and document job types |
-| 2 | Implement Cloud Tasks adapter for current queue interface |
-| 3 | Replace in-process execution in `_shared/queue.ts` with Cloud Tasks |
-| 4 | Worker/edge function to receive Cloud Tasks and run handlers |
-| 5 | Use for retries, delayed jobs, webhook follow-ups, cleanup |
-| 6 | Defer Pub/Sub until concrete need (document "Cloud Tasks first") |
-| 7 | Alternatives to Cloud Tasks on non-GCP stacks: **Upstash QStash**, **Cloudflare Queues**, or **Inngest** — same idea: HTTP worker + retries + persistence |
+Phase 1 of Cloud Tasks is already documented in `docs/supabase/CLOUD_TASKS.md`. Remaining open work:
 
-**Status update:** Phase 1 implemented (webhook follow-ups only). See `docs/supabase/CLOUD_TASKS.md` for setup and `supabase/functions/queue-worker` for the worker.
+| Item |
+| --- |
+| Design queue boundaries and document job types clearly. |
+| Replace remaining in-process execution in `_shared/queue.ts` with Cloud Tasks. |
+| Expand worker coverage for retries, delayed jobs, cleanup, and follow-up workflows. |
+| Keep Pub/Sub deferred until there is a concrete need beyond Cloud Tasks. |
+| Document equivalent queue-first alternatives for non-GCP stacks if the hosting strategy changes. |
 
 ---
 
 ## Platform hardening (external checklist)
 
-Cross-cutting items from common “Lovable / early SaaS” advice, mapped to this repo. Use this section to retire duplicate notes elsewhere.
-
-### Security / files
+Shipped hardening items now live in canonical docs such as [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md), [TESTING_GUIDE.md](TESTING_GUIDE.md), and [ARCHITECTURE.md](ARCHITECTURE.md). Open follow-ons stay here.
 
 | Item | Status | Notes |
-|------|--------|--------|
-| Presigned uploads for all user content | ⏳ Partial | `event-media-upload` uses signed upload URLs. `post-images` (posts, flyer in create flow) still use client `storage.upload`; optional alignment later. |
-| Private bucket + signed **download** URLs | Future | Public `getPublicUrl` is not time-limited; consider for sensitive media. |
-| Virus / malware scanning | Future | Defer while uploads are image-only with MIME + size checks; revisit for arbitrary files. |
-
-### Payments ops
-
-| Item | Status | Notes |
-|------|--------|--------|
-| Global payments kill switch | ✅ Done | Edge secret `PAYMENTS_DISABLED` (`1` / `true` / `yes`) — `orders-reserve`, `payments-intent`, `vip-reserve`, `vip-payments-intent` return 503. |
-| Stripe webhook signatures | ✅ Done | `stripe-webhook` verifies with `STRIPE_WEBHOOK_SECRET`. |
-| Stripe retries | ✅ N/A (provider) | Stripe retries on non-2xx; we return 2xx after successful handling. |
-| Internal DLQ for webhook side-effects | ⏳ Pending | In-process `enqueue()` today; see Cloud Tasks rows above. |
-
-### Audit
-
-| Item | Status | Notes |
-|------|--------|--------|
-| Domain audit today | ✅ Partial | `moderation_actions` (admin), `payment_events` (Stripe + idempotency). |
-| General-purpose `audit_log` | Future | `(actor_id, action, entity_type, entity_id, metadata, request_id)` — add when admin/compliance needs grow. |
-
-### Observability
-
-| Item | Status | Notes |
-|------|--------|--------|
-| Sentry (errors) | ✅ Done | `@sentry/react` init when `VITE_SENTRY_DSN` is set; `ErrorBoundary` + `captureApiError`. Set DSN in `.env.local` locally; optional GitHub secret for CI builds — [TESTING_GUIDE.md](TESTING_GUIDE.md#3-sentry-browser). |
-| PostHog (funnels / product analytics) | ⏳ Pending | Not integrated; add when funnel work starts. |
-
-### CI / E2E
-
-| Item | Status | Notes |
-|------|--------|--------|
-| Playwright on PRs | ✅ Done | `.github/workflows/ci.yml` — `e2e` job runs `npx playwright install --with-deps` + `npm run test:e2e` when secrets are configured. |
-| Required GitHub Actions secrets | — | `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY` (same as local `.env`; powers the Vite dev server during E2E). Optional: `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_SENTRY_DSN`. If URL/key are missing, the job skips E2E and passes. See [TESTING_GUIDE.md](TESTING_GUIDE.md). |
-| Seeded staging for E2E | ⏳ Optional | Host seed migrations: `20260325120000_seed_local_hosts.sql`, `20260325130000_seed_sydney_events.sql` (applied via `supabase db push` on target projects). `npm run seed:sydney` if present; not wired to CI. |
-
-Backlog for broader QA and coverage: [**Testing**](#testing) (manual UAT matrix, Playwright expansion, snapshots).
-
----
-
-## Quick Wins (1–2 hours each)
-
-1. **Set `VITE_STRIPE_PUBLISHABLE_KEY`** — 15 min
-2. **Verify STRIPE_WEBHOOK_SECRET** — 15 min
-3. **CORS for production** — 30 min
-4. **DB: Expired orders cleanup** — ensure `orders-expire-cleanup` cron is set — 15 min
+| --- | --- | --- |
+| Private bucket + signed download URLs | Future | Public media is still public by default; revisit if access control requirements tighten. |
+| Virus / malware scanning | Future | Revisit if uploads expand beyond image-only content. |
+| Internal DLQ for webhook and job side-effects | ⏳ Pending | Cloud Tasks migration is the likely home for this. |
+| General-purpose `audit_log` | Future | Add when admin/compliance needs outgrow current domain-specific audit tables. |
+| PostHog or equivalent product analytics | ⏳ Pending | Add when funnel work begins; not required for current reliability goals. |
+| Seeded staging for E2E | ⏳ Optional | Useful once payment, messaging, and performance work stabilizes. |
 
 ---
 
 ## References
 
-- [PAYMENT_FLOW.md](PAYMENT_FLOW.md) — webhook details and order lifecycle
-- [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) — security audit
-- [GAMIFICATION_OPTIONS.md](GAMIFICATION_OPTIONS.md) — gamification roadmap and future enhancements
+| Doc | Purpose |
+| --- | --- |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Routes, edge functions, risks, and platform overview |
+| [DATABASE_ARCHITECTURE.md](DATABASE_ARCHITECTURE.md) | Tables, RLS, RPCs, and schema detail |
+| [Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md) | Disk IO incident and DB performance operating runbook |
+| [PAYMENT_FLOW.md](PAYMENT_FLOW.md) | Stripe lifecycle, webhook behavior, idempotency |
+| [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md) | Manual QA program for buyer and organiser flows |
+| [TESTING_GUIDE.md](TESTING_GUIDE.md) | Unit/E2E commands, CI, Sentry, Playwright |
+| [SECURITY_CHECKLIST.md](SECURITY_CHECKLIST.md) | Table access model and edge-only write boundaries |
+| [DEV_CONTEXT.md](DEV_CONTEXT.md) | Repo patterns and coding context |
+| [supabase/README.md](supabase/README.md) | Supabase docs hub |

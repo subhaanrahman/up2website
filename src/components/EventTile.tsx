@@ -2,9 +2,9 @@ import { Link } from "react-router-dom";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PublicImage } from "@/components/ui/public-image";
 import { cn } from "@/lib/utils";
 
 /** Normalized event shape for EventTile — accepts various API shapes */
@@ -88,20 +88,18 @@ const TileContent = ({
 }) => {
   const venue = getVenue(event);
   const coverImage = getCoverImage(event);
-  const coverSmall = getOptimizedUrl(coverImage, { width: 220, quality: 65 }) || coverImage;
-  const coverMedium = getOptimizedUrl(coverImage, { width: 420, quality: 75 }) || coverImage;
-  const coverLarge = getOptimizedUrl(coverImage, { width: 720, quality: 80 }) || coverImage;
   return (
     <>
       <div className="h-28 aspect-[3/4] flex-shrink-0 overflow-hidden">
-        <img
-          src={coverMedium}
-          srcSet={`${coverSmall} 220w, ${coverMedium} 420w, ${coverLarge} 720w`}
+        <PublicImage
+          src={coverImage}
+          preset="EVENT_CARD"
+          assetType="event-flyer"
+          surface="event-tile"
+          responsiveWidths={[220, 420, 720]}
           sizes="(max-width: 768px) 28vw, 140px"
           alt={event.title}
           className="w-full h-full object-cover bg-secondary/50"
-          loading="lazy"
-          decoding="async"
         />
       </div>
       <div className="flex-1 pl-4 pr-2 py-2 min-w-0 flex flex-col justify-center">

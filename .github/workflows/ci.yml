@@ -29,6 +29,9 @@ jobs:
       - name: Lint
         run: npx eslint .
 
+      - name: Image Guard
+        run: npm run guard:images
+
       - name: Unit tests
         run: npm run test
 

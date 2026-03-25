@@ -111,7 +111,7 @@ const EditEvent = () => {
     }
   }, [event]);
 
-  // Load existing co-hosts + organiser owner (so list matches "Hosted by" on event page)
+  // Load co-hosts from event_cohosts only (host is events.host_id — shown on detail separately, not duplicated here)
   const {
     data: loadedCohostEntries,
     isSuccess: cohostsQuerySuccess,
@@ -119,28 +119,11 @@ const EditEvent = () => {
     queryKey: ["event-cohosts-edit", id],
     queryFn: async (): Promise<CohostEntry[]> => {
       if (!id) return [];
-      const entries: CohostEntry[] = [];
-
-      // 1) Event's organiser profile and owner (so owner shows in form like on event page)
-      const org = await eventManagementRepository.getEventOrganiserProfile(id);
-      if (org?.owner_id) {
-        const ownerProfile = await profilesRepository.getProfileByUserId(org.owner_id);
-        if (ownerProfile) {
-          entries.push({
-            id: ownerProfile.user_id,
-            type: "personal",
-            displayName: ownerProfile.display_name || ownerProfile.username || "Unknown",
-            username: ownerProfile.username ?? null,
-            avatarUrl: ownerProfile.avatar_url ?? null,
-          });
-        }
-      }
-
-      // 2) Rows from event_cohosts (batch fetch like EventDetail)
       const rows = await eventManagementRepository.getCohosts(id);
+      const entries: CohostEntry[] = [];
       const orgIds = rows.filter((r) => r.organiser_profile_id).map((r) => r.organiser_profile_id!);
       const userIds = rows.filter((r) => r.user_id).map((r) => r.user_id!);
-      const existingIds = new Set(entries.map((e) => e.id));
+      const existingIds = new Set<string>();
 
       if (orgIds.length > 0) {
         const orgs = await profilesRepository.getOrganisersByIds(orgIds);
