@@ -26,9 +26,19 @@ const Index = () => {
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const unreadCount = useUnreadCount();
   const queryClient = useQueryClient();
+  const SUGGESTED_INSERT_INDEX = 3;
 
   // v1 personalized feed with pagination
-  const { posts: feedPosts, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, refetch: refetchFeed, isRefetching } = usePaginatedFeed();
+  const {
+    posts: feedPosts,
+    isLoading,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+    refetch: refetchFeed,
+    isRefetching,
+    hasPendingUpdates,
+  } = usePaginatedFeed();
 
   // DB-backed nearby events
   const { data: nearbyEvents = [] } = useNearbyEvents(4);
@@ -135,8 +145,25 @@ const Index = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   useEffect(() => {
-    getSuggestedFriends(user?.id, 6).then(setSuggestedProfiles);
+    setSuggestedProfiles([]);
+    setPendingRequests(new Set());
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || suggestedProfiles.length > 0 || feedPosts.length <= SUGGESTED_INSERT_INDEX) return;
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      getSuggestedFriends(user.id, 6).then((profiles) => {
+        if (!cancelled) setSuggestedProfiles(profiles);
+      });
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [feedPosts.length, suggestedProfiles.length, user?.id, SUGGESTED_INSERT_INDEX]);
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
@@ -167,8 +194,6 @@ const Index = () => {
     }
   }, [user]);
 
-  // Show suggested friends after a few posts (inserted at position 3)
-  const SUGGESTED_INSERT_INDEX = 3;
   const showSuggestedInline = suggestedProfiles.length > 0 && feedPosts.length > SUGGESTED_INSERT_INDEX;
 
   return (
@@ -215,6 +240,14 @@ const Index = () => {
             </div>
           )}
         </div>
+
+        {hasPendingUpdates && !isRefetching && (
+          <div className="px-4 pt-3 flex justify-center">
+            <Button variant="secondary" size="sm" className="rounded-full" onClick={() => handleRefresh()}>
+              New posts available
+            </Button>
+          </div>
+        )}
 
         {/* Post Composer — only when logged in */}
         {user && (

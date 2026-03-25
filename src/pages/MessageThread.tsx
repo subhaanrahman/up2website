@@ -11,7 +11,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfileQuery";
 import { callEdgeFunction } from "@/infrastructure/api-client";
-import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { useMarkChatRead } from "@/hooks/useUnreadMessages";
 import { useToast } from "@/hooks/use-toast";
 import { trackInteraction } from "@/lib/interactionAnalytics";
 import BottomNav from "@/components/BottomNav";
@@ -35,7 +35,7 @@ const MessageThread = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [typingName, setTypingName] = useState<string | null>(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
-  const { markChatRead } = useUnreadMessages();
+  const markChatRead = useMarkChatRead();
   const typingTimeoutRef = useRef<number | undefined>(undefined);
   const lastTypingBroadcastRef = useRef(0);
   const typingChannelRef = useRef<any>(null);

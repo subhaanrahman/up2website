@@ -1,5 +1,5 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfileQuery';
@@ -29,8 +29,8 @@ export function useFeedContext() {
 // ─── Paginated feed ───
 export function usePaginatedFeed() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const { data: ctx, isPending: ctxPending, isError: ctxError } = useFeedContext();
+  const [hasPendingUpdates, setHasPendingUpdates] = useState(false);
 
   const graphKey = !user ? 'anon' : ctxPending ? 'ctx-wait' : ctxError ? 'ctx-err' : 'ctx-ready';
 
@@ -53,26 +53,35 @@ export function usePaginatedFeed() {
   const feedInvalidateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const FEED_REALTIME_DEBOUNCE_MS = 2500;
 
+  const refetch = useCallback(async () => {
+    setHasPendingUpdates(false);
+    await query.refetch();
+  }, [query.refetch]);
+
   useEffect(() => {
-    const scheduleFeedInvalidate = () => {
+    setHasPendingUpdates(false);
+  }, [graphKey, user?.id]);
+
+  useEffect(() => {
+    const scheduleFeedRefreshPrompt = () => {
       if (feedInvalidateTimerRef.current) clearTimeout(feedInvalidateTimerRef.current);
       feedInvalidateTimerRef.current = setTimeout(() => {
         feedInvalidateTimerRef.current = null;
-        queryClient.invalidateQueries({ queryKey: ['feed-posts'] });
+        setHasPendingUpdates(true);
       }, FEED_REALTIME_DEBOUNCE_MS);
     };
 
     const channel = supabase
       .channel('home-feed-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, scheduleFeedInvalidate)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reposts' }, scheduleFeedInvalidate)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, scheduleFeedRefreshPrompt)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'post_reposts' }, scheduleFeedRefreshPrompt)
       .subscribe();
 
     return () => {
       if (feedInvalidateTimerRef.current) clearTimeout(feedInvalidateTimerRef.current);
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, []);
 
   // Flatten pages into a single array
   const posts = useMemo(() => {
@@ -95,8 +104,9 @@ export function usePaginatedFeed() {
     isFetchingNextPage: query.isFetchingNextPage,
     hasNextPage: query.hasNextPage,
     fetchNextPage: query.fetchNextPage,
-    refetch: query.refetch,
+    refetch,
     isRefetching: query.isRefetching,
+    hasPendingUpdates,
   };
 }
 

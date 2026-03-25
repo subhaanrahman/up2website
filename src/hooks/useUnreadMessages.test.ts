@@ -4,33 +4,18 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useUnreadMessages } from "./useUnreadMessages";
 
-vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: "user-1" } }),
-}));
-
-type ChainRes = { data?: unknown; error?: unknown; count?: number };
-let chainRes: ChainRes = { data: [], error: null, count: 0 };
-
-function createChain() {
-  const res = chainRes;
-  const chain = {
-    from: () => chain,
-    select: () => chain,
-    eq: () => chain,
-    in: () => chain,
-    neq: () => chain,
-    gt: () => chain,
-    then: (cb: (r: ChainRes) => unknown) => Promise.resolve(cb(res)),
-  };
-  return chain;
-}
-
+let mockUser: { id: string } | null = { id: "user-1" };
+const mockRpc = vi.fn();
 const mockChannel = { unsubscribe: vi.fn() };
 const mockRemoveChannel = vi.fn();
 
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: mockUser }),
+}));
+
 vi.mock("@/infrastructure/supabase", () => ({
   supabase: {
-    from: () => createChain(),
+    rpc: (...args: unknown[]) => mockRpc(...args),
     channel: () => ({
       on: () => ({
         on: () => ({
@@ -38,7 +23,7 @@ vi.mock("@/infrastructure/supabase", () => ({
         }),
       }),
     }),
-    removeChannel: (ch: unknown) => mockRemoveChannel(ch),
+    removeChannel: (channel: unknown) => mockRemoveChannel(channel),
   },
 }));
 
@@ -51,18 +36,44 @@ function createWrapper() {
 describe("useUnreadMessages", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    chainRes = { data: [], error: null, count: 0 };
+    mockUser = { id: "user-1" };
     localStorage.clear();
+    mockRpc.mockImplementation((fnName: string) => {
+      if (fnName === "get_unread_message_total") {
+        return Promise.resolve({ data: 0, error: null });
+      }
+      return Promise.resolve({ data: [], error: null });
+    });
   });
 
-  it("returns perChat empty and totalUnread 0 when user exists and no data", async () => {
+  it("returns perChat empty and totalUnread 0 when there is no last-read state", async () => {
     const { result } = renderHook(() => useUnreadMessages(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.totalUnread).toBe(0));
     expect(result.current.perChat).toEqual({});
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it("markChatRead is callable and invalidates queries", async () => {
+  it("hydrates unread counts from the aggregate RPC", async () => {
+    localStorage.setItem("chat_last_read", JSON.stringify({
+      "chat-1": "2026-03-25T10:00:00.000Z",
+    }));
+
+    mockRpc.mockResolvedValueOnce({
+      data: [{ chat_id: "chat-1", unread_count: 2 }],
+      error: null,
+    });
+
+    const { result } = renderHook(() => useUnreadMessages(), { wrapper: createWrapper() });
+
+    await waitFor(() => expect(result.current.totalUnread).toBe(2));
+    expect(result.current.perChat).toEqual({ "chat-1": 2 });
+    expect(mockRpc).toHaveBeenCalledWith("get_unread_message_counts", {
+      p_last_read: { "chat-1": "2026-03-25T10:00:00.000Z" },
+    });
+  });
+
+  it("markChatRead stores the timestamp locally", async () => {
     const { result } = renderHook(() => useUnreadMessages(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.totalUnread).toBe(0));
@@ -72,7 +83,7 @@ describe("useUnreadMessages", () => {
   });
 
   it("returns fallback when user is absent", async () => {
-    vi.mocked(await import("@/contexts/AuthContext")).useAuth = () => ({ user: null }) as never;
+    mockUser = null;
     const { result } = renderHook(() => useUnreadMessages(), { wrapper: createWrapper() });
 
     await waitFor(() => expect(result.current.totalUnread).toBe(0));
