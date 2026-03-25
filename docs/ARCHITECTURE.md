@@ -1,7 +1,9 @@
 # Up2 Platform — Architecture Overview
 
-> Last updated: 2026-03-22  
+> Last updated: 2026-03-24  
 > Status: Codebase-grounded reference. Every claim references actual files.
+
+**Pending work:** a single backlog lives in [`PLATFORM_TODOS.md`](PLATFORM_TODOS.md) (older per-topic TODO files were merged there in March 2026).
 
 ---
 
@@ -95,6 +97,13 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 - **Realtime**: Supabase channel on `posts` and `post_reposts` tables invalidates `['feed-posts']` query key.
 - **Profile feed** (`src/pages/Profile.tsx`): Uses `useUserFeedWithReposts()` from `src/hooks/usePostsQuery.ts` — separate, non-paginated path (limit 50).
 
+### Image Delivery And Uploads
+- **Shared delivery component**: `src/components/ui/public-image.tsx` is the canonical renderer for user-facing Supabase media. It normalizes legacy Supabase hosts, prefers transformed `/storage/v1/render/image/public/...` URLs, falls back to raw object URLs only when needed, and emits image telemetry.
+- **Avatars**: `src/components/ui/avatar.tsx` now uses the same delivery internals as `PublicImage`, so avatars and non-avatar media share normalization, fallback, and telemetry behavior.
+- **Frontend upload services**: `src/features/media/services/imageUploadService.ts` is the shared client upload layer for avatars, organiser avatars, post images, event flyers, and event media.
+- **Signed upload edge functions**: `avatar-upload`, `post-image-upload`, `event-flyer-upload`, and `event-media-upload` all use init/complete signed upload flows. Posts and event flyers no longer upload directly from the browser to storage.
+- **Observability**: `src/lib/imageTelemetry.ts` reports sampled image delivery events to `image-telemetry`, backed by `public.image_telemetry_events`.
+
 ### Event Board (Attendee Chat)
 - **Component**: `src/components/EventBoard.tsx` — real-time message board on event detail pages.
 - **Access**: Visible only to users who are RSVP'd ("going"), have a valid ticket, or are the event host.
@@ -119,7 +128,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 
 ## 2. Backend Architecture
 
-### Supabase Tables (46 tables)
+### Supabase Tables (47 tables)
 
 **Core Identity**
 - `profiles` — Personal user profiles (linked to auth.users via user_id)
@@ -181,6 +190,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 **Infrastructure**
 - `rate_limits` — API rate limiting
 - `check_ins` — Event check-in records
+- `image_telemetry_events` — sampled image delivery telemetry
 
 **Check-in flow:** Manual toggle via `checkin-toggle`; QR scan via `checkin-qr` (organiser scans attendee ticket QR, validates against tickets.qr_code, upserts check_ins, updates tickets.checked_in_at).
 
@@ -213,7 +223,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | **Auth** | `check-phone`, `send-otp`, `verify-otp`, `login`, `register`, `dev-login`, `dev-profile` |
 | **Profile** | `profile-update`, `avatar-upload`, `backfill-avatars`, `account-delete` |
 | **Email** | `email-verify-send`, `email-verify-confirm` |
-| **Events** | `events-create`, `events-update`, `event-media-manage`, `event-media-upload` |
+| **Events / Media** | `events-create`, `events-update`, `event-media-manage`, `event-media-upload`, `event-flyer-upload`, `post-image-upload` |
 | **RSVP** | `rsvp` (join/leave via action param), `waitlist-promote` |
 | **Organiser** | `organiser-profile-create`, `organiser-profile-update`, `organiser-team-manage` |
 | **Ticketing** | `orders-reserve`, `orders-list`, `validate-discount`, `ticket-transfer`, `checkin-toggle`, `checkin-qr` |
@@ -226,7 +236,7 @@ Lives in `src/contexts/ActiveProfileContext.tsx`. Triggered by long-press on pro
 | **Settings** | `settings-upsert` |
 | **Support** | `support-request-create` |
 | **Analytics** | `dashboard-analytics` |
-| **Infra** | `health` |
+| **Infra** | `health`, `image-telemetry` |
 
 ### Edge Function Infrastructure
 
@@ -258,7 +268,7 @@ Every edge function:
 | `is_organiser_owner(profile_id, user_id)` | SECURITY DEFINER | Organiser ownership check |
 | `is_organiser_member(profile_id, user_id)` | SECURITY DEFINER | Accepted team member check |
 | `is_group_chat_member(group_id, user_id)` | SECURITY DEFINER | Chat membership check |
-| `is_profile_public(user_id)` | SECURITY DEFINER | **⚠️ Currently hardcoded to return `true` — does NOT check profile_tier** |
+| `is_profile_public(user_id)` | SECURITY DEFINER | Checks `profiles.profile_tier = 'professional'` for public profile visibility |
 | `get_mutual_friends(user_a, user_b)` | SECURITY DEFINER | Mutual friend lookup |
 | `get_friend_count(user_id)` | SECURITY DEFINER | Friend count |
 | `get_friends_and_following_count(user_id)` | SECURITY DEFINER | **⚠️ Same as get_friend_count (doesn't count organiser follows)** |
@@ -435,7 +445,7 @@ All write methods have structured `createLogger` logging with "who/what/outcome"
 - **Dashboard access**: Gated by `activeProfile.type === 'organiser'` — simply owning an organiser profile doesn't grant dashboard access if in personal mode.
 
 ### Risks / Inconsistencies
-1. **`is_profile_public()` is hardcoded to `return true`** — the privacy tier system (personal=private, professional=public) is NOT enforced at the DB level despite being implemented in the UI.
+1. **`is_profile_public()` only enforces `profile_tier`** — DB privacy now respects `personal` vs `professional`, but richer privacy settings are not part of the public-visibility decision.
 2. **`get_friends_and_following_count()` doesn't count organiser follows** — it's identical to `get_friend_count()`, which is misleading.
 3. **`authorization.ts` lives in frontend but is designed for edge functions** — it's importable by frontend code but useless there (uses server patterns). Not actually shared with edge functions which have their own inline auth checks.
 4. **Dev-login fallback in `identityRepository`** calls `dev-profile` edge function when RLS blocks profile reads — this masks real auth issues in development.
@@ -698,12 +708,11 @@ type JobType =
 
 ## 10. Environment / Deployment State
 
-### Lovable Platform
-- Source of truth for Supabase project (Lovable Cloud).
-- Auto-manages: `supabase/config.toml`, `src/integrations/supabase/client.ts`, `src/integrations/supabase/types.ts`, `.env`.
-- Edge functions auto-deployed on push.
-- Preview URL: `https://id-preview--{id}.lovable.app`.
-- Published URL: `https://social-soiree-site.lovable.app`.
+### Frontend Hosting
+- Frontend is built as a static bundle with `npm run build` and packaged by [`../Dockerfile`](../Dockerfile).
+- The container serves `dist/` on `$PORT` via `serve -s dist -l ${PORT}`.
+- Current production runtime is a user-managed Google Cloud Run deployment.
+- Lovable may still remain connected via GitHub sync, but it is not the active production host or primary recovery path.
 
 ### GitHub
 - CI workflow in `.github/workflows/ci.yml`.
@@ -722,12 +731,12 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 
 ### Missing for Staging/Prod Readiness
 1. **No staging environment** — single Supabase project for all environments.
-2. **No database migrations CI** — migrations managed via Lovable UI, not reviewable in PRs.
-3. **Stripe publishable key hardcoded** in `src/lib/stripe.ts` — should be `VITE_STRIPE_PUBLISHABLE_KEY`.
+2. **No automated database migration rollout in CI/CD** — schema application is still an operator step.
+3. **Frontend deployment details are not documented in-repo** — Cloud Run service URL, region, service account, and domain mapping should live in an ops runbook.
 4. **No CORS configuration** for production domain in edge functions (using `*` wildcard).
-5. **No error monitoring** (Sentry, LogRocket, etc.).
+5. **Sentry is optional, not guaranteed across environments** — browser error reporting only exists when `VITE_SENTRY_DSN` is configured.
 6. **No performance monitoring** (no Web Vitals tracking).
-7. **No E2E tests** — only CI lint/typecheck.
+7. **E2E coverage is conditional** — Playwright exists, but CI skips it when required secrets are missing.
 8. **Logger uses `import.meta.env.PROD`** for JSON toggle — works but no structured log aggregation service.
 
 ---
@@ -736,16 +745,16 @@ config.functionsUrl  // ${VITE_SUPABASE_URL}/functions/v1
 
 ### Critical
 
-1. **`is_profile_public()` returns `true` unconditionally** (`SELECT true`)
+1. **Profile privacy model is coarse**
    - File: DB function `is_profile_public`
-   - Impact: The entire privacy tier system (personal=private, professional=public) is unenforced at the database level. Any authenticated user can view any profile regardless of `profile_tier` or `privacy_settings.go_public`.
+   - Impact: Visibility is enforced through `profile_tier = 'professional'`, but more granular privacy controls are not part of the DB visibility rule.
 
-2. **Stripe publishable key hardcoded**
-   - File: `src/lib/stripe.ts` (line 3)
-   - Impact: Can't switch between test/live keys without code change. Risk of accidentally shipping test key to production or vice versa.
+2. **Stripe Connect onboarding fallback origin is stale**
+   - File: `supabase/functions/stripe-connect-onboard/index.ts`
+   - Impact: When `Origin` is missing, the function falls back to an old Lovable URL instead of the active frontend host, which can send payout onboarding redirects to the wrong place.
 
-3. **No expired order cleanup**
-   - Job type `cleanup.expired_orders` is defined but no cron or trigger invokes it. Reserved orders that expire after 15 minutes remain in `status = 'reserved'` indefinitely, potentially blocking inventory.
+3. **Expired order cleanup depends on external cron**
+   - The `orders-expire-cleanup` edge function exists, but inventory can still get stuck if its external schedule is not configured.
 
 4. **`publish_at` scheduling only updates status on create**
    - Public listings already filter `publish_at`, but `events-update` does not toggle `status` when `publish_at` changes (e.g., clearing a publish time may leave an event stuck as `scheduled`).

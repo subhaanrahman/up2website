@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Calendar, MapPin, Users, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getOptimizedUrl } from "@/lib/imageUtils";
+import { PublicImage } from "@/components/ui/public-image";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { eventsRepository } from "@/features/events/repositories/eventsRepository";
@@ -70,11 +70,13 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
     <Link to={`/events/${id}`} className="group block">
       <div className="bg-card rounded-tile-sm overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         <div className="relative aspect-square overflow-hidden">
-          <img
-            src={getOptimizedUrl(image, 'EVENT_CARD') || image}
+          <PublicImage
+            src={image}
+            preset="EVENT_CARD"
+            assetType="event-flyer"
+            surface="event-card"
             alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
           />
           <div className="absolute top-3 left-3">
             <Badge variant="secondary" className="bg-card/90 backdrop-blur-sm text-card-foreground">
@@ -107,7 +109,7 @@ const EventCard = ({ id, title, date, time, location, image, attendees, category
               <div className="flex -space-x-2">
                 {friendsGoing.slice(0, 3).map((f, i) => (
                   <Avatar key={i} className="h-6 w-6 border-2 border-card">
-                    <AvatarImage src={getOptimizedUrl(f.avatarUrl, 'AVATAR_SM') || undefined} />
+                    <AvatarImage src={f.avatarUrl || undefined} surface="event-card-friends-going" />
                     <AvatarFallback className="text-[10px]">{(f.displayName || "?")[0]}</AvatarFallback>
                   </Avatar>
                 ))}

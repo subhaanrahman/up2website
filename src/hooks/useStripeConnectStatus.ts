@@ -7,6 +7,8 @@ interface ConnectStatus {
   onboarding_complete: boolean;
   charges_enabled: boolean;
   payouts_enabled: boolean;
+  /** False when no row in organiser_stripe_accounts yet (Connect account not created or persisted). */
+  stripe_account_record_exists?: boolean;
 }
 
 export function useStripeConnectStatus(organiserProfileId: string | undefined) {

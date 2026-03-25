@@ -1,3 +1,0 @@
-# No Flutter Changelog
-
-**Rule:** Do NOT add entries to `flutterchanges.md` after code changes. The project is planning a React Native conversion (not Flutter). Skip any "add flutterchanges entry" or "Flutter migration notes" tasks in plans.

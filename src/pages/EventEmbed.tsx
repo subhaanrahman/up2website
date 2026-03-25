@@ -5,6 +5,7 @@ import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { format } from "date-fns";
 import { CalendarDays, MapPin, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PublicImage } from "@/components/ui/public-image";
 
 /**
  * Minimal embeddable event card designed to be loaded in an iframe.
@@ -43,8 +44,11 @@ const EventEmbed = () => {
     <div className="min-h-screen bg-background p-4 flex items-center justify-center animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <div className="w-full max-w-sm bg-card border border-border rounded-tile overflow-hidden shadow-lg">
         {coverImage && (
-          <img
+          <PublicImage
             src={coverImage}
+            preset="EMBED_COVER"
+            assetType="event-flyer"
+            surface="event-embed-cover"
             alt={event.title}
             className="w-full aspect-video object-cover"
           />

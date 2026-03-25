@@ -12,7 +12,6 @@ import { messagingRepository } from "@/features/messaging/repositories/messaging
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CreateGroupChatModal from "@/components/CreateGroupChatModal";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { prefetchDmThread, prefetchGroupThread } from "@/lib/prefetch";
 import { ThreadRowSkeleton } from "@/components/ui/skeletons";
@@ -188,7 +187,7 @@ const GroupChatTile = ({
     <div className="relative flex -space-x-2">
       {chat.memberPreviews.slice(0, 3).map((m) => (
         <Avatar key={m.user_id} className="h-9 w-9 border-2 border-card ring-1 ring-border/30">
-          <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
+          <AvatarImage src={m.avatar_url || undefined} surface="dashboard-thread-avatar" />
           <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
             {(m.display_name || "?")[0]?.toUpperCase()}
           </AvatarFallback>
@@ -251,7 +250,7 @@ const DmThreadTile = ({
       className="flex items-center gap-3 px-1 py-3 hover:bg-secondary/50 rounded-tile-sm transition-colors"
     >
       <Avatar className="h-12 w-12">
-        <AvatarImage src={getOptimizedUrl(avatar, 'AVATAR_SM') || undefined} />
+        <AvatarImage src={avatar || undefined} surface="dashboard-member-avatar" />
         <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
           {(name || "?")[0]?.toUpperCase()}
         </AvatarFallback>

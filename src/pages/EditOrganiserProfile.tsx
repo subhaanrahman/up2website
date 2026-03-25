@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PayoutSetupSection from "@/components/PayoutSetupSection";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,19 +25,28 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { CITIES } from "@/data/cities";
-import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Camera, Check, ChevronsUpDown } from "lucide-react";
 import { useActiveProfile } from "@/contexts/ActiveProfileContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { callEdgeFunction } from "@/infrastructure/api-client";
 import { toast } from "@/hooks/use-toast";
+import { validateImageFileOrMessage } from "@/utils/fileValidation";
+import { uploadOrganiserAvatarImage } from "@/features/media";
 
 const CATEGORIES = ["Venue", "Event"];
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 const EditOrganiserProfile = () => {
   const navigate = useNavigate();
-  const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles } = useActiveProfile();
+  const [searchParams] = useSearchParams();
+  const { activeProfile, isOrganiser, organiserProfiles, refetchOrganiserProfiles, switchProfile, isLoading } =
+    useActiveProfile();
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  /** One refetch per `org` query value if the organiser list was stale (e.g. cold return from Stripe). */
+  const orgRefetchAttemptedFor = useRef<string | null>(null);
 
   const activeOrg = isOrganiser
     ? organiserProfiles.find((o) => o.id === activeProfile?.id)
@@ -54,26 +62,71 @@ const EditOrganiserProfile = () => {
     opening_hours: {} as Record<string, string>,
   });
 
+  // Stripe Connect return URLs include ?org=<organiser_profile_id>; restore context before treating as personal.
   useEffect(() => {
-    if (!isOrganiser) {
-      navigate("/profile/edit");
+    if (isLoading || !user) return;
+
+    const orgId = searchParams.get("org");
+    if (orgId) {
+      const org = organiserProfiles.find((o) => o.id === orgId);
+      if (!org) {
+        if (orgRefetchAttemptedFor.current !== orgId) {
+          orgRefetchAttemptedFor.current = orgId;
+          void refetchOrganiserProfiles();
+          return;
+        }
+        toast({
+          title: "Organiser not found",
+          description: "This organiser isn't linked to your account or the link is invalid.",
+          variant: "destructive",
+        });
+        navigate("/profile");
+        return;
+      }
+      orgRefetchAttemptedFor.current = null;
+      if (activeProfile?.type !== "organiser" || activeProfile.id !== orgId) {
+        switchProfile(orgId, "organiser", org);
+      }
       return;
     }
-    if (activeOrg) {
-      setFormData({
-        display_name: activeOrg.displayName || "",
-        username: activeOrg.username || "",
-        bio: activeOrg.bio || "",
-        city: activeOrg.city || "",
-        instagram_handle: activeOrg.instagramHandle || "",
-        category: activeOrg.category || "Venue",
-        opening_hours: (activeOrg as any).openingHours || {},
-      });
+
+    orgRefetchAttemptedFor.current = null;
+
+    if (!isOrganiser) {
+      navigate("/profile/edit");
     }
-  }, [activeOrg, isOrganiser, navigate]);
+  }, [
+    isLoading,
+    user,
+    searchParams,
+    organiserProfiles,
+    activeProfile?.type,
+    activeProfile?.id,
+    isOrganiser,
+    switchProfile,
+    navigate,
+    refetchOrganiserProfiles,
+  ]);
+
+  useEffect(() => {
+    if (!isOrganiser || !activeOrg) return;
+    const orgOpeningHours =
+      "openingHours" in activeOrg && typeof activeOrg.openingHours === "object" && activeOrg.openingHours
+        ? activeOrg.openingHours
+        : {};
+    setFormData({
+      display_name: activeOrg.displayName || "",
+      username: activeOrg.username || "",
+      bio: activeOrg.bio || "",
+      city: activeOrg.city || "",
+      instagram_handle: activeOrg.instagramHandle || "",
+      category: activeOrg.category || "Venue",
+      opening_hours: orgOpeningHours as Record<string, string>,
+    });
+  }, [activeOrg, isOrganiser]);
 
   const handleSave = async () => {
-    if (!activeOrg) return;
+    if (!activeOrg || !activeProfile?.id) return;
     if (!formData.display_name.trim() || !formData.username.trim()) {
       toast({ title: "Required fields", description: "Display name and username are required.", variant: "destructive" });
       return;
@@ -81,9 +134,28 @@ const EditOrganiserProfile = () => {
 
     setSaving(true);
     try {
+      const fresh = await refetchOrganiserProfiles();
+      const org = fresh.find((o) => o.id === activeProfile.id);
+      if (!org) {
+        toast({
+          title: "Could not load organiser profile",
+          description: "Pull to refresh or switch away and back to this organiser, then try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (user?.id && org.id === user.id) {
+        toast({
+          title: "Wrong profile id",
+          description: "Active profile id matched your user id — sign out and back in, then try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       await callEdgeFunction("organiser-profile-update", {
         body: {
-          profile_id: activeOrg.id,
+          profile_id: org.id,
           display_name: formData.display_name,
           username: formData.username,
           bio: formData.bio.trim() || null,
@@ -96,8 +168,8 @@ const EditOrganiserProfile = () => {
       await refetchOrganiserProfiles();
       toast({ title: "Profile updated", description: "Your organiser profile has been saved." });
       navigate("/profile");
-    } catch (error: any) {
-      const msg = error?.message || "Failed to update organiser profile.";
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to update organiser profile.";
       toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
@@ -111,7 +183,59 @@ const EditOrganiserProfile = () => {
     });
   };
 
-  if (!activeOrg) return null;
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !activeOrg) return;
+
+    const err = validateImageFileOrMessage(file);
+    if (err) {
+      toast({ title: "Invalid file", description: err, variant: "destructive" });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      await uploadOrganiserAvatarImage(activeOrg.id, file);
+      await refetchOrganiserProfiles();
+      toast({ title: "Avatar updated", description: "Your organiser photo has been updated." });
+    } catch (error: unknown) {
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload organiser avatar.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+      if (event.target) event.target.value = "";
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!isOrganiser) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">Redirecting…</p>
+      </div>
+    );
+  }
+
+  if (!activeOrg) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-3 px-4">
+        <p className="text-sm text-muted-foreground text-center">Could not load this organiser profile.</p>
+        <Button variant="outline" onClick={() => navigate("/profile")}>
+          Back to profile
+        </Button>
+      </div>
+    );
+  }
 
   const displayInitial = (formData.display_name?.[0] || "O").toUpperCase();
 
@@ -140,16 +264,26 @@ const EditOrganiserProfile = () => {
         <div className="flex flex-col items-center pt-8 pb-8">
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-primary/25 blur-2xl scale-150 pointer-events-none" />
-            <Avatar className="relative h-28 w-28 border-2 border-primary/40 ring-4 ring-background shadow-xl">
-              <AvatarImage src={activeOrg.avatarUrl || undefined} />
-              <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
-                {displayInitial}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="relative h-28 w-28 border-2 border-primary/40 ring-4 ring-background shadow-xl">
+                <AvatarImage src={activeOrg.avatarUrl || undefined} avatarPreset="AVATAR_LG" surface="edit-organiser-avatar" />
+                <AvatarFallback className="text-3xl bg-card text-foreground font-bold">
+                  {displayInitial}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute bottom-1 right-1 bg-primary text-primary-foreground rounded-full p-2 shadow-lg border-2 border-background disabled:opacity-50"
+              >
+                <Camera className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
           <p className="text-[11px] tracking-[0.15em] uppercase text-muted-foreground mt-3">
-            {formData.display_name || "Organiser"}
+            {uploadingAvatar ? "Uploading…" : formData.display_name || "Organiser"}
           </p>
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
         </div>
 
         <div className="space-y-3">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { X, Ticket, ClipboardList, Bell, FileText } from "lucide-react";
@@ -29,8 +29,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type BottomTab = "details" | "ticketing" | "guestlist" | "notifications";
+
+const LAST_ORG_FOR_EVENT_CREATE_KEY = "lastOrganiserForEventCreate";
 
 function edgeErrorMessage(err: unknown): string {
   if (err instanceof AppError) {
@@ -110,21 +119,38 @@ const CreateEvent = () => {
   // Notifications state
   const [reminders, setReminders] = useState<string[]>(["1_day"]);
 
-  // Ticketing is only available when actively using a business (organiser) profile
-  const hasOrganiserProfile = isOrganiser;
+  /** When personal + multiple orgs, which organiser this event is for (persisted in localStorage). */
+  const [orgPickerId, setOrgPickerId] = useState<string | null>(null);
 
-  // Venue / host association for the event (personal creators may still attach their default organiser profile)
-  const eventOrganiserProfileId =
-    activeProfile?.type === "organiser"
-      ? activeProfile.id
-      : organiserProfiles.length > 0
-        ? organiserProfiles[0]?.id
-        : undefined;
+  useEffect(() => {
+    if (organiserProfiles.length <= 1) {
+      setOrgPickerId(null);
+      return;
+    }
+    if (activeProfile?.type !== "personal") {
+      setOrgPickerId(null);
+      return;
+    }
+    const stored = localStorage.getItem(LAST_ORG_FOR_EVENT_CREATE_KEY);
+    const valid =
+      stored && organiserProfiles.some((o) => o.id === stored) ? stored : organiserProfiles[0]?.id;
+    setOrgPickerId(valid ?? null);
+  }, [organiserProfiles, activeProfile?.type, activeProfile?.id]);
 
-  // Stripe Connect only applies while you're acting as that organiser — not on personal profile
-  // (avoids stripe-connect-status traffic / payout prompts for free guestlist-only creates).
+  // Ticketing when using an organiser profile, or when personal but an organiser is selected for this event
+  const hasOrganiserProfile = isOrganiser || !!eventOrganiserProfileId;
+
+  // Venue / host association: explicit organiser session, single org default, or picker + last-used when personal + multiple orgs
+  const eventOrganiserProfileId = useMemo(() => {
+    if (activeProfile?.type === "organiser") return activeProfile.id;
+    if (organiserProfiles.length === 0) return undefined;
+    if (organiserProfiles.length === 1) return organiserProfiles[0]!.id;
+    return orgPickerId ?? organiserProfiles[0]!.id;
+  }, [activeProfile, organiserProfiles, orgPickerId]);
+
+  // Stripe Connect: same organiser as the event being created (including personal + selected org for paid tiers)
   const stripeConnectOrganiserId =
-    activeProfile?.type === "organiser" ? activeProfile.id : undefined;
+    activeProfile?.type === "organiser" ? activeProfile.id : eventOrganiserProfileId;
   const { data: connectStatus } = useStripeConnectStatus(stripeConnectOrganiserId);
   const payoutsReady = connectStatus?.charges_enabled ?? false;
   const { startOnboarding } = useStripeConnectOnboard(stripeConnectOrganiserId);
@@ -373,6 +399,32 @@ const CreateEvent = () => {
                 Profile
               </Link>{" "}
               and switch profiles to set prices, VIP tables, and when tickets go on sale.
+            </div>
+          )}
+          {activeProfile?.type === "personal" && organiserProfiles.length > 1 && orgPickerId && (
+            <div className="mb-4 space-y-1.5">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Create for organisation</p>
+              <Select
+                value={orgPickerId}
+                onValueChange={(v) => {
+                  setOrgPickerId(v);
+                  localStorage.setItem(LAST_ORG_FOR_EVENT_CREATE_KEY, v);
+                }}
+              >
+                <SelectTrigger className="w-full rounded-tile bg-card border-border/50">
+                  <SelectValue placeholder="Select organiser" />
+                </SelectTrigger>
+                <SelectContent>
+                  {organiserProfiles.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.displayName} @{o.username}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Ticketing and branding use this organiser. Last used is remembered when you switch profiles.
+              </p>
             </div>
           )}
           {activeTab === "details" && (

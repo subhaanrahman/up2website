@@ -1,9 +1,7 @@
 // Client API wrappers — thin layer calling Edge Functions for writes
 
 import { callEdgeFunction } from '@/infrastructure/api-client';
-import { config } from '@/infrastructure/config';
 import { supabase } from '@/infrastructure/supabase';
-import { parseApiError } from '@/infrastructure/errors';
 import type { AwardPointsResult, PointAction } from '@/features/loyalty/domain/types';
 import type { CreateEventInput, UpdateEventInput } from '@/features/events/domain/types';
 
@@ -129,6 +127,12 @@ export const settingsApi = {
 };
 
 // --- Profile API (writes) ---
+export const walletApi = {
+  getGoogleWalletSaveUrl(): Promise<{ saveUrl: string }> {
+    return callEdgeFunction<{ saveUrl: string }>('wallet-google-save', { body: {} });
+  },
+};
+
 export const profileApi = {
   update(fields: Record<string, unknown>) {
     return callEdgeFunction<{ success: boolean }>('profile-update', {
@@ -138,27 +142,6 @@ export const profileApi = {
 
   regenerateProfileQr(): Promise<{ qr_code: string }> {
     return callEdgeFunction<{ qr_code: string }>('profile-qr-regenerate', { body: {} });
-  },
-
-  async uploadAvatar(file: File): Promise<string> {
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await fetch(`${config.functionsUrl}/avatar-upload`, {
-      method: 'POST',
-      headers: {
-        'apikey': config.supabase.anonKey,
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-      },
-      body: formData,
-    });
-
-    const json = await res.json().catch(() => null);
-    if (!res.ok) throw parseApiError(res.status, json);
-    return (json as { avatar_url: string }).avatar_url;
   },
 };
 

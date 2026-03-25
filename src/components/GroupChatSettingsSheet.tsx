@@ -21,7 +21,6 @@ import {
   Crown,
   UserMinus,
 } from "lucide-react";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface GroupChatSettingsSheetProps {
@@ -306,7 +305,7 @@ const GroupChatSettingsSheet = ({
                   className="flex items-center gap-2.5 px-2 py-2 rounded-lg"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={getOptimizedUrl(m.avatar_url, 'AVATAR_SM') || undefined} />
+                    <AvatarImage src={m.avatar_url || undefined} surface="group-chat-settings-member" />
                     <AvatarFallback className="bg-muted text-[10px]">
                       {(m.display_name || m.username || "U")[0]}
                     </AvatarFallback>
@@ -390,7 +389,7 @@ const GroupChatSettingsSheet = ({
                         className="pointer-events-none"
                       />
                       <Avatar className="h-7 w-7">
-                        <AvatarImage src={getOptimizedUrl(f.avatar_url, 'AVATAR_SM') || undefined} />
+                        <AvatarImage src={f.avatar_url || undefined} surface="group-chat-settings-friend" />
                         <AvatarFallback className="text-[10px] bg-muted">
                           {(f.display_name || f.username || "U")[0]}
                         </AvatarFallback>

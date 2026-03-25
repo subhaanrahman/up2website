@@ -81,6 +81,8 @@ flowchart LR
 
 3. Restart `npm run dev`. Trigger an error (e.g. throw in a dev-only branch) and confirm the event in Sentry **Issues**.
 
+4. Optional: set **`VITE_SENTRY_SUPPRESS_LOCALHOST=1`** in `.env.local` to **stop** sending events from `localhost` / `127.0.0.1` (e.g. reduce noise from Playwright). By default, loopback traffic **does** report when `VITE_SENTRY_DSN` is set.
+
 **CI / production builds**
 
 - Add **`VITE_SENTRY_DSN`** as an optional GitHub Actions **secret** so `vite build` in CI embeds the DSN in the bundle when you want release tracking from deployed artifacts. Same variable for hosting (Vercel, etc.).
@@ -112,6 +114,7 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 - **Config:** [`playwright.config.ts`](../playwright.config.ts) — `baseURL` `http://127.0.0.1:4173`, `webServer` runs `npm run dev`.
 - **Auth fixture:** [`tests/e2e/auth.setup.ts`](../tests/e2e/auth.setup.ts) uses **dev-login** and saves `tests/.auth/user.json` for authenticated specs.
+- **Host RSVP smoke:** [`tests/e2e/send-rsvp.spec.ts`](../tests/e2e/send-rsvp.spec.ts) loads `/events/:id/send-rsvp` (heading + search field) using a seeded event link from home — does not exercise Edge `profile-search-host` / `rsvp-bulk-invite`.
 - **Requires:** `dev-login` deployed; **`SEED_USER_PASSWORD`** Edge secret (e.g. `seedplaceholder1`); [`auth_users_seed.sql` + `data_export.sql`](supabase/AUTH_AND_SEEDING.md) on the **same** project as `VITE_SUPABASE_URL` so Dylan has a profile phone.
 
 **Invalid JWT on edge calls:** same `VITE_SUPABASE_*` project as deployed functions; sign out and sign in after switching projects. See [PAYMENT_FLOW.md — Troubleshooting](PAYMENT_FLOW.md#troubleshooting-401--invalid-jwt).
@@ -124,6 +127,7 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 - Colocate: `foo.ts` → `foo.test.ts`.
 - Mock Supabase chains and `callEdgeFunction` where needed; see existing tests under `src/features/**`, `src/hooks/**`.
+- Host RSVP helpers / UI: [`src/utils/hostRsvpInvite.test.ts`](../src/utils/hostRsvpInvite.test.ts), [`src/pages/SendRsvp.test.tsx`](../src/pages/SendRsvp.test.tsx).
 
 **E2E**
 
@@ -131,7 +135,7 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 **Performance of production DB**
 
-- Use [PERFORMANCE.md](PERFORMANCE.md) (`pg_stat_statements`) before tuning Postgres.
+- Use [Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md) (`pg_stat_statements`) before tuning Postgres.
 
 ---
 
@@ -150,7 +154,18 @@ Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ## 8. Related docs
 
+- [`PAYMENT_TICKETING_PROGRAM.md`](PAYMENT_TICKETING_PROGRAM.md) — Phased payment/ticketing QA (buyer vs organiser), test-mode keys.
 - [`PLATFORM_TODOS.md`](PLATFORM_TODOS.md) — Testing backlog, manual UAT matrix, optional E2E hardening.
 - [`docs/supabase/README.md`](supabase/README.md) — Supabase ops hub.
 - [`docs/supabase/CLOUD_TASKS.md`](supabase/CLOUD_TASKS.md) — Message queue (GCP Cloud Tasks) and **why the queue can be empty**.
 - [`docs/PAYMENT_FLOW.md`](PAYMENT_FLOW.md) — Stripe sandbox and webhooks.
+
+---
+
+## 9. Stripe checkout E2E and CI
+
+- **`tests/e2e/checkout.spec.ts`** skips the checkout assertion path unless `VITE_STRIPE_PUBLISHABLE_KEY` is set and not `pk_test_placeholder`. That keeps default CI green when Stripe is not configured.
+- **`tests/e2e/send-rsvp.spec.ts`** runs in the authenticated project (depends on `auth.setup`); only asserts the Send RSVP page shell.
+- **Full** checkout E2E (embedded Stripe, success redirect) needs a **non-placeholder** `pk_test_` key in the environment, a deployed project with `orders-reserve` / `payments-intent` / `stripe-webhook`, and usually seeded events with paid tiers. Treat that as **staging** or optional GitHub Actions secrets (`VITE_STRIPE_PUBLISHABLE_KEY`), not a blocker for unit + lint + build jobs.
+- **Organiser-side** E2E (Connect onboarding, Manage Event orders) requires additional fixtures (organiser profile, event ownership); prefer manual Phase C in [`PAYMENT_TICKETING_PROGRAM.md`](PAYMENT_TICKETING_PROGRAM.md) until seed data and secrets are stable.
+- Webhook-driven behavior is still best verified with [Stripe CLI](https://stripe.com/docs/stripe-cli) `listen --forward-to` or Dashboard **Send test webhook** plus the [manual playbook](PAYMENT_FLOW.md#manual-qa-playbook-sandbox).

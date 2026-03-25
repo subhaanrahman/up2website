@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DigitalIdSheetProvider } from "@/contexts/DigitalIdSheetContext";
 import { GamificationProvider } from "@/hooks/useGamification";
 import { ActiveProfileProvider } from "@/contexts/ActiveProfileContext";
 import PhoneFrame from "@/components/PhoneFrame";
@@ -44,6 +45,7 @@ const EditOrganiserProfile = lazy(() => import("./pages/EditOrganiserProfile"));
 const OrganiserTeam = lazy(() => import("./pages/OrganiserTeam"));
 const FriendsFollowing = lazy(() => import("./pages/FriendsFollowing"));
 const ManageEvent = lazy(() => import("./pages/ManageEvent"));
+const SendRsvp = lazy(() => import("./pages/SendRsvp"));
 const EventCheckIn = lazy(() => import("./pages/EventCheckIn"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -88,6 +90,7 @@ const RouteFallback = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <DigitalIdSheetProvider>
       <ActiveProfileProvider>
       <GamificationProvider>
         <TooltipProvider>
@@ -117,6 +120,7 @@ const App = () => (
               <Route path="/events/:id/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
               <Route path="/events/:id/guests" element={<EventGuests />} />
               <Route path="/events/:id/manage" element={<ProtectedRoute><ManageEvent /></ProtectedRoute>} />
+              <Route path="/events/:id/send-rsvp" element={<ProtectedRoute><SendRsvp /></ProtectedRoute>} />
               <Route path="/events/:id/checkin" element={<ProtectedRoute><EventCheckIn /></ProtectedRoute>} />
               <Route path="/events/:id/analytics" element={<ProtectedRoute><EventAnalytics /></ProtectedRoute>} />
 
@@ -163,6 +167,7 @@ const App = () => (
         </TooltipProvider>
       </GamificationProvider>
       </ActiveProfileProvider>
+      </DigitalIdSheetProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

@@ -2,6 +2,7 @@
 // Returns the public URL of the uploaded avatar.
 
 import { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { getPublicStorageUrl } from "./image-upload.ts";
 
 /** Deterministic colour from a string (hue 0-360). */
 function hashHue(str: string): number {
@@ -37,15 +38,15 @@ function buildSvg(initials: string, hue: number): string {
  */
 export async function generateAndUploadInitialsAvatar(
   adminClient: SupabaseClient,
-  userId: string,
+  storagePrefix: string,
   displayName: string,
 ): Promise<string> {
   const initials = getInitials(displayName);
-  const hue = hashHue(userId);
+  const hue = hashHue(storagePrefix);
   const svg = buildSvg(initials, hue);
   const blob = new Blob([svg], { type: "image/svg+xml" });
 
-  const filePath = `${userId}/initials.svg`;
+  const filePath = `${storagePrefix}/initials.svg`;
 
   // Upload (upsert so re-registration or profile edits overwrite)
   const { error: uploadError } = await adminClient.storage
@@ -60,9 +61,5 @@ export async function generateAndUploadInitialsAvatar(
     throw uploadError;
   }
 
-  const { data: urlData } = adminClient.storage
-    .from("avatars")
-    .getPublicUrl(filePath);
-
-  return urlData.publicUrl;
+  return getPublicStorageUrl(adminClient, "avatars", filePath);
 }

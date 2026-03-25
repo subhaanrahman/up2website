@@ -1,9 +1,9 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { getEventFlyer } from "@/lib/eventFlyerUtils";
 import { useState } from "react";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PublicImage } from "@/components/ui/public-image";
 import { 
   X, Send, MapPin, Users, CalendarPlus, BadgeCheck, Minus, Plus, ShieldCheck
 } from "lucide-react";
@@ -77,9 +77,6 @@ const EventDetail = () => {
     },
     enabled: !!dbEvent,
   });
-
-  // Fetch organiser owner profile (so they appear in "Hosted by" when event is organiser-created)
-  const { data: organiserOwnerProfile } = useProfile(organiserHost?.owner_id ?? undefined);
 
   // Fetch user's existing RSVP for this event
   const { data: userRsvp } = useQuery({
@@ -384,29 +381,47 @@ const EventDetail = () => {
   );
   const isPastEvent = dbEvent ? isPast(new Date(dbEvent.eventDate)) : false;
 
-  const displayHostName = organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
-  const displayHostAvatar = organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
-  const displayHostLink = organiserHost
-    ? `/user/${organiserHost.id}`
-    : dbEvent?.hostId
-      ? `/user/${dbEvent.hostId}`
-      : "#";
+  /** Team member created the event (host_id is them, not the org owner). Hero should show the person; org is "Presented by". */
+  const memberCreatedOrgEvent =
+    !!dbEvent && !!organiserHost && dbEvent.hostId !== organiserHost.owner_id;
 
-  // Include organiser owner in "Hosted by" when event is organiser-created (they have edit rights but may not be in event_cohosts)
-  const organiserOwnerAsHost =
-    organiserHost && organiserOwnerProfile
+  const displayHostName = memberCreatedOrgEvent
+    ? host?.displayName || foundMockEvent?.host?.name || "Event Host"
+    : organiserHost?.display_name || host?.displayName || foundMockEvent?.host?.name || "Event Host";
+  const displayHostAvatar = memberCreatedOrgEvent
+    ? host?.avatarUrl || foundMockEvent?.host?.avatar || undefined
+    : organiserHost?.avatar_url || host?.avatarUrl || foundMockEvent?.host?.avatar || undefined;
+  const displayHostLink = memberCreatedOrgEvent
+    ? dbEvent?.hostId
+      ? `/user/${dbEvent.hostId}`
+      : "#"
+    : organiserHost
+      ? `/user/${organiserHost.id}`
+      : dbEvent?.hostId
+        ? `/user/${dbEvent.hostId}`
+        : "#";
+
+  const primaryHostEntry =
+    dbEvent && host
       ? {
-          id: organiserHost.owner_id,
-          displayName: organiserOwnerProfile.displayName || "User",
-          avatarUrl: organiserOwnerProfile.avatarUrl ?? null,
-          link: `/user/${organiserHost.owner_id}`,
+          id: dbEvent.hostId,
+          displayName: host.displayName || "Host",
+          avatarUrl: host.avatarUrl ?? null,
+          link: `/user/${dbEvent.hostId}`,
         }
-      : null;
-  const ownerAlreadyInCohosts = organiserOwnerAsHost && eventCohosts.some((c) => c.id === organiserOwnerAsHost.id);
-  const hostedByList = [
-    ...(organiserOwnerAsHost && !ownerAlreadyInCohosts ? [organiserOwnerAsHost] : []),
-    ...eventCohosts,
-  ];
+      : dbEvent
+        ? {
+            id: dbEvent.hostId,
+            displayName: displayHostName,
+            avatarUrl: displayHostAvatar ?? null,
+            link: `/user/${dbEvent.hostId}`,
+          }
+        : null;
+
+  const cohostsExcludingHost = eventCohosts.filter((c) => c.id !== dbEvent?.hostId);
+  const hostedByList = primaryHostEntry
+    ? [primaryHostEntry, ...cohostsExcludingHost]
+    : cohostsExcludingHost;
 
   if (!event) {
     return (
@@ -594,21 +609,16 @@ const EventDetail = () => {
       <div className="px-4 pb-4">
         <div className="rounded-tile overflow-hidden">
           {eventImage ? (
-            <img
-              src={getOptimizedUrl(eventImage, { width: 900, quality: 82 }) || eventImage}
-              srcSet={[
-                getOptimizedUrl(eventImage, { width: 420, quality: 68 }),
-                getOptimizedUrl(eventImage, { width: 900, quality: 82 }),
-                getOptimizedUrl(eventImage, { width: 1280, quality: 86 }),
-              ]
-                .filter(Boolean)
-                .map((url, idx) => `${url} ${[420, 900, 1280][idx]}w`)
-                .join(", ")}
+            <PublicImage
+              src={eventImage}
+              preset="FLYER_PORTRAIT"
+              assetType="event-flyer"
+              surface="event-detail-hero"
+              responsiveWidths={[420, 900, 1280]}
               sizes="(max-width: 768px) 100vw, 680px"
               alt={eventTitle}
               className="w-full aspect-[4/5] object-cover bg-secondary/50"
               loading="eager"
-              decoding="async"
             />
           ) : (
             <div className="w-full aspect-[4/5] bg-gradient-to-br from-primary/20 to-secondary flex items-center justify-center rounded-tile">
@@ -641,6 +651,14 @@ const EventDetail = () => {
               <BadgeCheck className="h-4 w-4 text-primary fill-primary [&>path:last-child]:text-primary-foreground shrink-0 mt-0.5" />
             )}
           </Link>
+          {memberCreatedOrgEvent && organiserHost && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Presented by{" "}
+              <Link to={`/user/${organiserHost.id}`} className="text-foreground font-medium hover:underline">
+                {organiserHost.display_name}
+              </Link>
+            </p>
+          )}
           <p className="text-foreground font-medium mt-1">{eventDate}</p>
           <p className="text-sm text-muted-foreground mt-0.5">{eventVenueName || "Venue"}</p>
         </div>
@@ -650,24 +668,17 @@ const EventDetail = () => {
           <p className="text-muted-foreground text-sm leading-relaxed">{eventDescription}</p>
         </div>
 
-        {/* Hosted by */}
+        {/* Hosted by — primary host (events.host_id) first, then cohosts; no duplicate hero row */}
         <div>
           <p className="text-sm text-muted-foreground mb-2">Hosted by</p>
           <div className="space-y-2">
-            <Link to={displayHostLink} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={displayHostAvatar} />
-                <AvatarFallback>{displayHostName[0]}</AvatarFallback>
-              </Avatar>
-              <span className="font-medium text-foreground">{displayHostName}</span>
-            </Link>
-            {hostedByList.map((cohost) => (
-              <Link key={cohost.id} to={cohost.link} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            {hostedByList.map((entry) => (
+              <Link key={entry.id} to={entry.link} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={cohost.avatarUrl || undefined} />
-                  <AvatarFallback>{(cohost.displayName || "?")[0]}</AvatarFallback>
+                  <AvatarImage src={entry.avatarUrl || undefined} />
+                  <AvatarFallback>{(entry.displayName || "?")[0]}</AvatarFallback>
                 </Avatar>
-                <span className="font-medium text-foreground">{cohost.displayName}</span>
+                <span className="font-medium text-foreground">{entry.displayName}</span>
               </Link>
             ))}
           </div>

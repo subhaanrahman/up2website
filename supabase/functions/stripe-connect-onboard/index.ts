@@ -5,6 +5,19 @@ import { checkRateLimit, getClientIp, rateLimitResponse } from "../_shared/rate-
 import { edgeLog } from "../_shared/logger.ts";
 import { corsHeaders, getRequestId, errorResponse, successResponse } from "../_shared/response.ts";
 
+function resolveAppOrigin(req: Request): string | null {
+  const headerOrigin = req.headers.get('origin')?.trim();
+  if (headerOrigin) return headerOrigin.replace(/\/+$/, '');
+
+  const envOrigin =
+    Deno.env.get('APP_ORIGIN')?.trim()
+    || Deno.env.get('PUBLIC_APP_URL')?.trim()
+    || Deno.env.get('SITE_URL')?.trim();
+
+  if (!envOrigin) return null;
+  return envOrigin.replace(/\/+$/, '');
+}
+
 function getUserFacingError(err: unknown, requestId: string): string {
   const errStr = String(err);
   const msg = err instanceof Error ? err.message : errStr;
@@ -27,11 +40,31 @@ function getUserFacingError(err: unknown, requestId: string): string {
   if (errStr.includes('RPC') || errStr.includes('is_organiser_owner')) {
     return 'Authorization check failed. Ensure you are the owner of this organiser profile.';
   }
+  if (msg.includes('not currently supported') || /not supported.*country/i.test(msg)) {
+    return (
+      `Stripe Connect does not support this country for Express accounts (or it is disabled for your Stripe account). ` +
+      `Set Edge secret STRIPE_CONNECT_DEFAULT_COUNTRY to a supported ISO code (e.g. AU) or pass country in the onboard request. ` +
+      `Request ID: ${requestId}`
+    );
+  }
   // Surface Stripe error message when safe (e.g. "Account already exists")
   if (err instanceof Error && err.message && err.message.length < 120 && !err.message.includes('sk_')) {
     return `Payout setup failed: ${err.message}. Request ID: ${requestId}`;
   }
   return `Payout setup failed. Request ID: ${requestId} — share this when contacting support.`;
+}
+
+/** ISO 3166-1 alpha-2 for Connect account country. Default AU (platform); override via body.country or STRIPE_CONNECT_DEFAULT_COUNTRY. */
+function resolveConnectCountry(body: { country?: string }): string {
+  const fromBody = body.country?.trim().toUpperCase();
+  if (fromBody && /^[A-Z]{2}$/.test(fromBody)) {
+    return fromBody;
+  }
+  const fromEnv = Deno.env.get('STRIPE_CONNECT_DEFAULT_COUNTRY')?.trim().toUpperCase();
+  if (fromEnv && /^[A-Z]{2}$/.test(fromEnv)) {
+    return fromEnv;
+  }
+  return 'AU';
 }
 
 Deno.serve(async (req) => {
@@ -66,13 +99,14 @@ Deno.serve(async (req) => {
     const allowed = await checkRateLimit('stripe-connect-onboard', user.id, getClientIp(req));
     if (!allowed) return rateLimitResponse(corsHeaders);
 
-    let body: { organiser_profile_id?: string };
+    let body: { organiser_profile_id?: string; country?: string };
     try {
       body = await req.json();
     } catch {
       return errorResponse(400, 'Invalid request body', { requestId });
     }
     const { organiser_profile_id } = body || {};
+    const connectCountry = resolveConnectCountry(body || {});
 
     if (!organiser_profile_id) {
       return errorResponse(400, 'organiser_profile_id is required', { requestId });
@@ -124,7 +158,7 @@ Deno.serve(async (req) => {
 
       const account = await stripe.accounts.create({
         type: 'express',
-        country: 'ZA',
+        country: connectCountry,
         email: user.email,
         capabilities: {
           card_payments: { requested: true },
@@ -152,11 +186,30 @@ Deno.serve(async (req) => {
         });
     }
 
-    const origin = req.headers.get('origin') || 'https://social-soiree-site.lovable.app';
+    const origin = resolveAppOrigin(req);
+    if (!origin) {
+      edgeLog('error', 'Missing app origin for Stripe Connect redirect URLs', { requestId });
+      return errorResponse(
+        500,
+        'App origin is not configured. Set APP_ORIGIN (or PUBLIC_APP_URL / SITE_URL) in Edge Function secrets.',
+        { requestId },
+      );
+    }
+
+    const orgQuery = new URLSearchParams();
+    orgQuery.set('org', organiser_profile_id);
+    orgQuery.set('stripe_onboard', 'refresh');
+    const refreshUrl = `${origin}/profile/edit-organiser?${orgQuery.toString()}`;
+
+    const returnQuery = new URLSearchParams();
+    returnQuery.set('org', organiser_profile_id);
+    returnQuery.set('stripe_onboard', 'complete');
+    const returnUrl = `${origin}/profile/edit-organiser?${returnQuery.toString()}`;
+
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${origin}/profile/edit-organiser`,
-      return_url: `${origin}/profile/edit-organiser?stripe_onboard=complete`,
+      refresh_url: refreshUrl,
+      return_url: returnUrl,
       type: 'account_onboarding',
     });
 

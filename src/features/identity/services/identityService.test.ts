@@ -7,7 +7,11 @@ vi.mock('../repositories/identityRepository', () => ({
 }));
 
 vi.mock('@/api', () => ({
-  profileApi: { update: vi.fn().mockResolvedValue(undefined), uploadAvatar: vi.fn().mockResolvedValue('https://example.com/avatar.png') },
+  profileApi: { update: vi.fn().mockResolvedValue(undefined) },
+}));
+
+vi.mock('@/features/media', () => ({
+  uploadAvatarImage: vi.fn().mockResolvedValue({ avatar_url: 'https://example.com/avatar.png' }),
 }));
 
 vi.mock('@/infrastructure/supabase', () => ({

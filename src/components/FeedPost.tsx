@@ -3,8 +3,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Repeat2, MoreHorizontal, BadgeCheck, Trash2, Flag, Ban } from "lucide-react";
-import { getOptimizedUrl } from "@/lib/imageUtils";
 import { EventTile } from "@/components/EventTile";
+import { PublicImage } from "@/components/ui/public-image";
 import { formatDistanceToNow } from "date-fns";
 import { usePostInteractions } from "@/hooks/usePostInteractions";
 import { cn } from "@/lib/utils";
@@ -63,9 +63,6 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
     handleUnreact,
     toggleRepost,
   } = usePostInteractions(postId);
-  const imageSmall = getOptimizedUrl(imageUrl, { width: 360, quality: 70 }) || imageUrl || undefined;
-  const imageMedium = getOptimizedUrl(imageUrl, { width: 640, quality: 80 }) || imageUrl || undefined;
-  const imageLarge = getOptimizedUrl(imageUrl, { width: 1024, quality: 85 }) || imageUrl || undefined;
 
   const handleDelete = async () => {
     try {
@@ -111,7 +108,7 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
       <div className="flex gap-3">
         <Link to={profileLink}>
           <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={getOptimizedUrl(avatarUrl, 'AVATAR_MD') || ""} />
+            <AvatarImage src={avatarUrl || ""} surface="feed-post-author" />
             <AvatarFallback className="bg-card text-foreground font-bold text-sm">
               {(displayName || "?")[0]?.toUpperCase()}
             </AvatarFallback>
@@ -170,14 +167,15 @@ const FeedPost = ({ postId, authorId, organiserProfileId, displayName, username,
 
           {!eventData && imageUrl && (
             <div className="mt-2.5 rounded-tile overflow-hidden border border-border">
-              <img
-                src={imageMedium}
-                srcSet={imageSmall && imageMedium && imageLarge ? `${imageSmall} 360w, ${imageMedium} 640w, ${imageLarge} 1024w` : undefined}
+              <PublicImage
+                src={imageUrl}
+                preset="FEED_IMAGE"
+                assetType="post"
+                surface="feed-post-image"
+                responsiveWidths={[360, 640, 1024]}
                 sizes="(max-width: 768px) 100vw, 640px"
                 alt="Post image"
                 className="w-full max-h-[512px] object-cover bg-secondary/50"
-                loading="lazy"
-                decoding="async"
               />
             </div>
           )}

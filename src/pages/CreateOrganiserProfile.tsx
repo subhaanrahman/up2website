@@ -64,12 +64,36 @@ const CreateOrganiserProfile = () => {
 
     setSaving(true);
     try {
-      const result = await callEdgeFunction<{ success: boolean; profile: { id: string; display_name: string } }>(
-        "organiser-profile-create",
-        { body: formData }
-      );
-      await refetchOrganiserProfiles();
-      switchProfile(result.profile.id, "organiser");
+      const result = await callEdgeFunction<{
+        success: boolean;
+        profile: {
+          id: string;
+          display_name: string;
+          username: string;
+          category: string;
+          avatar_url: string | null;
+        };
+      }>("organiser-profile-create", { body: formData });
+
+      const orgs = await refetchOrganiserProfiles();
+      let org = orgs.find((o) => o.id === result.profile.id);
+      if (!org) {
+        org = {
+          id: result.profile.id,
+          ownerId: user.id,
+          displayName: result.profile.display_name,
+          username: result.profile.username,
+          avatarUrl: result.profile.avatar_url ?? null,
+          bio: null,
+          city: null,
+          instagramHandle: null,
+          category: result.profile.category,
+          openingHours: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      switchProfile(org.id, "organiser", org);
       toast({ title: "Organiser page created!", description: `${result.profile.display_name} is now active.` });
       navigate("/profile");
     } catch (error: unknown) {

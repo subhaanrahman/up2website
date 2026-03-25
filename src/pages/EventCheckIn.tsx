@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -261,15 +262,12 @@ const EventCheckIn = () => {
           <div className="divide-y divide-border">
             {sorted.map((attendee) => (
               <div key={attendee.user_id} className="flex items-center gap-3 py-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {attendee.avatar_url ? (
-                    <img src={attendee.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-sm font-bold text-muted-foreground">
-                      {attendee.display_name.charAt(0).toUpperCase()}
-                    </span>
-                  )}
-                </div>
+                <Avatar className="h-10 w-10 flex-shrink-0">
+                  <AvatarImage src={attendee.avatar_url || undefined} />
+                  <AvatarFallback className="bg-secondary text-sm font-bold text-muted-foreground">
+                    {attendee.display_name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-foreground truncate">{attendee.display_name}</p>
                   <p className="text-xs text-muted-foreground">{attendee.tier}</p>

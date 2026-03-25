@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { X, Users, Image as ImageIcon } from "lucide-react";
-import { supabase } from '@/infrastructure/supabase';
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { validateImageFileOrMessage } from "@/utils/fileValidation";
 import { connectionsRepository } from "@/features/social/repositories/connectionsRepository";
 import { profilesRepository } from "@/features/social/repositories/profilesRepository";
 import { DatePicker, TimePicker } from "./DateTimePicker";
+import { uploadEventFlyerImage } from "@/features/media";
+import { PublicImage } from "@/components/ui/public-image";
 
 export interface CohostEntry {
   id: string;
@@ -81,14 +83,8 @@ const EventDetailsForm = ({
     }
     setUploadingFlyer(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/events/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("post-images")
-        .upload(path, file, { contentType: file.type });
-      if (uploadErr) throw uploadErr;
-      const { data } = supabase.storage.from("post-images").getPublicUrl(path);
-      setCoverImage(data.publicUrl);
+      const result = await uploadEventFlyerImage(file);
+      setCoverImage(result.url);
     } catch (err) {
       console.error(err);
     } finally {
@@ -114,7 +110,9 @@ const EventDetailsForm = ({
 
       try {
         const [profilesData, organisersData] = await Promise.all([
-          profilesRepository.searchProfiles(term, { excludeUserId: user?.id, limit: 10 }),
+          user
+            ? profilesRepository.searchProfilesAmongConnections(term, user.id, { excludeUserId: user.id, limit: 10 })
+            : Promise.resolve([]),
           profilesRepository.searchOrganisers(term, { limit: 10, includeOwner: true }),
         ]);
 
@@ -148,7 +146,7 @@ const EventDetailsForm = ({
     }, 300);
 
     return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
-  }, [cohostInput, user?.id, cohosts]);
+  }, [cohostInput, user, user?.id, cohosts, toast]);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -194,7 +192,14 @@ const EventDetailsForm = ({
         <div className="space-y-3">
           <div className="w-full aspect-[4/5] rounded-tile bg-muted/60 border border-border/60 overflow-hidden flex items-center justify-center">
             {coverImage ? (
-              <img src={coverImage} alt="Event flyer" className="w-full h-full object-cover" />
+              <PublicImage
+                src={coverImage}
+                preset="FLYER_PORTRAIT"
+                assetType="event-flyer"
+                surface="event-details-form-flyer"
+                alt="Event flyer"
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="flex flex-col items-center justify-center gap-2 px-6 text-center">
                 <span className="text-[11px] font-medium text-muted-foreground">
@@ -288,6 +293,9 @@ const EventDetailsForm = ({
         <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-1.5 flex items-center gap-1.5">
           <Users className="h-3 w-3" /> Collaborators / Co-hosts
         </p>
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Search connections by name; organiser accounts are searchable too.
+        </p>
         <div className="relative">
           <input
             type="search"
@@ -298,7 +306,7 @@ const EventDetailsForm = ({
             value={cohostInput}
             onChange={(e) => setCohostInput(e.target.value)}
             onFocus={() => searchResults.length > 0 && setShowDropdown(true)}
-            placeholder="Search by name or @handle"
+            placeholder="Connections & organisers (min. 2 characters)"
             className="w-full bg-transparent text-foreground text-[15px] font-medium placeholder:text-muted-foreground/40 outline-none"
           />
           {cohostSearchError ? (
@@ -313,12 +321,12 @@ const EventDetailsForm = ({
                   className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50 transition-colors text-left first:rounded-t-2xl last:rounded-b-2xl"
                   onClick={() => selectCohost(result)}
                 >
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {result.avatar_url
-                      ? <img src={result.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : <span className="text-xs font-bold text-foreground">{(result.display_name || result.username || "?")[0]?.toUpperCase()}</span>
-                    }
-                  </div>
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={result.avatar_url || undefined} />
+                    <AvatarFallback className="bg-secondary text-xs font-bold text-foreground">
+                      {(result.display_name || result.username || "?")[0]?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{result.display_name || result.username}</p>
                     {result.username && <p className="text-xs text-muted-foreground truncate">@{result.username}</p>}
@@ -340,15 +348,12 @@ const EventDetailsForm = ({
                 className="w-full flex items-center justify-between gap-3 rounded-tile-sm border border-border/60 bg-muted/10 px-3 py-2"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center overflow-hidden flex-shrink-0">
-                    {c.avatarUrl ? (
-                      <img src={c.avatarUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-xs font-bold text-foreground">
-                        {c.displayName[0]?.toUpperCase() ?? "?"}
-                      </span>
-                    )}
-                  </div>
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={c.avatarUrl || undefined} />
+                    <AvatarFallback className="bg-secondary text-xs font-bold text-foreground">
+                      {c.displayName[0]?.toUpperCase() ?? "?"}
+                    </AvatarFallback>
+                  </Avatar>
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium text-foreground truncate">
                       {c.displayName}

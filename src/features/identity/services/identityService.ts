@@ -6,6 +6,7 @@ import { createLogger } from '@/infrastructure/logger';
 import { NotFoundError, ValidationError } from '@/infrastructure/errors';
 import { profileApi } from '@/api';
 import { supabase } from '@/infrastructure/supabase';
+import { uploadAvatarImage } from '@/features/media';
 
 const logger = createLogger('identity.service');
 
@@ -54,6 +55,7 @@ export const identityService = {
       throw new ValidationError('Image must be smaller than 5MB');
     }
 
-    return profileApi.uploadAvatar(file);
+    const { avatar_url } = await uploadAvatarImage(file);
+    return avatar_url;
   },
 };

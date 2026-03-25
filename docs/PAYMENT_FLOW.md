@@ -1,6 +1,8 @@
 # Payment Flow Documentation
 
-> Last updated: 2026-03-22
+> Last updated: 2026-03-25  
+> **Program / QA phases (buyer + organiser, test mode):** [PAYMENT_TICKETING_PROGRAM.md](PAYMENT_TICKETING_PROGRAM.md)  
+> **Environment checklist / owner sign-off (Stripe test keys, webhook, phased QA):** same program doc — [Phase A](PAYMENT_TICKETING_PROGRAM.md#phase-a--environment-and-ops-do-first). Current **open** release blockers remain in [PLATFORM_TODOS — Pre-launch](PLATFORM_TODOS.md#pre-launch). Technical webhook and order behaviour remain below.
 
 ## Webhook URL
 
@@ -16,7 +18,7 @@ Example: `https://<project-ref>.supabase.co/functions/v1/stripe-webhook`
 
 ### Stopping new checkouts (operations)
 
-Set Edge Function secret **`PAYMENTS_DISABLED`** to `1`, `true`, or `yes` on:
+Set Edge Function secret `**PAYMENTS_DISABLED`** to `1`, `true`, or `yes` on:
 
 - `orders-reserve`
 - `payments-intent`
@@ -29,12 +31,14 @@ Those functions return **503** with `code: payments_disabled`. Existing reservat
 
 ## Handled Events
 
-| Event | Action |
-|-------|--------|
-| `payment_intent.succeeded` | Confirm order, issue tickets, auto-RSVP, award loyalty points |
-| `payment_intent.payment_failed` | Log only; reservation stays active until expiry |
-| `charge.refunded` | Update order to `refunded`, cancel tickets, record in `refunds` |
-| `account.updated` | Update `organiser_stripe_accounts` (charges_enabled, payouts_enabled, onboarding_complete) |
+
+| Event                           | Action                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------ |
+| `payment_intent.succeeded`      | Confirm order, issue tickets, auto-RSVP, award loyalty points                              |
+| `payment_intent.payment_failed` | Log only; reservation stays active until expiry                                            |
+| `charge.refunded`               | Update order to `refunded`, cancel tickets, record in `refunds`                            |
+| `account.updated`               | Update `organiser_stripe_accounts` (charges_enabled, payouts_enabled, onboarding_complete) |
+
 
 Unhandled events are logged and acknowledged but not processed.
 
@@ -61,12 +65,14 @@ reserved → payment_pending → confirmed → refunded
 
 **Standard paid ticketing** is implemented end-to-end in the app:
 
-| Step | Mechanism |
-|------|-----------|
-| Connect onboarding | `stripe-connect-onboard`, `stripe-connect-status`, `account.updated` → `organiser_stripe_accounts` |
-| Platform fee | **7% on top** of ticket price (`orders-reserve` / `payments-intent`, `application_fee_amount` to platform) |
-| Checkout | `orders-reserve` → `payments-intent` → Stripe → `payment_intent.succeeded` → `stripe-webhook` → ticket + RSVP + loyalty jobs |
-| Refunds | Organiser `refunds-create`; policy + buyer `refunds-request-self`; Manage Event ledger via `orders-list` (`refunds[]`); host notification on self-service |
+
+| Step               | Mechanism                                                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Connect onboarding | `stripe-connect-onboard`, `stripe-connect-status`, `account.updated` → `organiser_stripe_accounts`                                                        |
+| Platform fee       | **7% on top** of ticket price (`orders-reserve` / `payments-intent`, `application_fee_amount` to platform)                                                |
+| Checkout           | `orders-reserve` → `payments-intent` → Stripe → `payment_intent.succeeded` → `stripe-webhook` → ticket + RSVP + loyalty jobs                              |
+| Refunds            | Organiser `refunds-create`; policy + buyer `refunds-request-self`; Manage Event ledger via `orders-list` (`refunds[]`); host notification on self-service |
+
 
 **Manual acceptance** (real Stripe test mode): [Manual QA playbook (sandbox)](#manual-qa-playbook-sandbox).
 
@@ -83,7 +89,7 @@ reserved → payment_pending → confirmed → refunded
 
 Protected functions (`events-create`, `stripe-connect-status`, etc.) need a valid `Authorization: Bearer <access_token>`.
 
-1. **`VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`** must be from the **same** Supabase project as the deployed functions.
+1. `**VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`** must be from the **same** Supabase project as the deployed functions.
 2. After changing `.env`, **sign out and sign in** so stored sessions match the project JWT secret.
 3. The client avoids calling protected functions until auth has hydrated and a session exists; if you still see 401, check for mixed staging/production keys or expired refresh tokens.
 
@@ -134,11 +140,20 @@ Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the queue abst
 1. User clicks "Set up payouts" (any touchpoint)
 2. `stripe-connect-onboard` edge function creates/retrieves Express account, returns Account Link URL
 3. User redirects to Stripe hosted onboarding
-4. Stripe redirects back to `/profile/edit-organiser?stripe_onboard=complete`
-5. `PayoutSetupSection` detects param, refetches status via `stripe-connect-status`
+4. Stripe redirects back to `/profile/edit-organiser?stripe_onboard=complete&org=<organiser_profile_id>` so the SPA can call `switchProfile` to the correct organiser before rendering (avoids bouncing to personal **Edit profile**).
+5. `PayoutSetupSection` detects `stripe_onboard=complete`, refetches status via `stripe-connect-status`
 6. `account.updated` webhook keeps `organiser_stripe_accounts` in sync
 
+**`stripe-connect-status` response:** includes `stripe_account_record_exists` — `false` when there is no row in `organiser_stripe_accounts` yet (all other flags will also be false); `true` when a Connect account row exists and Stripe was queried.
+
 **Touchpoints:** PayoutSetupSection, OnboardingRequired page, TicketingPanel, OrganiserPayoutTask (floating pill)
+
+### Manual QA matrix (active profile + Connect)
+
+1. **Personal active:** Open Settings — subtitle shows "Personal account"; professional upgrade/downgrade applies to your user profile only.
+2. **Organiser active:** Settings shows which organiser you are managing; no personal tier button; "Edit organiser profile" deep-links with `?org=<id>`.
+3. **Stripe return:** Complete Connect sandbox from organiser edit; return URL includes `org` and `stripe_onboard=complete` — you should land on **Edit organiser** for that org, not personal edit profile.
+4. **Status API:** With `organiser_profile_id` for the active org, `stripe-connect-status` returns `stripe_account_record_exists: false` until a row exists in `organiser_stripe_accounts`; after onboarding and webhook sync, flags should match Stripe Dashboard (test mode).
 
 ---
 
@@ -147,8 +162,10 @@ Webhook follow-up work (tickets, RSVP, loyalty) is dispatched via the queue abst
 The `orders-expire-cleanup` edge function marks reserved orders with `expires_at < now()` as `expired`, cancels orphaned Stripe PaymentIntents, and releases capacity.
 
 **Invocation:** Call on a schedule (e.g. every 5–15 minutes):
+
 - **Option A:** External cron (Vercel, GitHub Actions, etc.) POST to `{SUPABASE_URL}/functions/v1/orders-expire-cleanup` with header `X-Cron-Secret: <CRON_SECRET>` (set in Edge Function secrets).
 - **Option B:** Pass `Authorization: Bearer <service_role_key>` if the scheduler has it.
+- **Option C (this repo):** GitHub Actions workflow [`.github/workflows/orders-expire-cleanup.yml`](../.github/workflows/orders-expire-cleanup.yml) runs every 15 minutes on `main` (and can be run manually via **Actions → orders-expire-cleanup → Run workflow**). Add **repository secrets** `VITE_SUPABASE_URL` (same value as the app’s Supabase URL) and `CRON_SECRET` (must match the Supabase Edge secret `CRON_SECRET`). Without both secrets the job fails fast so you notice misconfiguration.
 
 **Required:** `STRIPE_SECRET_KEY`, optional `CRON_SECRET` for cron auth.
 
@@ -170,12 +187,14 @@ The `orders-expire-cleanup` edge function marks reserved orders with `expires_at
 
 RLS on `orders` and `refunds` only allows buyers to **SELECT their own** rows. The **Manage Event** screen must not rely on the browser client to list all orders/refunds for an event.
 
-| Data | Mechanism | Auth |
-|------|-----------|------|
-| Orders, RSVPs, VIP reservations (enriched) | **`orders-list`** edge function (service role) | Host or organiser owner/member |
-| Ticket refunds for those orders | **`orders-list`** attaches `refunds[]` per order (same response) | Same |
-| Organiser-initiated refund action | **`refunds-create`** | Host or organiser owner/member |
-| Buyer self-service refund | **`refunds-request-self`** | Order owner only; event `refunds_enabled` |
+
+| Data                                       | Mechanism                                                        | Auth                                      |
+| ------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------------- |
+| Orders, RSVPs, VIP reservations (enriched) | `**orders-list`** edge function (service role)                   | Host or organiser owner/member            |
+| Ticket refunds for those orders            | `**orders-list**` attaches `refunds[]` per order (same response) | Same                                      |
+| Organiser-initiated refund action          | `**refunds-create**`                                             | Host or organiser owner/member            |
+| Buyer self-service refund                  | `**refunds-request-self**`                                       | Order owner only; event `refunds_enabled` |
+
 
 ---
 
@@ -188,14 +207,26 @@ RLS on `orders` and `refunds` only allows buyers to **SELECT their own** rows. T
 5. **Local tunnel (optional):** Stripe CLI `stripe listen --forward-to …` if the project URL is not publicly reachable for webhooks.
 6. **Ops:** `PAYMENTS_DISABLED` on reserve/intent functions stops **new** checkouts only; refunds and webhooks still run.
 
+
+
+```markdown
+| Secret / env | Where | Expected (test) |
+|--------------|--------|-------------------|
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `.env` / CI | `pk_test_...` |
+| `STRIPE_SECRET_KEY` | Supabase Edge secrets | `sk_test_...` |
+| `STRIPE_WEBHOOK_SECRET` | Supabase Edge secrets | Signing secret from **Developers → Webhooks** while Dashboard is in **Test mode** (rotates when you add a **live** webhook later) |
+```
+
 ---
 
 ## Manual QA playbook (sandbox)
 
 1. Apply migration `20260321120000_event_refund_policy.sql` (or full `supabase db push` / equivalent).
-2. Deploy edge functions including **`refunds-request-self`** and updated **`orders-list`**, **`events-create`**, **`events-update`**.
+2. Deploy edge functions including `**refunds-request-self**` and updated `**orders-list**`, `**events-create**`, `**events-update**`.
 3. As organiser: create an event with a **paid** tier, enable **Allow ticket refunds** in Ticketing (optional deadline hours + policy text).
 4. As buyer: complete checkout with a test card; confirm ticket appears under **My Tickets** / event detail.
 5. **Manage Event → Refunds:** after an organiser refund from Orders tab (or after webhook-driven refund), verify rows appear (data from `orders-list`, not client RLS).
 6. **Self-service:** as buyer, use **Request refund** on event detail or the rotate icon on **My Tickets**; confirm order `refunded`, tickets cancelled, host receives an in-app notification linking to manage.
 7. Toggle **deadline hours**: move clock or use an event far in the future / past to confirm eligibility messaging matches `ticketSelfRefundAllowed` (see `src/utils/refundEligibility.test.ts`).
+8. **Active profile + Settings:** Select an organiser profile, open **Settings** — personal professional tier upgrade/downgrade should be **hidden**; an organiser explainer and link to **Edit organiser profile** should appear. Switch to **personal**, reopen **Settings** — tier controls should return.
+9. **Connect return URL:** Start payout onboarding from a specific organiser; after Stripe, confirm you land on **Edit organiser** for that organiser (not `/profile/edit`). In Network, `stripe-connect-status` should report `stripe_account_record_exists: true` after onboarding creates the DB row; if it stays `false`, check `stripe-connect-onboard` logs and `organiser_stripe_accounts`.

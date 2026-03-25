@@ -18,6 +18,12 @@ const updateSchema = z.object({
   opening_hours: z.record(z.string(), z.string()).optional().nullable(),
 });
 
+function parseBearerAccessToken(authHeader: string | null): string | null {
+  if (!authHeader?.toLowerCase().startsWith('bearer ')) return null;
+  const t = authHeader.slice(7).trim();
+  return t.length > 0 ? t : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -31,11 +37,28 @@ Deno.serve(async (req) => {
       return errorResponse(401, 'Missing authorization', { requestId });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabase = createClient(supabaseUrl, anonKey, {
+      global: {
+        headers: {
+          Authorization: authHeader,
+          apikey: anonKey,
+        },
+      },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    const accessToken = parseBearerAccessToken(authHeader);
+    if (accessToken) {
+      const { error: sessionErr } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '',
+      });
+      if (sessionErr) {
+        edgeLog('warn', 'organiser-profile-update: setSession', { requestId, message: sessionErr.message });
+      }
+    }
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -53,54 +76,47 @@ Deno.serve(async (req) => {
 
     const { profile_id, ...updates } = parsed.data;
 
-    // Use service role to update
-    const serviceClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
+    const patch: Record<string, unknown> = {};
+    if (updates.display_name !== undefined) patch.display_name = updates.display_name;
+    if (updates.username !== undefined) patch.username = updates.username;
+    if (updates.bio !== undefined) patch.bio = updates.bio;
+    if (updates.city !== undefined) patch.city = updates.city;
+    if (updates.instagram_handle !== undefined) patch.instagram_handle = updates.instagram_handle;
+    if (updates.category !== undefined) patch.category = updates.category;
+    if (updates.opening_hours !== undefined) patch.opening_hours = updates.opening_hours;
 
-    // Verify ownership
-    const { data: existing, error: fetchErr } = await serviceClient
-      .from('organiser_profiles')
-      .select('id, owner_id')
-      .eq('id', profile_id)
-      .single();
-
-    if (fetchErr || !existing) {
-      return errorResponse(404, 'Profile not found', { requestId });
-    }
-
-    if (existing.owner_id !== user.id) {
-      return errorResponse(403, 'Forbidden', { requestId });
-    }
-
-    // Build update object
-    const updateData: Record<string, unknown> = {};
-    if (updates.display_name !== undefined) updateData.display_name = updates.display_name;
-    if (updates.username !== undefined) updateData.username = updates.username;
-    if (updates.bio !== undefined) updateData.bio = updates.bio || null;
-    if (updates.city !== undefined) updateData.city = updates.city || null;
-    if (updates.instagram_handle !== undefined) updateData.instagram_handle = updates.instagram_handle || null;
-    if (updates.category !== undefined) updateData.category = updates.category;
-    if (updates.opening_hours !== undefined) updateData.opening_hours = updates.opening_hours;
-    
-    updateData.updated_at = new Date().toISOString();
-
-    const { data, error } = await serviceClient
-      .from('organiser_profiles')
-      .update(updateData)
-      .eq('id', profile_id)
-      .select('id, display_name, username, category')
-      .single();
+    const { data: rpcRows, error } = await supabase.rpc('update_organiser_profile', {
+      p_profile_id: profile_id,
+      p_patch: patch,
+    });
 
     if (error) {
-      if (error.code === '23505') {
+      const msg = error.message || '';
+      if (error.code === 'P0002' || /profile not found/i.test(msg)) {
+        return errorResponse(404, 'Profile not found', { requestId });
+      }
+      if (error.code === '42501' || /forbidden/i.test(msg)) {
+        return errorResponse(403, 'Only the organiser owner can update this profile', { requestId });
+      }
+      if (error.code === '28000' || /not authenticated/i.test(msg)) {
+        return errorResponse(401, 'Unauthorized', { requestId });
+      }
+      if (error.code === '22023' || /invalid category/i.test(msg)) {
+        return errorResponse(400, msg, { requestId });
+      }
+      if (error.code === '23505' || /username already taken/i.test(msg)) {
         return errorResponse(409, 'Username already taken', { requestId });
       }
-      return errorResponse(500, error.message, { requestId });
+      edgeLog('warn', 'organiser-profile-update: rpc failed', { requestId, code: error.code, message: msg });
+      return errorResponse(500, msg, { requestId });
     }
 
-    return successResponse({ success: true, profile: data }, requestId);
+    const row = Array.isArray(rpcRows) ? rpcRows[0] : rpcRows;
+    if (!row?.id) {
+      return errorResponse(500, 'Profile update returned no data', { requestId });
+    }
+
+    return successResponse({ success: true, profile: row }, requestId);
   } catch (err) {
     edgeLog('error', 'Internal error', { requestId, error: String(err) });
     return errorResponse(500, 'Internal error', { requestId });

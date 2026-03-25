@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { EventTile } from "@/components/EventTile";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ProfileQrModal from "@/components/ProfileQrModal";
+import { useDigitalIdSheet } from "@/contexts/DigitalIdSheetContext";
 import FeedPost from "@/components/FeedPost";
 import {
   Settings,
@@ -42,7 +42,7 @@ interface EventItem {
 const Profile = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const [qrOpen, setQrOpen] = useState(false);
+  const { openDigitalIdSheet } = useDigitalIdSheet();
 
   const { activeProfile, isOrganiser, organiserProfiles } = useActiveProfile();
   const { data: profile, isLoading: profileLoading } = useProfile(user?.id);
@@ -244,7 +244,7 @@ const Profile = () => {
         <div className="text-center">
           <div className="flex justify-center mb-3">
             <button
-              onClick={() => setQrOpen(true)}
+              onClick={() => openDigitalIdSheet()}
               className="cursor-pointer transition-transform hover:scale-105"
             >
               <Avatar className="border-2 border-border" style={{ width: 120, height: 120 }}>
@@ -285,7 +285,13 @@ const Profile = () => {
           </div>
 
           <div className="flex items-center justify-center gap-2 mb-3">
-            <Link to={isOrganiser ? "/profile/edit-organiser" : "/profile/edit"}>
+            <Link
+              to={
+                isOrganiser && activeOrg
+                  ? `/profile/edit-organiser?org=${encodeURIComponent(activeOrg.id)}`
+                  : "/profile/edit"
+              }
+            >
               <Button className="px-8 h-11 rounded-full font-bold tracking-widest text-sm">EDIT</Button>
             </Link>
             {isOrganiser && activeOrg && activeOrg.ownerId === user.id && (
@@ -402,15 +408,6 @@ const Profile = () => {
           </TabsContent>
         </Tabs>
       </main>
-
-      <ProfileQrModal
-        open={qrOpen}
-        onOpenChange={setQrOpen}
-        displayName={displayName}
-        username={isOrganiser && activeOrg ? activeOrg.username : profile?.username || username.toLowerCase().replace(/\s+/g, "")}
-        avatarUrl={avatarUrl || undefined}
-        profileUrl={`${window.location.origin}/user/${user.id}`}
-      />
 
       <BottomNav />
     </div>

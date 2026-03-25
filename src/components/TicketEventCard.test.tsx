@@ -77,4 +77,25 @@ describe('TicketEventCard', () => {
     );
     expect(screen.getByText('Transfer pending')).toBeInTheDocument();
   });
+
+  it('shows status pill for purchased ticket', () => {
+    renderWithProviders(
+      <TicketEventCard rsvpId="r1" eventId="e1" title="Event" isPast={false} ticketStatus="purchased" />,
+    );
+    expect(screen.getByText('Ticket')).toBeInTheDocument();
+  });
+
+  it('shows status pill for saved event', () => {
+    renderWithProviders(
+      <TicketEventCard rsvpId="r1" eventId="e1" title="Event" isPast={false} ticketStatus="saved" />,
+    );
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
+
+  it('shows status pill for RSVP going', () => {
+    renderWithProviders(
+      <TicketEventCard rsvpId="r1" eventId="e1" title="Event" isPast={false} ticketStatus="going" />,
+    );
+    expect(screen.getByText(/RSVP/i)).toBeInTheDocument();
+  });
 });

@@ -28,6 +28,8 @@ const LIMITS: Record<string, { max: number; windowSec: number }> = {
   'forgot-password-reset': { max: 5, windowSec: 60 },
   'profile-qr-regenerate': { max: 3, windowSec: 300 },
   'waitlist-promote':   { max: 20, windowSec: 60 },
+  'rsvp-bulk-invite':   { max: 15, windowSec: 60 },
+  'profile-search-host': { max: 40, windowSec: 60 },
 };
 
 const DEFAULT_LIMIT = { max: 30, windowSec: 60 };

@@ -83,6 +83,12 @@ verify_jwt = false
 verify_jwt = false
 [functions.event-media-upload]
 verify_jwt = false
+[functions.post-image-upload]
+verify_jwt = false
+[functions.event-flyer-upload]
+verify_jwt = false
+[functions.image-telemetry]
+verify_jwt = false
 [functions.stripe-connect-status]
 verify_jwt = false
 [functions.stripe-connect-onboard]
@@ -122,4 +128,16 @@ verify_jwt = false
 [functions.moderation-block]
 verify_jwt = false
 [functions.gif-search]
+verify_jwt = false
+
+[functions.wallet-apple-pass]
+verify_jwt = false
+
+[functions.wallet-google-save]
+verify_jwt = false
+
+[functions.rsvp-bulk-invite]
+verify_jwt = false
+
+[functions.profile-search-host]
 verify_jwt = false

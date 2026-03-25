@@ -1,8 +1,8 @@
 # Up2 Platform — Database Architecture
 
-> Last updated: 2026-03-21  
+> Last updated: 2026-03-24  
 > Companion to `docs/ARCHITECTURE.md` — deep-dive into the PostgreSQL schema, relationships, RLS policies, and future table plans.  
-> **Performance:** [PERFORMANCE.md](PERFORMANCE.md) (slow queries, indexes). **Hosting / region moves:** [supabase/MIGRATION_AND_HOSTING.md](supabase/MIGRATION_AND_HOSTING.md). **Hosted DB (Sydney):** project `fxcosnsbaaktblmnvycv` — schema via `supabase db push`; optional legacy `public` data via [`scripts/region-migration/apply-public-data.sh`](../scripts/region-migration/apply-public-data.sh).
+> **Performance:** [Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md](Plans/SUPABASE_DISK_IO_AND_PERFORMANCE_REMEDIATION_PLAN.md) (Disk IO incidents, slow queries, indexes). **Hosting / region moves:** [supabase/MIGRATION_AND_HOSTING.md](supabase/MIGRATION_AND_HOSTING.md). **Hosted DB (Sydney):** project `fxcosnsbaaktblmnvycv` — schema via `supabase db push`; optional legacy `public` data via [`scripts/region-migration/apply-public-data.sh`](../scripts/region-migration/apply-public-data.sh).
 
 ---
 
@@ -117,7 +117,7 @@ auth.users (managed by Supabase)
 | created_at | timestamptz | No | now() | |
 | updated_at | timestamptz | No | now() | |
 
-**RLS**: Public read (all authenticated), owner write via edge function. `is_profile_public()` DB function exists but is hardcoded to `true`.
+**RLS**: Public read (all authenticated), owner write via edge function. `is_profile_public()` checks `profile_tier = 'professional'` for public profile visibility.
 
 #### `organiser_profiles`
 | Column | Type | Nullable | Default | Notes |
@@ -385,18 +385,36 @@ In-app notifications with 20-day auto-expiry. `organiser_profile_id` for profile
 #### `rate_limits`
 DB-backed sliding window rate limiter. Used by all edge functions. Probabilistic cleanup (5% of requests).
 
+#### `image_telemetry_events`
+Sampled frontend image delivery telemetry captured via the public `image-telemetry` edge function.
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `asset_type` | text | `avatar`, `post`, `event-flyer`, `event-media`, `notification`, etc. |
+| `bucket` | text | Supabase storage bucket when applicable |
+| `preset` | text | Shared frontend image preset used for the render |
+| `surface` | text | UI surface identifier such as feed, event detail, notification |
+| `delivery_mode` | text | `transformed`, `raw-fallback`, `external`, `blob-preview` |
+| `load_status` | text | `loaded` or `error` |
+| `fallback_used` | boolean | Whether a non-primary candidate was needed |
+| `cache_hint` | text | Best-effort browser hint: `cached`, `network`, `unknown` |
+| `image_path` | text | Storage path without the host |
+| `page_path` | text | App route where the event was emitted |
+
+**View**: `image_telemetry_daily_summary` aggregates day, surface, preset, delivery mode, cache hint, and status.
+
 ---
 
 ## 4. Storage Buckets
 
-| Bucket | Public | Used By |
-|--------|--------|---------|
-| `avatars` | Yes | Profile and organiser avatar uploads |
-| `post-images` | Yes | Post image uploads |
-| `event-flyers` | Yes | Event cover images |
-| `event-media` | Yes | Additional event media gallery (uploads via `event-media-upload`) |
+| Bucket | Public | Used By | Upload Path Pattern |
+|--------|--------|---------|---------------------|
+| `avatars` | Yes | Personal + organiser avatars | `<user_id>/personal/<user_id>/...` or `<user_id>/organiser/<organiser_profile_id>/...` |
+| `post-images` | Yes | Post image uploads | `<user_id>/posts/...` |
+| `event-flyers` | Yes | Event cover images | `<user_id>/event-flyers/...` |
+| `event-media` | Yes | Additional event media gallery | `<user_id>/events/<event_id>/gallery/...` |
 
-**⚠️ Issues**: No cleanup on entity deletion (orphaned files). No image compression/resizing. No CDN cache headers.
+**Current posture**: public buckets with transformed CDN delivery on user-facing renders, signed upload URLs for all first-party writes, and path-owner storage policies on mutable operations.
 
 ---
 
@@ -410,7 +428,7 @@ DB-backed sliding window rate limiter. Used by all edge functions. Probabilistic
 | `is_organiser_owner(profile_id, user_id)` | Organiser ownership |
 | `is_organiser_member(profile_id, user_id)` | Accepted team member |
 | `is_group_chat_member(group_id, user_id)` | Chat membership |
-| `is_profile_public(user_id)` | **⚠️ Hardcoded `true`** |
+| `is_profile_public(user_id)` | Checks `profiles.profile_tier = 'professional'` |
 
 ### Business Logic Functions
 | Function | Purpose |
@@ -483,19 +501,10 @@ See `docs/PLATFORM_TODOS.md` (Optimisation section) for full list. High-priority
 
 | # | Issue | Severity | Details |
 |---|-------|----------|---------|
-| 2 | `is_profile_public()` hardcoded | 🔴 High | Returns `true` always. Privacy not enforced at DB level. |
-| 3 | Missing unique constraint `rsvps(event_id, user_id)` | 🟡 Medium | Needed for upsert in webhook auto-RSVP. Currently relies on RPC logic. |
-| 4 | `get_friends_and_following_count` misleading | 🟡 Medium | Identical to `get_friend_count`. Should include organiser follows. |
-| 5 | No expired order cleanup | 🟡 Medium | Reserved orders never transition to expired. |
-| 6 | `publish_at` not enforced | 🟡 Medium | Scheduled events visible before publish date. |
-| 7 | `event.status` not filtered | 🟡 Medium | Draft/cancelled events appear in listings. |
-| 8 | No cascade deletes verified | 🟢 Low | Post likes/reposts/collaborators may orphan on post delete. |
-
-Note: I need to renumber the issues after removing #1. Actually looking at the table, the user said to remove the whole row - so I just need to remove that row. The remaining rows will keep their numbers (2, 3, 4...) or should I renumber them? The user said "REMOVED entirely (the whole row)" - so I'm just removing the row. I'll keep the numbering as 2, 3, 4... since that's simpler and the user didn't ask for renumbering.
-
-Actually wait - if we remove row 1, we'll have rows 2-8. That might look odd. Let me check the replacement I did. I removed the row for #1 and the table now starts with #2. The user didn't ask to renumber, so I'll leave it. If they want renumbering they can ask.
-
-Let me also do the Planned table removal and the bottom date.
+| 1 | `get_friends_and_following_count` misleading | 🟡 Medium | Identical to `get_friend_count`. Should include organiser follows. |
+| 2 | Expired order cleanup depends on external scheduling | 🟡 Medium | `orders-expire-cleanup` exists, but reserved orders can linger if the cron job is not configured. |
+| 3 | `publish_at` is query-driven, not a full status workflow | 🟡 Medium | Public listings filter by `publish_at`, but editing scheduled events still needs careful status handling. |
+| 4 | No cascade deletes verified | 🟢 Low | Post likes/reposts/collaborators may orphan on post delete. |
 
 ---
 
@@ -504,10 +513,9 @@ Let me also do the Planned table removal and the bottom date.
 ### Planned
 | Table/Change | Purpose | Priority |
 |-------------|---------|----------|
-| Fix `is_profile_public()` | Enforce privacy tiers | 🔴 High |
-| Add unique constraint `rsvps(event_id, user_id)` | RSVP deduplication | 🟡 Medium |
 | Fix `get_friends_and_following_count()` | Include organiser follows in count | 🟡 Medium |
-| Expired order cleanup cron | Prevent inventory lockup | 🟡 Medium |
+| Ensure `orders-expire-cleanup` cron is configured | Prevent inventory lockup | 🟡 Medium |
+| Tighten scheduled publishing workflow | Align `publish_at` and `status` semantics | 🟡 Medium |
 | Add `status` filter to event queries | Hide drafts/cancelled | 🟡 Medium |
 
 ### Potential Future Tables
