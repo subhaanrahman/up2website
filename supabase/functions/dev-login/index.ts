@@ -9,21 +9,41 @@ Deno.serve(async (req) => {
 
   const requestId = getRequestId(req);
 
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (!supabaseUrl || !serviceKey || !anonKey) {
+    edgeLog("error", "dev-login missing Supabase env", {
+      requestId,
+      hasUrl: Boolean(supabaseUrl),
+      hasServiceRole: Boolean(serviceKey),
+      hasAnon: Boolean(anonKey),
+    });
+    return errorResponse(
+      500,
+      "Edge function missing SUPABASE_URL or keys. Link this project and redeploy: supabase functions deploy dev-login",
+      { requestId },
+    );
+  }
+
   try {
-    const { user_id } = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse(400, "Invalid JSON body", { requestId });
+    }
+    if (!body || typeof body !== "object") {
+      return errorResponse(400, "JSON object required", { requestId });
+    }
+    const { user_id } = body as { user_id?: unknown };
 
     if (!user_id || typeof user_id !== "string") {
       return errorResponse(400, "user_id required", { requestId });
     }
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
-    const supabaseAnon = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-    );
+    const supabaseAdmin = createClient(supabaseUrl, serviceKey);
+    const supabaseAnon = createClient(supabaseUrl, anonKey);
 
     type SignInResult =
       | { ok: true; access_token: string; refresh_token: string }

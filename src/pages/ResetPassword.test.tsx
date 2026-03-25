@@ -116,7 +116,7 @@ describe('ResetPassword', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/set new password/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /new password/i })).toBeInTheDocument();
     });
 
     expect(screen.getByPlaceholderText(/create a strong password/i)).toBeInTheDocument();
@@ -138,7 +138,7 @@ describe('ResetPassword', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/set new password/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /new password/i })).toBeInTheDocument();
     });
 
     const input = screen.getByPlaceholderText(/create a strong password/i);
@@ -165,7 +165,7 @@ describe('ResetPassword', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/set new password/i)).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: /new password/i })).toBeInTheDocument();
     });
 
     const input = screen.getByPlaceholderText(/create a strong password/i);

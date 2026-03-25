@@ -1,14 +1,22 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Mail, Instagram, Twitter } from "lucide-react";
+import { Mail, Instagram, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import { supportRepository } from "@/features/support/repositories/supportRepository";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  FormFieldCard,
+  FormFieldDivider,
+  FormFieldLabel,
+  FormFlowHeader,
+  FormFlowMain,
+  FormFlowScreen,
+  formFlowInputClass,
+  formFlowPrimaryButtonClass,
+} from "@/components/form-flow/FormFlowLayout";
+import { cn } from "@/lib/utils";
 
 const ContactUs = () => {
   const navigate = useNavigate();
@@ -40,87 +48,79 @@ const ContactUs = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="flex items-center px-4 py-4">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2">
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground">Contact Us</h1>
-        </div>
-      </header>
-
-      <main className="px-4 pt-6 space-y-6">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="subject">Subject</Label>
-            <Input
-              id="subject"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="What's this about?"
-              maxLength={200}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="message">Message</Label>
-            <Textarea
-              id="message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Tell us more…"
-              rows={5}
-              maxLength={2000}
-            />
-          </div>
+    <FormFlowScreen>
+      <FormFlowHeader title="Contact" onBack={() => navigate(-1)} balanceRight />
+      <FormFlowMain withBottomNav>
+        <div className="space-y-3">
+          <FormFieldCard>
+            <div className="px-4 pt-4 pb-3">
+              <FormFieldLabel>Subject</FormFieldLabel>
+              <input
+                id="subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="What's this about?"
+                maxLength={200}
+                className={formFlowInputClass}
+              />
+            </div>
+            <FormFieldDivider />
+            <div className="px-4 pt-3 pb-4">
+              <FormFieldLabel>Message</FormFieldLabel>
+              <textarea
+                id="message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Tell us more…"
+                rows={5}
+                maxLength={2000}
+                className={cn(formFlowInputClass, "resize-none leading-relaxed min-h-[120px]")}
+              />
+            </div>
+          </FormFieldCard>
 
           <Button
+            type="button"
             onClick={handleSubmit}
             disabled={!subject.trim() || !message.trim() || sending}
-            className="w-full"
+            className={formFlowPrimaryButtonClass}
           >
-            {sending ? "Sending…" : "Send Message"}
+            {sending ? "SENDING…" : "SEND MESSAGE"}
           </Button>
         </div>
 
-        <div className="space-y-3 pt-4">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Or reach us directly
-          </h2>
-
+        <div className="mt-10 space-y-2">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground">Or reach us</p>
           <a
             href="mailto:support@socialsoiree.app"
-            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-4 rounded-tile border border-border/50 bg-card hover:bg-card/80 transition-colors"
           >
-            <Mail className="h-5 w-5 text-foreground" />
-            <span className="text-foreground text-sm">support@socialsoiree.app</span>
+            <Mail className="h-5 w-5 text-foreground shrink-0" />
+            <span className="text-foreground text-sm font-medium">support@socialsoiree.app</span>
           </a>
-
           <a
             href="https://instagram.com/socialsoiree"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-4 rounded-tile border border-border/50 bg-card hover:bg-card/80 transition-colors"
           >
-            <Instagram className="h-5 w-5 text-foreground" />
-            <span className="text-foreground text-sm">@socialsoiree</span>
+            <Instagram className="h-5 w-5 text-foreground shrink-0" />
+            <span className="text-foreground text-sm font-medium">@socialsoiree</span>
           </a>
-
           <a
             href="https://twitter.com/socialsoiree"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-3 p-3 rounded-tile-sm border border-border hover:bg-secondary transition-colors"
+            className="flex items-center gap-3 p-4 rounded-tile border border-border/50 bg-card hover:bg-card/80 transition-colors"
           >
-            <Twitter className="h-5 w-5 text-foreground" />
-            <span className="text-foreground text-sm">@socialsoiree</span>
+            <Twitter className="h-5 w-5 text-foreground shrink-0" />
+            <span className="text-foreground text-sm font-medium">@socialsoiree</span>
           </a>
         </div>
-      </main>
+      </FormFlowMain>
 
       <BottomNav />
-    </div>
+    </FormFlowScreen>
   );
 };
 

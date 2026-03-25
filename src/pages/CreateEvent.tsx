@@ -365,7 +365,7 @@ const CreateEvent = () => {
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto pb-20">
-        <div className="container mx-auto px-4 max-w-lg py-5">
+        <div className="px-4 max-w-lg mx-auto py-5">
           {!hasOrganiserProfile && (
             <div className="mb-4 rounded-tile border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
               <span className="font-medium text-foreground">Ticketing &amp; sale windows</span> are available when you use an organiser profile. Open{" "}

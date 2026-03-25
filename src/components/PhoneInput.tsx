@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { PhoneInput as ReactPhoneInput } from "react-international-phone";
 import type { PhoneInputRefType } from "react-international-phone";
 import "react-international-phone/style.css";
@@ -11,30 +11,77 @@ interface PhoneInputProps {
   className?: string;
 }
 
-const useDetectedCountry = () => {
+/** ISO 3166-1 alpha-2 when IP lookup is blocked, fails, or returns no code. */
+function defaultCountryFromLocale(): string {
+  if (typeof navigator === "undefined") return "us";
+  const langs = navigator.languages?.length ? navigator.languages : [navigator.language];
+  for (const lang of langs) {
+    const parts = lang?.toLowerCase().split(/[-_]/) ?? [];
+    const region = parts[1];
+    if (region && /^[a-z]{2}$/i.test(region)) {
+      return region.toLowerCase();
+    }
+  }
+  return "us";
+}
+
+const IPGEO_SKIP_KEY = "up2_skip_ipapi";
+
+/** One shared request per tab: avoids duplicate ipapi calls (and console noise) when several PhoneInputs mount. */
+let ipGeoPromise: Promise<string | null> | null = null;
+
+function fetchCountryFromIpOnce(): Promise<string | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  try {
+    if (sessionStorage.getItem(IPGEO_SKIP_KEY) === "1") return Promise.resolve(null);
+  } catch {
+    /* private mode */
+  }
+  if (!ipGeoPromise) {
+    ipGeoPromise = (async () => {
+      try {
+        const ac = new AbortController();
+        const tid = window.setTimeout(() => ac.abort(), 3000);
+        const r = await fetch("https://ipapi.co/json/", { signal: ac.signal });
+        clearTimeout(tid);
+        if (!r.ok) return null;
+        const data = (await r.json()) as { country_code?: string };
+        return data?.country_code ? data.country_code.toLowerCase() : null;
+      } catch {
+        try {
+          sessionStorage.setItem(IPGEO_SKIP_KEY, "1");
+        } catch {
+          /* private mode */
+        }
+        return null;
+      }
+    })();
+  }
+  return ipGeoPromise;
+}
+
+const useDetectedCountry = (localeFallback: string) => {
   const [country, setCountry] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("https://ipapi.co/json/", { signal: AbortSignal.timeout(3000) })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data?.country_code) {
-          setCountry(data.country_code.toLowerCase());
-        } else {
-          setCountry("us");
-        }
-      })
-      .catch(() => setCountry("us"));
-  }, []);
+    let cancelled = false;
+    fetchCountryFromIpOnce().then((code) => {
+      if (cancelled) return;
+      setCountry(code ?? localeFallback);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [localeFallback]);
 
   return country;
 };
 
 const PhoneInput = ({ value, onChange, disabled, className }: PhoneInputProps) => {
-  const detectedCountry = useDetectedCountry();
+  const localeFallback = useMemo(() => defaultCountryFromLocale(), []);
+  const detectedCountry = useDetectedCountry(localeFallback);
   const phoneInputRef = useRef<PhoneInputRefType>(null);
 
-  // Update country when IP-based detection completes (matches user's location)
   useEffect(() => {
     if (detectedCountry && phoneInputRef.current?.setCountry) {
       phoneInputRef.current.setCountry(detectedCountry);
@@ -44,7 +91,7 @@ const PhoneInput = ({ value, onChange, disabled, className }: PhoneInputProps) =
   return (
     <ReactPhoneInput
       ref={phoneInputRef}
-      defaultCountry={detectedCountry ?? "us"}
+      defaultCountry={detectedCountry ?? localeFallback}
       forceDialCode
       value={value}
       onChange={onChange}

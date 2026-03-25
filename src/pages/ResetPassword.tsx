@@ -6,9 +6,16 @@ import { useToast } from "@/hooks/use-toast";
 import logoFull from "@/assets/logo-full.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, Check, X } from "lucide-react";
 import { PASSWORD_RULES } from "@/utils/passwordValidation";
+import {
+  FormFieldCard,
+  FormFieldLabel,
+  FormFlowHeader,
+  FormFlowMain,
+  FormFlowScreen,
+  formFlowPrimaryButtonClass,
+} from "@/components/form-flow/FormFlowLayout";
 
 /**
  * Handles the email reset flow: Supabase redirects here after the user clicks
@@ -28,7 +35,9 @@ const ResetPassword = () => {
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     const hasRecoveryHash = hashParams.get("type") === "recovery";
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session) {
         setRecoveryReady(true);
       }
@@ -82,43 +91,35 @@ const ResetPassword = () => {
 
   if (!recoveryReady) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 animate-in fade-in duration-200">
         <div className="text-center max-w-sm">
           <img src={logoFull} alt="Up2" className="h-16 w-auto mx-auto mb-6" />
-          <h1 className="text-xl font-bold text-foreground mb-2">Loading...</h1>
-          <p className="text-muted-foreground">
-            If you were sent here from an email link, we&apos;re verifying it.
-          </p>
+          <h1 className="text-xl font-bold text-foreground mb-2">Loading…</h1>
+          <p className="text-muted-foreground text-sm">Verifying your reset link.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <img src={logoFull} alt="Up2" className="h-16 w-auto mx-auto" />
+    <FormFlowScreen>
+      <FormFlowHeader title="New password" onBack={() => navigate("/auth")} balanceRight />
+      <FormFlowMain className="max-w-sm">
+        <div className="flex justify-center mb-8">
+          <img src={logoFull} alt="Up2" className="h-14 w-auto" />
         </div>
+        <p className="text-center text-sm text-muted-foreground mb-6">Choose a strong password for your account.</p>
 
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Set new password</h1>
-          <p className="text-muted-foreground">
-            Enter a new password for your account.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground">New password</Label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormFieldCard className="px-4 pt-4 pb-4">
+            <FormFieldLabel>Password</FormFieldLabel>
             <div className="relative">
               <Input
-                id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Create a strong password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="h-14 bg-card border-border pr-12"
+                className="h-auto min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] font-medium shadow-none focus-visible:ring-0 pr-10"
                 disabled={loading}
                 autoComplete="new-password"
               />
@@ -126,49 +127,42 @@ const ResetPassword = () => {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-8"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </Button>
             </div>
-            {password && (
-              <div className="space-y-1 mt-2">
+            {password ? (
+              <div className="space-y-1 mt-3">
                 {PASSWORD_RULES.map((rule) => {
                   const passes = rule.test(password);
                   return (
-                    <div key={rule.label} className="flex items-center gap-2 text-sm">
+                    <div key={rule.label} className="flex items-center gap-2 text-xs">
                       {passes ? (
-                        <Check className="h-3.5 w-3.5 text-primary" />
+                        <Check className="h-3.5 w-3.5 text-primary shrink-0" />
                       ) : (
-                        <X className="h-3.5 w-3.5 text-destructive" />
+                        <X className="h-3.5 w-3.5 text-destructive shrink-0" />
                       )}
-                      <span className={passes ? "text-muted-foreground" : "text-destructive"}>
-                        {rule.label}
-                      </span>
+                      <span className={passes ? "text-muted-foreground" : "text-destructive"}>{rule.label}</span>
                     </div>
                   );
                 })}
               </div>
-            )}
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
+            ) : null}
+            {error ? <p className="text-sm text-destructive mt-2">{error}</p> : null}
+          </FormFieldCard>
 
-          <Button type="submit" className="w-full h-14 text-lg" disabled={loading || !allPasswordRulesPass}>
-            {loading ? "Updating..." : "Reset password"}
+          <Button type="submit" className={formFlowPrimaryButtonClass} disabled={loading || !allPasswordRulesPass}>
+            {loading ? "UPDATING…" : "RESET PASSWORD"}
           </Button>
         </form>
 
-        <Button
-          type="button"
-          variant="ghost"
-          className="w-full mt-4"
-          onClick={() => navigate("/auth")}
-        >
+        <Button type="button" variant="ghost" className="w-full mt-4 text-muted-foreground" onClick={() => navigate("/auth")}>
           Back to sign in
         </Button>
-      </div>
-    </div>
+      </FormFlowMain>
+    </FormFlowScreen>
   );
 };
 

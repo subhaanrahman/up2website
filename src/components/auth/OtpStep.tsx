@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ArrowRight, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { FormFieldCard, FormFieldLabel, formFlowPrimaryButtonClass } from "@/components/form-flow/FormFlowLayout";
+import { cn } from "@/lib/utils";
 
 const otpSchema = z.string().length(6, "OTP must be 6 digits");
 const RESEND_COOLDOWN_MS = 60_000;
@@ -99,29 +99,34 @@ const OtpStep = ({ phone, isReturningUser, onVerified, onBack }: OtpStepProps) =
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="otp" className="text-foreground">Verification code</Label>
-          <Input
+        <FormFieldCard className="px-4 pt-4 pb-4">
+          <FormFieldLabel>Verification code</FormFieldLabel>
+          <input
             id="otp"
             type="text"
             inputMode="numeric"
             placeholder="000000"
             value={otp}
             onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="text-center text-3xl tracking-[0.5em] h-16 bg-card border-border font-mono"
+            className="w-full bg-transparent text-center text-3xl tracking-[0.4em] font-mono text-foreground placeholder:text-muted-foreground/30 outline-none py-2"
             disabled={loading}
             maxLength={6}
+            autoComplete="one-time-code"
           />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
+          {error ? <p className="text-sm text-destructive mt-2">{error}</p> : null}
+        </FormFieldCard>
 
         <Button
           type="submit"
-          className="w-full h-14 text-lg gap-2"
+          className={cn(formFlowPrimaryButtonClass, "gap-2")}
           disabled={loading || otp.length !== 6}
         >
-          {loading ? "Verifying..." : (
-            <>Verify <ArrowRight className="h-5 w-5" /></>
+          {loading ? (
+            "VERIFYING…"
+          ) : (
+            <>
+              Verify <ArrowRight className="h-5 w-5" />
+            </>
           )}
         </Button>
 

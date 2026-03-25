@@ -35,7 +35,14 @@ const emit = (entry: LogEntry) => {
   if (import.meta.env.PROD) {
     console[method](JSON.stringify(entry));
   } else {
-    console[method](`[${entry.level.toUpperCase()}] ${entry.context ? `[${entry.context}] ` : ''}${entry.message}`, entry.data ?? '');
+    const payload: Record<string, unknown> = { ...(entry.data ?? {}) };
+    if (entry.error) payload.error = entry.error;
+    const second =
+      Object.keys(payload).length > 0 ? payload : entry.error ? { error: entry.error } : '';
+    console[method](
+      `[${entry.level.toUpperCase()}] ${entry.context ? `[${entry.context}] ` : ''}${entry.message}`,
+      second,
+    );
   }
 };
 

@@ -31,11 +31,6 @@ if (typeof window !== 'undefined' && config.isDev) {
     );
     (window as { __authLocalhostWarned?: boolean }).__authLocalhostWarned = true;
   }
-  const anon = config.supabase.anonKey || '';
-  if (anon && !anon.startsWith('eyJ') && !(window as { __edgeAnonKeyWarned?: boolean }).__edgeAnonKeyWarned) {
-    console.warn(
-      '[Supabase] Using sb_publishable_* key: Edge gateway may 401 before your function runs unless supabase/config.toml sets verify_jwt = false for that function (auth stays in getUser()). Deploy functions after config changes.',
-    );
-    (window as { __edgeAnonKeyWarned?: boolean }).__edgeAnonKeyWarned = true;
-  }
+  // sb_publishable_* keys: Edge JWT verification is controlled per function in supabase/config.toml (verify_jwt).
+  // This repo sets verify_jwt = false where the gateway can't validate publishable keys; no runtime warning needed.
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import PhoneInput from "@/components/PhoneInput";
 import { config } from "@/infrastructure/config";
 import { z } from "zod";
+import { FormFieldCard, FormFieldLabel, formFlowPrimaryButtonClass } from "@/components/form-flow/FormFlowLayout";
+import { cn } from "@/lib/utils";
 
 const phoneSchema = z.string().min(8, "Please enter a valid phone number");
 
@@ -48,15 +49,14 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
 
     setLoading(true);
 
-    // Check if phone exists — this should be fast
     const { exists, error: checkErr } = await checkPhone(phone);
 
     if (checkErr) {
       let msg = checkErr.message;
-      if (config.isDev && 'details' in checkErr && typeof (checkErr as { details?: unknown }).details === 'object') {
+      if (config.isDev && "details" in checkErr && typeof (checkErr as { details?: unknown }).details === "object") {
         const d = (checkErr as { details?: Record<string, unknown> }).details;
         if (d?.status !== undefined || d?.bodyExcerpt) {
-          const debug = [`status ${d?.status ?? '?'}`, d?.bodyExcerpt].filter(Boolean).join(' | ');
+          const debug = [`status ${d?.status ?? "?"}`, d?.bodyExcerpt].filter(Boolean).join(" | ");
           msg += ` (${debug})`;
         }
       }
@@ -84,22 +84,26 @@ const PhoneStep = ({ onPhoneChecked }: PhoneStepProps) => {
           {welcomeText}
           <span className="inline-block w-[1ch] animate-pulse text-primary">|</span>
         </h1>
-        <p className="text-muted-foreground">Enter your phone number to get started</p>
+        <p className="text-muted-foreground text-sm">Enter your phone number to get started</p>
       </div>
 
       <form
         onSubmit={handleSubmit}
         className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-2000 ease-out delay-200"
       >
-        <div className="space-y-2">
-          <Label htmlFor="phone" className="text-foreground">Phone number</Label>
+        <FormFieldCard className="px-4 pt-4 pb-4">
+          <FormFieldLabel>Phone number</FormFieldLabel>
           <PhoneInput value={phone} onChange={setPhone} disabled={loading} />
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </div>
+          {error ? <p className="text-sm text-destructive mt-2">{error}</p> : null}
+        </FormFieldCard>
 
-        <Button type="submit" className="w-full h-14 text-lg gap-2" disabled={loading}>
-          {loading ? "Checking..." : (
-            <>Continue <ArrowRight className="h-5 w-5" /></>
+        <Button type="submit" className={cn(formFlowPrimaryButtonClass, "gap-2")} disabled={loading}>
+          {loading ? (
+            "CHECKING…"
+          ) : (
+            <>
+              Continue <ArrowRight className="h-5 w-5" />
+            </>
           )}
         </Button>
       </form>

@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ArrowRight } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import {
+  FormFieldCard,
+  FormFieldDivider,
+  FormFieldLabel,
+  formFlowInputClass,
+  formFlowPrimaryButtonClass,
+} from "@/components/form-flow/FormFlowLayout";
+import { cn } from "@/lib/utils";
 
 interface RegisterStepProps {
   phone: string;
@@ -23,7 +29,7 @@ const RegisterStep = ({ phone, onSuccess, onBack }: RegisterStepProps) => {
   const [error, setError] = useState("");
 
   const isUsernameValid = USERNAME_REGEX.test(username);
-  const isFormValid = displayName.trim() && isUsernameValid;
+  const isFormValid = Boolean(displayName.trim() && isUsernameValid);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,57 +61,60 @@ const RegisterStep = ({ phone, onSuccess, onBack }: RegisterStepProps) => {
   return (
     <>
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Create your account</h1>
-        <p className="text-muted-foreground">
-          Phone verified! Set up your profile to get started.
-        </p>
+        <h1 className="text-lg font-bold text-foreground mb-2 tracking-tight">Create your account</h1>
+        <p className="text-sm text-muted-foreground">Phone verified — set your public name and username.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="displayName" className="text-foreground">Display name</Label>
-          <Input
-            id="displayName"
-            type="text"
-            placeholder="How your name appears"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-            className="h-12 bg-card border-border"
-            disabled={loading}
-            autoComplete="name"
-          />
-        </div>
+        <FormFieldCard>
+          <div className="px-4 pt-4 pb-3">
+            <FormFieldLabel>Display name</FormFieldLabel>
+            <input
+              id="displayName"
+              type="text"
+              placeholder="How your name appears"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className={formFlowInputClass}
+              disabled={loading}
+              autoComplete="name"
+            />
+          </div>
+          <FormFieldDivider />
+          <div className="px-4 pt-3 pb-4">
+            <FormFieldLabel>Username</FormFieldLabel>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground text-[15px]">@</span>
+              <input
+                id="username"
+                type="text"
+                placeholder="your_username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30))}
+                className={cn(formFlowInputClass, "flex-1")}
+                disabled={loading}
+                autoComplete="username"
+              />
+            </div>
+            {username && !isUsernameValid ? (
+              <p className="text-xs text-destructive mt-2">3–30 characters: letters, numbers, underscores.</p>
+            ) : null}
+          </div>
+        </FormFieldCard>
 
-        <div className="space-y-2">
-          <Label htmlFor="username" className="text-foreground">Username</Label>
-          <Input
-            id="username"
-            type="text"
-            placeholder="your_username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 30))}
-            className="h-12 bg-card border-border"
-            disabled={loading}
-            autoComplete="username"
-          />
-          {username && !isUsernameValid && (
-            <p className="text-sm text-destructive">3-30 characters, letters, numbers, underscores only</p>
-          )}
-        </div>
+        {error ? <p className="text-sm text-destructive px-1">{error}</p> : null}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <Button
-          type="submit"
-          className="w-full h-14 text-lg gap-2"
-          disabled={loading || !isFormValid}
-        >
-          {loading ? "Creating account..." : (
-            <>Create account <ArrowRight className="h-5 w-5" /></>
+        <Button type="submit" className={cn(formFlowPrimaryButtonClass, "gap-2")} disabled={loading || !isFormValid}>
+          {loading ? (
+            "CREATING…"
+          ) : (
+            <>
+              Create account <ArrowRight className="h-5 w-5" />
+            </>
           )}
         </Button>
 
-        <Button type="button" variant="ghost" onClick={onBack} className="w-full">
+        <Button type="button" variant="ghost" onClick={onBack} className="w-full text-muted-foreground">
           Back
         </Button>
       </form>

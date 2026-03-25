@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Check, X } from "lucide-react";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,8 +17,17 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from '@/infrastructure/supabase';
+import { supabase } from "@/infrastructure/supabase";
 import { PASSWORD_RULES } from "@/utils/passwordValidation";
+import {
+  FormFieldCard,
+  FormFieldDivider,
+  FormFieldLabel,
+  FormFlowHeader,
+  FormFlowMain,
+  FormFlowScreen,
+  formFlowPrimaryButtonClass,
+} from "@/components/form-flow/FormFlowLayout";
 
 const ManageAccount = () => {
   const navigate = useNavigate();
@@ -48,8 +55,9 @@ const ManageAccount = () => {
       setNewPassword("");
       setConfirmPassword("");
       toast({ title: "Password saved successfully" });
-    } catch (err: any) {
-      toast({ title: "Failed to update password", description: err?.message || "Please try again.", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Please try again.";
+      toast({ title: "Failed to update password", description: msg, variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -63,126 +71,116 @@ const ManageAccount = () => {
       toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
       await supabase.auth.signOut();
       navigate("/auth");
-    } catch (err: any) {
-      toast({ title: "Failed to delete account", description: err?.message || "Please try again.", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Please try again.";
+      toast({ title: "Failed to delete account", description: msg, variant: "destructive" });
     } finally {
       setDeleting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-40 bg-background border-b border-border">
-        <div className="flex items-center px-4 py-4">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 mr-2">
-            <ArrowLeft className="h-6 w-6 text-foreground" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground">Manage Account</h1>
-        </div>
-      </header>
+    <FormFlowScreen>
+      <FormFlowHeader title="Account" onBack={() => navigate(-1)} balanceRight />
+      <FormFlowMain withBottomNav>
+        <div className="space-y-3">
+          <FormFieldCard className="px-4 pt-4 pb-4">
+            <FormFieldLabel>Email</FormFieldLabel>
+            <p className="text-[15px] font-medium text-foreground">{user?.email || "Not set"}</p>
+          </FormFieldCard>
 
-      <main className="px-4 pt-6 space-y-8">
-        {/* Email display */}
-        <div className="space-y-2">
-          <Label className="text-muted-foreground text-xs uppercase tracking-wide">Email</Label>
-          <p className="text-foreground font-medium">{user?.email || "Not set"}</p>
-        </div>
+          <FormFieldCard className="px-4 pt-4 pb-4">
+            <FormFieldLabel>Phone</FormFieldLabel>
+            <p className="text-[15px] font-medium text-foreground">{user?.phone || "Not set"}</p>
+          </FormFieldCard>
 
-        {/* Phone display */}
-        <div className="space-y-2">
-          <Label className="text-muted-foreground text-xs uppercase tracking-wide">Phone</Label>
-          <p className="text-foreground font-medium">{user?.phone || "Not set"}</p>
-        </div>
+          <div className="pt-2">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-muted-foreground mb-2">Password (optional)</p>
+            <p className="text-sm text-muted-foreground mb-3">
+              Add a password for extra security. You can still sign in with phone verification.
+            </p>
+          </div>
 
-        <Separator />
-
-        {/* Password setup */}
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Password (Optional)</h2>
-          <p className="text-sm text-muted-foreground">
-            Add a password for extra security. Your account can still be accessed with phone verification codes.
-          </p>
-
-          <div className="space-y-2">
-            <Label htmlFor="new-password">Password</Label>
-            <div className="relative">
-              <Input
-                id="new-password"
-                type={showNew ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Create a strong password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNew(!showNew)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {newPassword && (
-              <div className="space-y-1 mt-2">
-                {PASSWORD_RULES.map((rule) => {
-                  const passes = rule.test(newPassword);
-                  return (
-                    <div key={rule.label} className="flex items-center gap-2 text-sm">
-                      {passes ? (
-                        <Check className="h-3.5 w-3.5 text-primary" />
-                      ) : (
-                        <X className="h-3.5 w-3.5 text-destructive" />
-                      )}
-                      <span className={passes ? "text-muted-foreground" : "text-destructive"}>
-                        {rule.label}
-                      </span>
-                    </div>
-                  );
-                })}
+          <FormFieldCard>
+            <div className="px-4 pt-4 pb-3">
+              <FormFieldLabel>Password</FormFieldLabel>
+              <div className="relative">
+                <Input
+                  type={showNew ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Create a strong password"
+                  className="h-auto min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] font-medium shadow-none focus-visible:ring-0 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-muted-foreground p-1"
+                >
+                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirm Password</Label>
-            <Input
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-            />
-          </div>
+              {newPassword ? (
+                <div className="space-y-1 mt-3">
+                  {PASSWORD_RULES.map((rule) => {
+                    const passes = rule.test(newPassword);
+                    return (
+                      <div key={rule.label} className="flex items-center gap-2 text-xs">
+                        {passes ? (
+                          <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                        ) : (
+                          <X className="h-3.5 w-3.5 text-destructive shrink-0" />
+                        )}
+                        <span className={passes ? "text-muted-foreground" : "text-destructive"}>{rule.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+            <FormFieldDivider />
+            <div className="px-4 pt-3 pb-4">
+              <FormFieldLabel>Confirm password</FormFieldLabel>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className="h-auto min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] font-medium shadow-none focus-visible:ring-0"
+              />
+            </div>
+          </FormFieldCard>
 
           <Button
+            type="button"
             onClick={handleChangePassword}
             disabled={!newPassword || !confirmPassword || !allPasswordRulesPass || saving}
-            className="w-full"
+            className={formFlowPrimaryButtonClass}
           >
-            {saving ? "Saving…" : "Save Password"}
+            {saving ? "SAVING…" : "SAVE PASSWORD"}
           </Button>
         </div>
 
-        <Separator />
-
-        {/* Delete account */}
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
+        <div className="mt-10 space-y-3">
+          <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-destructive">Danger zone</p>
           <p className="text-sm text-muted-foreground">
-            Deleting your account is permanent and cannot be undone. All your data will be removed.
+            Deleting your account is permanent. All your data will be removed.
           </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive" className="w-full">Delete Account</Button>
+              <Button variant="destructive" className={formFlowPrimaryButtonClass}>
+                Delete account
+              </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="bg-card border-border">
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your account and remove all your data.
+                  This cannot be undone. Your account and data will be permanently deleted.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="border-border">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
                   {deleting ? "Deleting…" : "Yes, delete my account"}
                 </AlertDialogAction>
@@ -190,10 +188,10 @@ const ManageAccount = () => {
             </AlertDialogContent>
           </AlertDialog>
         </div>
-      </main>
+      </FormFlowMain>
 
       <BottomNav />
-    </div>
+    </FormFlowScreen>
   );
 };
 

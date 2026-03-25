@@ -29,6 +29,7 @@ import { useActiveProfile } from "@/contexts/ActiveProfileContext";
 import { DateTimePicker } from "@/components/create-event/DateTimePicker";
 import { supabase } from "@/infrastructure/supabase";
 import { AppError } from "@/infrastructure/errors";
+import { FormFieldCard, FormFieldLabel } from "@/components/form-flow/FormFlowLayout";
 
 type EditTab = "details" | "ticketing";
 
@@ -382,10 +383,10 @@ const EditEvent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
       <Navbar />
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border md:hidden">
-        <div className="flex items-center justify-between px-4 h-14">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/50 md:hidden">
+        <div className="flex items-center justify-between px-4 py-3 max-w-lg mx-auto h-14">
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => navigate(-1)}>
             <X className="h-5 w-5" />
           </Button>
@@ -402,7 +403,7 @@ const EditEvent = () => {
       </header>
 
       <main className="pt-4 md:pt-24 pb-24">
-        <div className="container mx-auto px-4 max-w-lg">
+        <div className="px-4 max-w-lg mx-auto py-5">
 
           {/* Tab content */}
           <form onSubmit={handleSubmit}>
@@ -437,18 +438,17 @@ const EditEvent = () => {
                     />
                   )}
                 </div>
-                {/* Capacity */}
-                <div className="space-y-2">
-                  <Label htmlFor="capacity" className="text-foreground text-[10px] font-bold tracking-[0.2em] uppercase">Capacity</Label>
+                <FormFieldCard className="px-4 pt-4 pb-4">
+                  <FormFieldLabel>Capacity</FormFieldLabel>
                   <Input
                     id="capacity"
                     type="number"
                     value={capacity}
                     onChange={(e) => setCapacity(e.target.value)}
-                    className="h-12 bg-card border-border"
+                    className="h-auto min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] font-medium shadow-none focus-visible:ring-0"
                     placeholder="Unlimited"
                   />
-                </div>
+                </FormFieldCard>
                 <Button type="submit" size="lg" className="w-full h-12 rounded-tile font-bold tracking-widest text-sm" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
