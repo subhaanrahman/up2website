@@ -1,5 +1,7 @@
 # Up2
 
+**Up2 Technologies LLC** — marketing site for the Up2 platform.
+
 ## Project info
 
 This repo originated in Lovable and may still sync through GitHub, but the active production frontend is no longer deployed via Lovable Publish.

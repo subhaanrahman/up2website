@@ -20,7 +20,7 @@ const features = [
     icon: Sparkles,
     title: "Discovery that feels premium",
     description:
-      "Position your nights and experiences with editorial-quality presentation — built to convert browsers into guests.",
+      "Position your nights and experiences with editorial-quality presentation, built to turn browsers into guests.",
   },
   {
     icon: Users,
@@ -32,19 +32,19 @@ const features = [
     icon: Ticket,
     title: "Ticketing & guest ops",
     description:
-      "From RSVP to check-in, keep operations tight — fewer tools, clearer accountability, faster door flow.",
+      "From RSVP to check-in, keep operations tight: fewer tools, clearer accountability, faster door flow.",
   },
   {
     icon: CalendarHeart,
     title: "Built for recurring programming",
     description:
-      "Weekly residencies, tours, and one-off moments share the same backbone — consistent brand, flexible execution.",
+      "Weekly residencies, tours, and one-off moments share the same backbone: consistent brand, flexible execution.",
   },
   {
     icon: LineChart,
     title: "Insights operators actually use",
     description:
-      "Understand what moves tickets, who returns, and where drop-off happens — without drowning in dashboards.",
+      "See what moves tickets, who returns, and where drop-off happens, without drowning in dashboards.",
   },
   {
     icon: ShieldCheck,
@@ -69,7 +69,7 @@ const quotes = [
   },
   {
     quote:
-      "Our team cares about brand and speed. Up2 reads like a modern product — not a patchwork of spreadsheets.",
+      "Our team cares about brand and speed. Up2 reads like a modern product, not a patchwork of spreadsheets.",
     attribution: "Placeholder",
     role: "Festival Producer",
   },
@@ -79,35 +79,35 @@ export default function Home() {
   return (
     <MarketingLayout>
       <Seo
-        title="Up2 — Premium discovery for nightlife & live events"
-        description="Up2 helps venues, organisers, and brands launch beautiful experiences, sell tickets, and build community — without losing the energy of the room."
+        title="Up2: Premium discovery for nightlife & live events"
+        description="Up2 helps venues, organisers, and brands launch beautiful experiences, sell tickets, and build community without losing the energy of the room."
       />
       <HeroSection
         title="Turn great nights into a growth engine"
-        subtitle="Up2 is the platform for nightlife and live experiences — discovery, community, and operations in one premium experience your guests will actually want to open."
-        primaryCta={{ to: "/contact", label: "Partner with us" }}
+        subtitle="Up2 is the platform for nightlife and live experiences: discovery, community, and operations in one premium experience your guests will actually want to open."
+        primaryCta={{ to: "/features", label: "Explore features" }}
         secondaryCta={{ to: "/how-it-works", label: "How it works" }}
       />
       <LogoStrip />
       <FeatureGrid
         eyebrow="Why teams choose Up2"
         heading="Built for operators who care about craft"
-        subheading="Everything here is designed to support brand, conversion, and repeat attendance — not vanity metrics."
+        subheading="Everything here is designed to support brand, conversion, and repeat attendance, not vanity metrics."
         features={features}
       />
       <ProductMockupSection
         heading="Visual storytelling that sells the room"
-        body="Flyers, lineups, and drops should feel as intentional as your production. Up2 gives you a canvas that matches the energy of your brand — while staying structured enough for teams to run at scale."
+        body="Flyers, lineups, and drops should feel as intentional as your production. Up2 gives you a canvas that matches the energy of your brand while staying structured enough for teams to run at scale."
       />
       <SocialProofSection
         heading="What partners say"
         quotes={quotes}
       />
       <CtaBand
-        heading="Ready to elevate your next season?"
-        body="Tell us about your venues, tours, or brand activations — we will follow up with a tailored overview."
-        primary={{ to: "/contact", label: "Request a conversation" }}
-        secondary={{ to: "/solutions", label: "Explore solutions" }}
+        heading="Ready to see how it fits your stack?"
+        body="Walk through the platform story from discovery to the door in a few focused pages."
+        primary={{ to: "/how-it-works", label: "How it works" }}
+        secondary={{ to: "/about", label: "About Up2" }}
       />
     </MarketingLayout>
   );

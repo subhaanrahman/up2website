@@ -1,5 +1,6 @@
 import { MarketingLayout } from "@/components/marketing/MarketingLayout";
 import { Seo } from "@/components/marketing/Seo";
+import { Reveal } from "@/components/marketing/Reveal";
 import { FeatureGrid } from "@/components/marketing/sections/FeatureGrid";
 import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import {
@@ -15,7 +16,8 @@ const items = [
   {
     icon: LayoutGrid,
     title: "Structured discovery",
-    description: "Help guests browse with intent — not infinite noise — so the right events find the right crowds.",
+    description:
+      "Help guests browse with intent, not infinite noise, so the right events find the right crowds.",
   },
   {
     icon: Share2,
@@ -35,7 +37,7 @@ const items = [
   {
     icon: BellRing,
     title: "Timely updates",
-    description: "Keep your core audience informed when it matters — drops, changes, and last-minute magic.",
+    description: "Keep your core audience informed when it matters: drops, changes, and last-minute magic.",
   },
   {
     icon: Fingerprint,
@@ -52,27 +54,27 @@ export default function Features() {
         description="Platform capabilities for discovery, community, ticketing workflows, and operator-grade trust."
       />
       <div className="border-b border-border/60 bg-gradient-to-b from-card/40 to-background py-16 md:py-20">
-        <div className="container max-w-3xl text-center">
+        <Reveal className="container max-w-3xl text-center">
           <p className="text-label mb-3 text-primary">Features</p>
-          <h1 className="mb-6 text-4xl md:text-5xl">Everything you need — nothing you do not</h1>
+          <h1 className="mb-6 text-4xl md:text-5xl">Everything you need, nothing you do not</h1>
           <p className="text-lg text-muted-foreground">
             A focused toolkit for modern nightlife and live events. This is a marketing overview; specifics can be
             tailored for your rollout.
           </p>
-        </div>
+        </Reveal>
       </div>
 
       <FeatureGrid
         eyebrow="Platform"
-        heading="Designed as a system — not a pile of plugins"
+        heading="Designed as a system, not a pile of plugins"
         features={items}
       />
 
       <CtaBand
-        heading="Want a feature map for your team?"
-        body="We will align capabilities to your venues, touring schedule, or brand requirements."
-        primary={{ to: "/contact", label: "Request details" }}
-        secondary={{ to: "/pricing", label: "View pricing" }}
+        heading="See it in motion"
+        body="Follow the journey from publish to packed room, then learn why we built Up2 the way we did."
+        primary={{ to: "/how-it-works", label: "How it works" }}
+        secondary={{ to: "/about", label: "About" }}
       />
     </MarketingLayout>
   );

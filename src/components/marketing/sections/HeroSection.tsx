@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import { Reveal } from "@/components/marketing/Reveal";
 
 type HeroSectionProps = {
   eyebrow?: string;
@@ -15,20 +16,20 @@ export function HeroSection({
   eyebrow = "Nightlife & live events",
   title,
   subtitle,
-  primaryCta = { to: "/contact", label: "Talk to us" },
+  primaryCta = { to: "/features", label: "Explore features" },
   secondaryCta = { to: "/how-it-works", label: "See how it works" },
 }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden border-b border-border/60">
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-[0.22]"
+        className="hero-parallax-bg absolute inset-0 bg-cover bg-center opacity-[0.22] motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out"
         style={{ backgroundImage: `url(${heroBg})` }}
         aria-hidden
       />
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background/95 to-background" aria-hidden />
 
       <div className="container relative py-20 md:py-28 lg:py-32">
-        <div className="mx-auto max-w-3xl text-center">
+        <Reveal className="mx-auto max-w-3xl text-center">
           <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/80 bg-card/60 px-4 py-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground backdrop-blur-sm">
             <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
             {eyebrow}
@@ -42,11 +43,16 @@ export function HeroSection({
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="min-h-12 border-border/80 bg-background/50 px-8 text-base backdrop-blur-sm">
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="min-h-12 border-border/80 bg-background/50 px-8 text-base backdrop-blur-sm"
+            >
               <Link to={secondaryCta.to}>{secondaryCta.label}</Link>
             </Button>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

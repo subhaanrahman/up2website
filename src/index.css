@@ -29,7 +29,7 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 9%;
 
-    /* Main Color — change here to update theme pink across the app */
+    /* Main color: change here to update theme pink across the app */
     --main-color: 349 100% 61%;
     --main-color-foreground: 0 0% 100%;
     --primary: var(--main-color);
@@ -98,7 +98,7 @@ All colors MUST be HSL.
     --popover: 0 0% 13%;
     --popover-foreground: 0 0% 98%;
 
-    /* Main Color — change here to update theme pink across the app */
+    /* Main color: change here to update theme pink across the app */
     --main-color: 349 100% 61%;
     --main-color-foreground: 0 0% 100%;
     --primary: var(--main-color);
@@ -178,6 +178,40 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Subtle hero background parallax (uses --scroll-y from useScrollCssVars) */
+  .hero-parallax-bg {
+    transform: translateY(calc(var(--scroll-y, 0px) * 0.1));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-parallax-bg {
+      transform: none;
+    }
+  }
+
+  @keyframes route-load-breathe {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.04);
+    }
+  }
+
+  .animate-route-load-breathe {
+    animation: route-load-breathe 1.8s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-route-load-breathe {
+      animation: none;
+      opacity: 0.5;
+    }
+  }
+
   .surface-card {
     @apply rounded-tile-sm border border-border/70 bg-card shadow-sm;
   }

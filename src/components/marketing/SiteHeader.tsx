@@ -5,16 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import logoFull from "@/assets/logo-full.png";
+import { PRODUCT_NAME } from "@/lib/brand";
 
 const nav = [
   { to: "/", label: "Home", end: true },
-  { to: "/solutions", label: "Solutions" },
   { to: "/features", label: "Features" },
   { to: "/how-it-works", label: "How it works" },
   { to: "/about", label: "About" },
-  { to: "/pricing", label: "Pricing" },
-  { to: "/faq", label: "FAQ" },
-  { to: "/contact", label: "Contact" },
 ] as const;
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -30,10 +27,10 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-border/80 bg-background/90 backdrop-blur-md">
       <div className="container flex h-16 items-center justify-between gap-4">
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          <img src={logoFull} alt="Up2" className="h-7 w-auto md:h-8" />
+          <img src={logoFull} alt={PRODUCT_NAME} className="h-7 w-auto md:h-8" />
         </Link>
 
-        <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Primary">
           {nav.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass}>
               {item.label}
@@ -43,14 +40,14 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-2">
           <Button asChild className="hidden sm:inline-flex">
-            <a href="#cta-download" className="no-press">
-              Get early access
-            </a>
+            <Link to="/features" className="no-press">
+              Explore features
+            </Link>
           </Button>
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="lg:hidden" aria-label="Open menu">
+              <Button variant="outline" size="icon" className="md:hidden" aria-label="Open menu">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -77,9 +74,9 @@ export function SiteHeader() {
                 ))}
               </nav>
               <Button asChild className="mt-auto">
-                <a href="#cta-download" onClick={() => setOpen(false)}>
-                  Get early access
-                </a>
+                <Link to="/features" onClick={() => setOpen(false)}>
+                  Explore features
+                </Link>
               </Button>
             </SheetContent>
           </Sheet>

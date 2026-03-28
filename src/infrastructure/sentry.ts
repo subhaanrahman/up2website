@@ -27,7 +27,7 @@ export function initBrowserSentry(): void {
   });
 }
 
-/** Safe to call when Sentry is not configured — returns immediately. */
+/** Safe to call when Sentry is not configured; returns immediately. */
 export function captureClientException(error: unknown, context?: Record<string, unknown>): void {
   if (!(import.meta.env.VITE_SENTRY_DSN as string | undefined)?.trim()) return;
   if (!shouldSendToSentryFromThisHost()) return;

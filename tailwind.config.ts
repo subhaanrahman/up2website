@@ -14,7 +14,7 @@ export default {
   	},
   	extend: {
   		colors: {
-  			/* Main Color — semantic alias for theme accent */
+  			/* Main color (semantic alias for theme accent) */
   			main: {
   				DEFAULT: 'hsl(var(--main-color))',
   				foreground: 'hsl(var(--main-color-foreground))'
