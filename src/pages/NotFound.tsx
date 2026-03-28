@@ -1,23 +1,23 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { MarketingLayout } from "@/components/marketing/MarketingLayout";
+import { Seo } from "@/components/marketing/Seo";
+import { Button } from "@/components/ui/button";
 
 const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
-  }, [location.pathname]);
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted animate-in fade-in slide-in-from-bottom-3 duration-200 fill-mode-both">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">404</h1>
-        <p className="mb-4 text-xl text-muted-foreground">Oops! Page not found</p>
-        <a href="/" className="text-primary underline hover:text-primary/90">
-          Return to Home
-        </a>
+    <MarketingLayout>
+      <Seo title="Page not found" description="The page you are looking for does not exist." />
+      <div className="flex min-h-[50vh] flex-col items-center justify-center px-6 py-24 text-center">
+        <p className="text-label mb-2 text-muted-foreground">404</p>
+        <h1 className="mb-4 text-3xl md:text-4xl">This page is not here</h1>
+        <p className="mb-8 max-w-md text-muted-foreground">
+          The link may be outdated, or the page may have moved. Head back to the homepage to keep exploring Up2.
+        </p>
+        <Button asChild size="lg">
+          <Link to="/">Back to home</Link>
+        </Button>
       </div>
-    </div>
+    </MarketingLayout>
   );
 };
 
