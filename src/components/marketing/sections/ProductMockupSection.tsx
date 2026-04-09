@@ -1,6 +1,6 @@
-import flyer1 from "@/assets/flyer-1.jpg";
-import flyer2 from "@/assets/flyer-2.jpg";
-import flyer3 from "@/assets/flyer-3.jpg";
+import flyerProminent1 from "@/assets/flyer-prominent-1.png";
+import flyerProminent2 from "@/assets/flyer-prominent-2.png";
+import flyerProminent3 from "@/assets/flyer-prominent-3.png";
 import { Reveal } from "@/components/marketing/Reveal";
 
 type ProductMockupSectionProps = {
@@ -14,7 +14,7 @@ export function ProductMockupSection({
   heading,
   body,
 }: ProductMockupSectionProps) {
-  const imgs = [flyer1, flyer2, flyer3];
+  const imgs = [flyerProminent1, flyerProminent2, flyerProminent3];
 
   return (
     <section className="border-b border-border/60 py-20 md:py-24">

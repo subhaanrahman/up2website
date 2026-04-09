@@ -3,7 +3,6 @@ import { Seo } from "@/components/marketing/Seo";
 import { HeroSection } from "@/components/marketing/sections/HeroSection";
 import { FeatureGrid } from "@/components/marketing/sections/FeatureGrid";
 import { LogoStrip } from "@/components/marketing/sections/LogoStrip";
-import { SocialProofSection } from "@/components/marketing/sections/SocialProofSection";
 import { ProductMockupSection } from "@/components/marketing/sections/ProductMockupSection";
 import { CtaBand } from "@/components/marketing/sections/CtaBand";
 import {
@@ -54,27 +53,6 @@ const features = [
   },
 ];
 
-const quotes = [
-  {
-    quote:
-      "We finally have a consumer-facing experience that matches how premium our venues feel on the ground.",
-    attribution: "Placeholder",
-    role: "Venue Group, Partnerships",
-  },
-  {
-    quote:
-      "The product story is clear: fewer tabs, faster decisions, better nights. That is exactly what we pitch to sponsors.",
-    attribution: "Placeholder",
-    role: "Independent Promoter",
-  },
-  {
-    quote:
-      "Our team cares about brand and speed. Up2 reads like a modern product, not a patchwork of spreadsheets.",
-    attribution: "Placeholder",
-    role: "Festival Producer",
-  },
-];
-
 export default function Home() {
   return (
     <MarketingLayout>
@@ -98,10 +76,6 @@ export default function Home() {
       <ProductMockupSection
         heading="Visual storytelling that sells the room"
         body="Flyers, lineups, and drops should feel as intentional as your production. Up2 gives you a canvas that matches the energy of your brand while staying structured enough for teams to run at scale."
-      />
-      <SocialProofSection
-        heading="What partners say"
-        quotes={quotes}
       />
       <CtaBand
         heading="Ready to see how it fits your stack?"
