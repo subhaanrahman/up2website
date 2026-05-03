@@ -8,10 +8,15 @@ const explore = [
   { to: "/about", label: "About" },
 ];
 
+const legal = [
+  { to: "/terms", label: "Terms of Service" },
+  { to: "/privacy", label: "Privacy Policy" },
+];
+
 export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-card/30">
-      <div className="container grid gap-10 py-14 md:grid-cols-2">
+      <div className="container grid gap-10 py-14 md:grid-cols-3">
         <div className="space-y-4">
           <img src={logoFull} alt={PRODUCT_NAME} className="h-8 w-auto" />
           <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
@@ -20,10 +25,23 @@ export function SiteFooter() {
           </p>
         </div>
 
-        <div className="md:justify-self-end">
+        <div className="md:justify-self-center">
           <h3 className="text-label mb-4 text-muted-foreground">Explore</h3>
           <ul className="space-y-2 text-sm">
             {explore.map((l) => (
+              <li key={l.to}>
+                <Link to={l.to} className="text-muted-foreground transition-colors hover:text-foreground">
+                  {l.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="md:justify-self-end">
+          <h3 className="text-label mb-4 text-muted-foreground">Legal</h3>
+          <ul className="space-y-2 text-sm">
+            {legal.map((l) => (
               <li key={l.to}>
                 <Link to={l.to} className="text-muted-foreground transition-colors hover:text-foreground">
                   {l.label}
